@@ -2,4 +2,6 @@
 
 curl := class_libcurl()
 
-msgbox curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
+curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
+
+msgbox curl._curl_version()

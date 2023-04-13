@@ -1,12 +1,12 @@
 class class_libcurl {
 
-    static curlDLL := ""
+    static curlDLLhandle := ""
     static curlDLLpath := ""
-    register(dllPath := ""){
+    register(dllPath := "") {
         if !FileExist(dllPath)
             throw ValueError("libcurl DLL not found!", -1, dllPath)
         this.curlDLLpath := dllpath
-        this.curlDLL := DllCall("LoadLibrary","Str",dllPath,"Ptr")   ;load the DLL into resident memory
+        this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
 
         this._curl_global_init()
 
@@ -95,7 +95,7 @@ class class_libcurl {
             curl_global_init - Global libcurl initialization
         
             CURLcode curl_global_init(long flags);
-            
+        
             Description
                 - This function sets up the program environment that libcurl needs. Think of it as an extension of the library loader.
                 - This function must be called at least once within a program (a program is all the code that shares a memory space) before the program calls any other function in libcurl. The environment it sets up is constant for the life of the program and is the same for every program, so multiple calls have the same effect as one call.
@@ -104,7 +104,7 @@ class class_libcurl {
                 - If this is not thread-safe, you must not call this function when any other thread in the program (i.e. a thread sharing the same memory) is running. This does not just mean no other thread that is using libcurl. Because curl_global_init calls functions of other libraries that are similarly thread unsafe, it could conflict with any other thread that uses these other libraries.
                 - If you are initializing libcurl from a Windows DLL you should not initialize it from DllMain or a static initializer because Windows holds the loader lock during that time and it could cause a deadlock.
                 - See the description in libcurl of global environment requirements for details of how to use this function.
-            
+        
             Flags
                 CURL_GLOBAL_ALL
                     - Initialize everything possible. This sets all known bits except CURL_GLOBAL_ACK_EINTR.
@@ -122,17 +122,17 @@ class class_libcurl {
                     - A sensible default. It will init both SSL and Win32. Right now, this equals the functionality of the CURL_GLOBAL_ALL mask.
                 CURL_GLOBAL_ACK_EINTR
                     - This bit has no point since 7.69.0 but its behavior is instead the default.
-            
+        
             Before 7.69.0: when this flag is set, curl will acknowledge EINTR condition when connecting or when waiting for data. Otherwise, curl waits until full timeout elapses. (Added in 7.30.0)
-            
+        
             Example
                 curl_global_init(CURL_GLOBAL_DEFAULT);
                 * use libcurl, then before exiting... *
                 curl_global_cleanup();
-
+        
             Availability
                 Added in 7.8
-
+        
             Return value
                 If this function returns non - zero, something went wrong and you cannot use the other curl functions.
         
@@ -277,6 +277,29 @@ class class_libcurl {
 
     }
     _curl_version() {
+        /* https://curl.se/libcurl/c/curl_version.html
+            curl_version - returns the libcurl version string
+        
+            Synopsis
+                #include <curl/curl.h>
+                char *curl_version();
+        
+            Description
+                 - Returns a human readable string with the version number of libcurl and some of its important components (like OpenSSL version).
+                 - We recommend using curl_version_info instead!
+        
+            Example
+                 - printf("libcurl version %s\n", curl_version());
+        
+            Availability
+             - Always
+        
+            Return value
+                 - A pointer to a null-terminated string. The string resides in a statically allocated buffer and must not be freed by the caller.
+        */
+       ret := 0
+       ret1 := DllCall(this.curlDLLpath "\curl_version", "Str", ret)
+       return ret "`n" ret1
 
     }
     _curl_version_info() {
