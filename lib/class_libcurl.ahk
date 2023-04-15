@@ -297,10 +297,8 @@ class class_libcurl {
             Return value
                  - A pointer to a null-terminated string. The string resides in a statically allocated buffer and must not be freed by the caller.
         */
-       ret := 0
-       ret1 := DllCall(this.curlDLLpath "\curl_version", "Str", ret)
-       return ret "`n" ret1
 
+        return StrGet(DllCall(this.curlDLLpath "\curl_version", "char", 0, "cdecl ptr"), "UTF-8")
     }
     _curl_version_info() {
 
