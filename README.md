@@ -81,7 +81,7 @@ Full libcurl wrap for AHK_H v2.
 - [ ] curl_url_set
 - [ ] curl_url_strerror
 - [x] curl_version
-- [ ] curl_version_info
+- [x] curl_version_info
 - [ ] curl_ws_recv
 - [ ] curl_ws_send
 - [ ] curl_ws_meta
