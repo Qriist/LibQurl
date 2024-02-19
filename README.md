@@ -16,7 +16,7 @@ Full libcurl wrap for AHK_H v2.
 - [ ] curl_easy_escape
 - [ ] curl_easy_getinfo
 - [ ] curl_easy_header
-- [ ] curl_easy_init
+- [X] curl_easy_init
 - [ ] curl_easy_nextheader
 - [ ] curl_easy_option_by_id
 - [ ] curl_easy_option_by_name
