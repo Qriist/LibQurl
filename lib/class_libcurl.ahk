@@ -31,8 +31,8 @@ class class_libcurl {
 
     }
     _curl_easy_init() {
-        CURL := DllCall(this.curlDLLpath "\curl_easy_init")
-        If !CURL
+        this.CURL := DllCall(this.curlDLLpath "\curl_easy_init")
+        If !this.CURL
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
     }
     _curl_easy_nextheader() {
@@ -63,7 +63,7 @@ class class_libcurl {
 
     }
     _curl_easy_setopt() {
-        
+
     }
     _curl_easy_strerror() {
 
