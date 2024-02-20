@@ -24,7 +24,7 @@ Full libcurl wrap for AHK_H v2.
 - [ ] curl_easy_pause
 - [ ] curl_easy_perform
 - [ ] curl_easy_recv
-- [ ] curl_easy_reset
+- [X] curl_easy_reset
 - [ ] curl_easy_send
 - [ ] curl_easy_setopt
 - [ ] curl_easy_strerror

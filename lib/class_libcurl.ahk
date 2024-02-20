@@ -1,5 +1,5 @@
 class class_libcurl {
-
+    hCURL := Map()
     static curlDLLhandle := ""
     static curlDLLpath := ""
     register(dllPath := "") {
@@ -31,9 +31,12 @@ class class_libcurl {
 
     }
     _curl_easy_init() {
-        this.CURL := DllCall(this.curlDLLpath "\curl_easy_init")
-        If !this.CURL
+        newHandle := DllCall(this.curlDLLpath "\curl_easy_init")
+        this.hCURL[newHandle] := Map()
+        this.hCURL[newHandle]["handle"] := newHandle
+        If !this.hCURL[newHandle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
+        return newHandle
     }
     _curl_easy_nextheader() {
 
@@ -56,14 +59,20 @@ class class_libcurl {
     _curl_easy_recv() {
 
     }
-    _curl_easy_reset() {
-
+    _curl_easy_reset(handle) {
+        DllCall(this.curlDLLpath "\curl_easy_reset"
+            ,"Ptr",this.hCURL[handle]["handle"])
     }
     _curl_easy_send() {
 
     }
-    _curl_easy_setopt() {
-
+    _curl_easy_setopt(handle,option,parameter) {
+        ;msgbox this.hCURL[handle]["handle"]    ;gets the handle ptr
+        DllCall(this.curlDLLpath "\curl_easy_setopt"
+            ,"Ptr",this.hCURL[handle]["handle"]
+            ,"Str",option
+            ,"Ptr",parameter)
+        return 
     }
     _curl_easy_strerror() {
 
