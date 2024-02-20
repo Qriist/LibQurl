@@ -67,11 +67,10 @@ class class_libcurl {
 
     }
     _curl_easy_setopt(handle,option,parameter) {
-        ;msgbox this.hCURL[handle]["handle"]    ;gets the handle ptr
         DllCall(this.curlDLLpath "\curl_easy_setopt"
             ,"Ptr",this.hCURL[handle]["handle"]
             ,"Str",option
-            ,"Ptr",parameter)
+            ,"Str",parameter)
         return 
     }
     _curl_easy_strerror() {
