@@ -12,14 +12,14 @@ Full libcurl wrap for AHK_H v2.
 
 ## Implemented functions (https://curl.se/libcurl/c/allfuncs.html)
 - [ ] curl_easy_cleanup
-- [ ] curl_easy_duphandle
-- [ ] curl_easy_escape
+- [X] curl_easy_duphandle
+- [X] curl_easy_escape
 - [ ] curl_easy_getinfo
 - [ ] curl_easy_header
 - [X] curl_easy_init
 - [ ] curl_easy_nextheader
-- [ ] curl_easy_option_by_id
-- [ ] curl_easy_option_by_name
+- [X] curl_easy_option_by_id
+- [X] curl_easy_option_by_name
 - [ ] curl_easy_option_next
 - [ ] curl_easy_pause
 - [ ] curl_easy_perform
