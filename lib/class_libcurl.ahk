@@ -15,7 +15,9 @@ class class_libcurl {
 
 
     ;internal libcurl functions called by this class
+    _curl_easy_cleanup() {
 
+    }
     _curl_easy_duphandle() {
 
     }
@@ -47,14 +49,22 @@ class class_libcurl {
     _curl_easy_nextheader() {
 
     }
-    _curl_easy_option_by_id() {
-
+    _curl_easy_option_by_id(id) {
+        ;returns from the pre-built array
+        If this.optMap.Has(id)
+            return this.optMap[id]
+        return 0
     }
     _curl_easy_option_by_name(name) {
-        retCode := DllCall(this.curlDLLpath "\curl_easy_option_by_name"
-            ,"AStr",name
-            ,"Ptr")
-        return retCode
+        ;returns from the pre-built array
+        If this.optMap.Has(name)
+            return this.optMap[name]
+        return 0
+
+        ; retCode := DllCall(this.curlDLLpath "\curl_easy_option_by_name"
+        ;     ,"AStr",name
+        ;     ,"Ptr")
+        ; return retCode
     }
     _curl_easy_option_next() {
 
