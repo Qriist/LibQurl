@@ -748,7 +748,7 @@ class class_libcurl {
         return StrGet(Base64)
     }
     class _struct {
-        curl_easyoption(ptr) {
+        curl_easyoption(ptr){
             return {name:StrGet(numget(ptr,"Ptr"),"CP0")
                 ,id:numget(ptr,8,"UInt")
                 ,type:numget(ptr,12,"UInt")
