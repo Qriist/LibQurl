@@ -1,9 +1,11 @@
 class class_libcurl {
-    hCURL := Map()
-    static curlDLLhandle := ""
-    static curlDLLpath := ""
-    Opt := Map()
-    struct := class_libcurl._struct()
+    __New(){
+        this.hCURL := Map()
+        static curlDLLhandle := ""
+        static curlDLLpath := ""
+        this.Opt := Map()
+        this.struct := class_libcurl._struct()
+    }
     register(dllPath) {
         if !FileExist(dllPath)
             throw ValueError("libcurl DLL not found!", -1, dllPath)
@@ -97,14 +99,13 @@ class class_libcurl {
     _curl_easy_setopt(handle,option,parameter,debug?) {
         if IsSet(debug)
             msgbox this.showob(this.opt[option]) "`n`n`n"
-                .   "passed handle: " handle "`n"
-                .   "passed id:" this.opt[option].id "`n"
-                .   "passed type: " argTypes[this.opt[option].type]
+                ; .   "passed handle: " handle "`n"
+                ; .   "passed id:" this.opt[option].id "`n"
+                ; .   "passed type: " argTypes[this.opt[option].type]
         retCode := DllCall(this.curlDLLpath "\curl_easy_setopt"
             ,   "Ptr",handle
             ,   "Int",this.opt[option].id
-            ,   this.opt[option].type
-            ,   parameter)
+            ,   this.opt[option].type, parameter)
         return retCode
     }
     _curl_easy_strerror() {
@@ -750,6 +751,7 @@ class class_libcurl {
         }
     }
     _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
+        this.Opt.CaseSense := "Off" 
         optPtr := 0
         Loop {
             optPtr:=DllCall("libcurl-x64\curl_easy_option_next","UInt",optPtr,"Ptr")
@@ -795,160 +797,206 @@ class class_libcurl {
             (!isobject(v))	? ( rets .= "`n [" strOB i "] = [" v "]" ) : ( rets .= ShowOB(v,strOB i "."))
         return isSet(rets)?rets:""
     }
-
-    ; Class Storage {
+	WriteToFile(filename) {
+		Return (this._writeTo := new Curl.Storage.File(filename, "w"))
+	}
+    Perform(handle) {
+		; Store handle in global pool so callbacks can access the instance
+        /*
+		Curl.activePool[this._handle] := this
 		
-	; 	; Wrapper for file. Shouldn't be used directly.
-	; 	Class File {
-	; 		__New(filename, accessMode := "w") {
-	; 			this._filename   := filename
-	; 			this._accessMode := accessMode
-	; 			this._fileObject := ""
-	; 		}
+		; Prepare callbacks, removing old callbacks if necessary.
+		needWriteCallback := True
+		this.SetOpt(Curl.Opt.WRITEDATA    , (!needWriteCallback ? 0 : this._handle))
+		this.SetOpt(Curl.Opt.WRITEFUNCTION, (!needWriteCallback ? 0 : Curl._CB_Write))
+		
+		needHeaderCallback := (this._headerTo || this.OnHeader)
+		this.SetOpt(Curl.Opt.HEADERDATA     , (!needHeaderCallback ? 0 : this._handle))
+		this.SetOpt(Curl.Opt.HEADERFUNCTION , (!needHeaderCallback ? 0 : Curl._CB_Header))
+		
+		needReadCallback := (this._readFrom || this.OnRead)
+		this.SetOpt(Curl.Opt.READDATA     , (!needReadCallback ? 0 : this._handle))
+		this.SetOpt(Curl.Opt.READFUNCTION , (!needReadCallback ? 0 : Curl._CB_Read))
+		
+		needProgressCallback := (this.OnProgress)
+		this.SetOpt(Curl.Opt.NOPROGRESS       , (!needProgressCallback ? 1 : 0))
+		this.SetOpt(Curl.Opt.XFERINFODATA     , (!needProgressCallback ? 0 : this._handle))
+		this.SetOpt(Curl.Opt.XFERINFOFUNCTION , (!needProgressCallback ? 0 : Curl._CB_Progress))
+		
+		needDebugCallback := (this.OnDebug)
+		this.SetOpt(Curl.Opt.VERBOSE       , (!needDebugCallback ? 0 : 1))
+		this.SetOpt(Curl.Opt.DEBUGDATA     , (!needDebugCallback ? 0 : this._handle))
+		this.SetOpt(Curl.Opt.DEBUGFUNCTION , (!needDebugCallback ? 0 : Curl._CB_Debug))
+		
+		(this._writeTo)   ?  this._writeTo.Open()
+		(this._headerTo)  ?  this._headerTo.Open()
+		(this._readFrom)  ?  this._readFrom.Open()
+		
+		; TODO: cookies? headers?
+		retCode := DllCall(Curl.dllFilename . "\curl_easy_perform", "Ptr", this._handle, "CDecl")
+		
+		(this._writeTo)   ?  this._writeTo.Close()
+		(this._headerTo)  ?  this._headerTo.Close()
+		(this._readFrom)  ?  this._readFrom.Close()
+		
+		Curl.activePool.Delete(this._handle)
+		
+		Return this._SetLastCode(retCode, "Perform")
+        */
+	}
+    Class Storage {
+		
+		; Wrapper for file. Shouldn't be used directly.
+		Class File {
+			__New(filename, accessMode := "w") {
+				this._filename   := filename
+				this._accessMode := accessMode
+				this._fileObject := ""
+			}
 			
-	; 		Open() {
-	; 			If (this._accessMode == "w") {
-	; 				RegexMatch(this._filename, "^.+(?=[\\\/])", fileDirPath)
-	; 				If (fileDirPath)
-	; 					FileCreateDir % fileDirPath
+			; Open() {
+			; 	If (this._accessMode == "w") {
+			; 		RegexMatch(this._filename, "^.+(?=[\\\/])", fileDirPath)
+			; 		If (fileDirPath)
+			; 			FileCreateDir % fileDirPath
 					
-	; 				this._fileObject := FileOpen(this._filename, this._accessMode, "CP0")
-	; 			}
-	; 		}
+			; 		this._fileObject := FileOpen(this._filename, this._accessMode, "CP0")
+			; 	}
+			; }
 			
-	; 		Close() {
-	; 			this._fileObject.Close()
-	; 		}
+			; Close() {
+			; 	this._fileObject.Close()
+			; }
 
-	; 		Write(data) {
-	; 			If (this._fileObject == "")
-	; 				Return -1
+			; Write(data) {
+			; 	If (this._fileObject == "")
+			; 		Return -1
 				
-	; 			Return this._fileObject.Write(data)
-	; 		}
+			; 	Return this._fileObject.Write(data)
+			; }
 			
-	; 		RawWrite(srcDataPtr, srcDataSize) {
-	; 			If (this._fileObject == "")
-	; 			|| (this._accessMode != "w")
-	; 				Return -1
+			; RawWrite(srcDataPtr, srcDataSize) {
+			; 	If (this._fileObject == "")
+			; 	|| (this._accessMode != "w")
+			; 		Return -1
 				
-	; 			Return this._fileObject.RawWrite(srcDataPtr+0, srcDataSize)
-	; 		}
+			; 	Return this._fileObject.RawWrite(srcDataPtr+0, srcDataSize)
+			; }
 			
-	; 		RawRead(dstDataPtr, dstDataSize) {
-	; 			If (this._fileObject == "")
-	; 			|| (this._accessMode != "r")
-	; 				Return -1
+			; RawRead(dstDataPtr, dstDataSize) {
+			; 	If (this._fileObject == "")
+			; 	|| (this._accessMode != "r")
+			; 		Return -1
 				
-	; 			Return this._fileObject.RawRead(dstDataPtr+0, dstDataSize)
-	; 		}
+			; 	Return this._fileObject.RawRead(dstDataPtr+0, dstDataSize)
+			; }
 			
-	; 		Seek(offset, origin := 0) {
-	; 			Return !(this._fileObject.Seek(offset, origin))
-	; 		}
-	; 	}
+			; Seek(offset, origin := 0) {
+			; 	Return !(this._fileObject.Seek(offset, origin))
+			; }
+		}
 		
-	; 	; Wrapper for memory buffer, similar to regular FileObject
-	; 	Class MemBuffer {
-	; 		__New(dataPtr := 0, maxCapacity := 0, dataSize := 0) {
-	; 			this._data     := ""
-	; 			this._dataPos  := 0
+		; Wrapper for memory buffer, similar to regular FileObject
+		; Class MemBuffer {
+		; 	__New(dataPtr := 0, maxCapacity := 0, dataSize := 0) {
+		; 		this._data     := ""
+		; 		this._dataPos  := 0
 				
-	; 			maxCapacity := Max(maxCapacity, dataSize)
+		; 		maxCapacity := Max(maxCapacity, dataSize)
 				
-	; 			If (maxCapacity == 0)
-	; 				maxCapacity := 8*1024*1024  ; 8 Mb
+		; 		If (maxCapacity == 0)
+		; 			maxCapacity := 8*1024*1024  ; 8 Mb
 				
-	; 			If (dataPtr != 0) {
-	; 				this._dataMax  := maxCapacity
-	; 				this._dataSize := dataSize
-	; 				this._dataPtr  := dataPtr
-	; 			} Else
-	; 			; No argument, store inside class.
-	; 			{
-	; 				this._dataSize := 0
-	; 				this._dataMax  := ObjSetCapacity(this, "_data", maxCapacity)
-	; 				this._dataPtr  := ObjGetAddress(this, "_data")
-	; 			}
-	; 		}
+		; 		If (dataPtr != 0) {
+		; 			this._dataMax  := maxCapacity
+		; 			this._dataSize := dataSize
+		; 			this._dataPtr  := dataPtr
+		; 		} Else
+		; 		; No argument, store inside class.
+		; 		{
+		; 			this._dataSize := 0
+		; 			this._dataMax  := ObjSetCapacity(this, "_data", maxCapacity)
+		; 			this._dataPtr  := ObjGetAddress(this, "_data")
+		; 		}
+		; 	}
 			
-	; 		Open() {
-	; 			; Do nothing
-	; 		}
+		; 	Open() {
+		; 		; Do nothing
+		; 	}
 			
-	; 		Close() {
-	; 			this.Seek(0,0)
-	; 		}
+		; 	Close() {
+		; 		this.Seek(0,0)
+		; 	}
 			
-	; 		Write(data) {
-	; 			srcDataSize := StrPut(srcText, "CP0")
+		; 	Write(data) {
+		; 		srcDataSize := StrPut(srcText, "CP0")
 				
-	; 			If ((this._dataPos + srcDataSize) > this._dataMax)
-	; 				Return -1
+		; 		If ((this._dataPos + srcDataSize) > this._dataMax)
+		; 			Return -1
 				
-	; 			StrPut(data, this._dataPtr + this._dataPos, "CP0")
+		; 		StrPut(data, this._dataPtr + this._dataPos, "CP0")
 				
-	; 			this._dataPos  += srcDataSize
-	; 			this._dataSize := Max(this._dataSize, this._dataPos)
+		; 		this._dataPos  += srcDataSize
+		; 		this._dataSize := Max(this._dataSize, this._dataPos)
 				
-	; 			Return srcDataSize
-	; 		}
+		; 		Return srcDataSize
+		; 	}
 			
-	; 		RawWrite(srcDataPtr, srcDataSize) {
-	; 			If ((this._dataPos + srcDataSize) > this._dataMax)
-	; 				Return -1
+		; 	RawWrite(srcDataPtr, srcDataSize) {
+		; 		If ((this._dataPos + srcDataSize) > this._dataMax)
+		; 			Return -1
 				
-	; 			DllCall("ntdll\memcpy"
-	; 			, "Ptr" , this._dataPtr + this._dataPos
-	; 			, "Ptr" , srcDataPtr+0
-	; 			, "Int" , srcDataSize)
+		; 		DllCall("ntdll\memcpy"
+		; 		, "Ptr" , this._dataPtr + this._dataPos
+		; 		, "Ptr" , srcDataPtr+0
+		; 		, "Int" , srcDataSize)
 				
-	; 			this._dataPos  += srcDataSize
-	; 			this._dataSize := Max(this._dataSize, this._dataPos)
+		; 		this._dataPos  += srcDataSize
+		; 		this._dataSize := Max(this._dataSize, this._dataPos)
 				
-	; 			Return srcDataSize
-	; 		}
+		; 		Return srcDataSize
+		; 	}
 			
-	; 		GetAsText(encoding := "UTF-8") {
-	; 			isEncodingWide := ((encoding = "UTF-16") || (encoding = "CP1200"))
-	; 			textMaxLength  := this._dataSize / (isEncodingWide ? 2 : 1)
-	; 			Return StrGet(this._dataPtr, textMaxLength, encoding)
-	; 		}
+		; 	GetAsText(encoding := "UTF-8") {
+		; 		isEncodingWide := ((encoding = "UTF-16") || (encoding = "CP1200"))
+		; 		textMaxLength  := this._dataSize / (isEncodingWide ? 2 : 1)
+		; 		Return StrGet(this._dataPtr, textMaxLength, encoding)
+		; 	}
 			
-	; 		RawRead(dstDataPtr, dstDataSize) {
-	; 			dataLeft := this._dataSize - this._dataPos
-	; 			dstDataSize := Min(dstDataSize, dataLeft)
+		; 	RawRead(dstDataPtr, dstDataSize) {
+		; 		dataLeft := this._dataSize - this._dataPos
+		; 		dstDataSize := Min(dstDataSize, dataLeft)
 				
-	; 			DllCall("ntdll\memcpy"
-	; 			, "Ptr" , dstDataPtr
-	; 			, "Ptr" , this._dataPtr + this._dataPos
-	; 			, "Int" , dstDataSize)
+		; 		DllCall("ntdll\memcpy"
+		; 		, "Ptr" , dstDataPtr
+		; 		, "Ptr" , this._dataPtr + this._dataPos
+		; 		, "Int" , dstDataSize)
 				
-	; 			Return dstDataSize
-	; 		}
+		; 		Return dstDataSize
+		; 	}
 			
-	; 		Seek(offset, origin := 0) {
-	; 			newDataPos := offset
-	; 			+ ( (origin == 0) ? 0               ; SEEK_SET
-	; 			  : (origin == 1) ? this._dataPos   ; SEEK_CUR
-	; 			  : (origin == 2) ? this._dataSize  ; SEEK_END
-	; 			  : 0 )                             ; Unknown 'origin', use SEEK_SET
+		; 	Seek(offset, origin := 0) {
+		; 		newDataPos := offset
+		; 		+ ( (origin == 0) ? 0               ; SEEK_SET
+		; 		  : (origin == 1) ? this._dataPos   ; SEEK_CUR
+		; 		  : (origin == 2) ? this._dataSize  ; SEEK_END
+		; 		  : 0 )                             ; Unknown 'origin', use SEEK_SET
 				
-	; 			If (newDataPos > this._dataSize)
-	; 			|| (newDataPos < 0)
-	; 				Return 1  ; CURL_SEEKFUNC_FAIL
+		; 		If (newDataPos > this._dataSize)
+		; 		|| (newDataPos < 0)
+		; 			Return 1  ; CURL_SEEKFUNC_FAIL
 				
-	; 			this._dataPos := newDataPos
-	; 			Return 0  ; CURL_SEEKFUNC_OK
-	; 		}
+		; 		this._dataPos := newDataPos
+		; 		Return 0  ; CURL_SEEKFUNC_OK
+		; 	}
 			
-	; 		Tell() {
-	; 			Return this._dataPos
-	; 		}
+		; 	Tell() {
+		; 		Return this._dataPos
+		; 	}
 			
-	; 		Length() {
-	; 			Return this._dataSize
-	; 		}
-	; 	}
-	; }
+		; 	Length() {
+		; 		Return this._dataSize
+		; 	}
+		; }
+	}
 }
