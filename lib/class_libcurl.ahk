@@ -75,8 +75,8 @@ class class_libcurl {
         ;     ,"Ptr")
         ; return retCode
     }
-    _curl_easy_option_next() {
-
+    _curl_easy_option_next(optPtr) {
+        return DllCall("libcurl-x64\curl_easy_option_next","UInt",optPtr,"Ptr")
     }
     _curl_easy_pause() {
 
@@ -754,7 +754,7 @@ class class_libcurl {
         this.Opt.CaseSense := "Off" 
         optPtr := 0
         Loop {
-            optPtr:=DllCall("libcurl-x64\curl_easy_option_next","UInt",optPtr,"Ptr")
+            optPtr := this._curl_easy_option_next(optPtr)
             if (optPtr = 0)
                 break
             o := this.struct.curl_easyoption(optPtr)

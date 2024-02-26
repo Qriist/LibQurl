@@ -9,7 +9,7 @@ curl := class_libcurl()
 curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
 hCURL := curl._curl_easy_init()
 
-; msgbox curl.showob(curl.opt)
+msgbox curl.showob(curl.opt)
 curl._curl_easy_setopt(hCURL,"CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")    ;load SSL certs
 ; curl._curl_easy_setopt(hCURL,"SSL_VERIFYSTATUS",1,1) ;last param = shows debug info
 curl._curl_easy_setopt(hCURL,"URL","https://www.google.com")    ;set url
