@@ -9,68 +9,22 @@ curl := class_libcurl()
 curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
 hCURL := curl._curl_easy_init()
 
-msgbox curl.ShowOB(curl.opt["CAINFO"]) "`n" curl.ShowOB(curl.opt[10065]) "`n" curl.ShowOB(curl.opt["CURLOPT_CAINFO"])
+curl._curl_easy_setopt(hCURL,"CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")    ;load SSL certs
+; curl._curl_easy_setopt(hCURL,"SSL_VERIFYSTATUS",1,1) ;last param = shows debug info
+curl._curl_easy_setopt(hCURL,"URL","https://www.google.com")    ;set url
+
 exitapp
 
+
+;doge-style code below
 DllCall("GetModuleHandleA","AStr","libcurl-x64.dll") || DllCall("LoadLibraryA","AStr","libcurl-x64.dll") ;replaces #DllLoad libcurl-x64.dll
-
 curl_handle:=DllCall("libcurl-x64\curl_easy_init","Ptr")
-
-; s := structs()
-; struct_curl_easyoption := ""
-;     .   "Uptr   name;"
-;     .   "Int   id;"
-;     .   "short   type;"
-;     .   "char   flags;"
-outMap := Map()
-;need to get correct codes before attempting file write
-prev := 0
-Loop {
-    CURLcode:=DllCall("libcurl-x64\curl_easy_option_next","UInt",prev,"Ptr")
-    prev := CURLcode    ;curl_easy_option_next() expects the *pointer* to the last opt struct
-    if (prev = 0)
-        break
-    outMap[a_index] := s.curl_easyoption(CURLcode)
-} until (CURLcode = 0)
-
-msgbox a_clipboard := showob(outMap)
-
-; class structs {
-;     curl_easyoption(ptr) {
-;         return {name:StrGet(numget(ptr,"Ptr"),"CP0")
-;             ,id:numget(ptr,8,"UInt")
-;             ,type:numget(ptr,12,"UInt")
-;             ,flags:numget(ptr,16,"UInt")}
-;     }
-; }
-
-exitapp
-; class struct_curl_easyoption {
-;     name    : Ptr ;:= StrGet(numget(this,"Ptr"),"CP0")
-;     __value {
-;         ; get => this.value
-;         set {
-;             this.value := StrGet(numget(this.value,"Ptr"),"CP0")
-;         }
-;     }
-;     id      : UInt ;:= numget(this,8,"UInt")
-;     type    : UInt ;:= numget(this,12,"UInt")
-;     flags   : UInt ;:= numget(this,16,"Int64")
-
-; }
-;msgbox CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",64,"Int",1) ;10064=CURLOPT_SSL_VERIFYPEER
+; CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",64,"Int",1) ;10064=CURLOPT_SSL_VERIFYPEER
 CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",10002,"AStr","https://titsandasses.org/") ;10002=CURLOPT_URL=CURLOPTTYPE_OBJECTPOINT+2
 CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",10002,"AStr","https://www.google.com") ;10002=CURLOPT_URL=CURLOPTTYPE_OBJECTPOINT+2
-; CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",64,"Int",1) ;10064=CURLOPT_SSL_VERIFYPEER
-
-    ; set {
-    ;     if this.name {
-    ;         this.__delete()
-    ;         this.name := 
-    ;     }
-    ; }
-
 CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",10065,"AStr",A_ScriptDir "\lib\curl-ca-bundle.crt") ;10065=CURLOPT_CAINFO
+
+exitapp
 
 
 /* v1 function path for writing to file
@@ -181,14 +135,7 @@ CURLcode:=DllCall("libcurl-x64\curl_easy_perform","Ptr",curl_handle)
 
 exitapp
 
-curl := class_libcurl()
 
-curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
-hCURL := curl._curl_easy_init()
-
-curl._curl_easy_setopt(hCURL,"CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
-curl._curl_easy_setopt(hCURL,"SSL_VERIFYSTATUS",1,1) ;last param = shows debug info
-curl._curl_easy_setopt(hCURL,"URL","https://www.google.com")
 
 msgbox curl._curl_easy_perform(hCURL)
 ;msgbox curl._curl_version()

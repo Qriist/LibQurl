@@ -95,12 +95,6 @@ class class_libcurl {
 
     }
     _curl_easy_setopt(handle,option,parameter,debug?) {
-        static argTypes := {LONG:"Int"
-            ,   OBJECTPOINT:"Ptr"
-            ,   STRINGPOINT:"Astr"
-            ,   FUNCTIONPOINT:"Ptr"
-            ,   OFF_T:"Int64"
-            ,   BLOB:"Ptr"}
         if IsSet(debug)
             msgbox this.showob(this.opt[option]) "`n`n`n"
                 .   "passed handle: " handle "`n"
@@ -109,7 +103,7 @@ class class_libcurl {
         retCode := DllCall(this.curlDLLpath "\curl_easy_setopt"
             ,   "Ptr",handle
             ,   "Int",this.opt[option].id
-            ,   argTypes[this.opt[option].type]
+            ,   this.opt[option].type
             ,   parameter)
         return retCode
     }
@@ -751,7 +745,7 @@ class class_libcurl {
         curl_easyoption(ptr){
             return {name:StrGet(numget(ptr,"Ptr"),"CP0")
                 ,id:numget(ptr,8,"UInt")
-                ,type:numget(ptr,12,"UInt")
+                ,rawCurlType:numget(ptr,12,"UInt")
                 ,flags:numget(ptr,16,"UInt")}
         }
     }
@@ -762,6 +756,36 @@ class class_libcurl {
             if (optPtr = 0)
                 break
             o := this.struct.curl_easyoption(optPtr)
+            /*
+                ;types defined in v1 class  *rearranged to follow typedef enum*
+                LONG :=     0 + AHK_ARG * 1  ; Long
+                BITS := LONG                 ; Long argument with a set of values/bitmask
+                OFFT := 30000 + AHK_ARG * 6  ; Curl_off_t (Int64)
+                OBJP := 10000 + AHK_ARG * 2  ; Object pointer
+                STRP := 10000 + AHK_ARG * 3  ; String pointer
+                SLIP := 10000 + AHK_ARG * 4  ; Linked-list pointer
+                CBPT := OBJP                 ; Argument pointer passed to callback
+                BLOB := 40000 + AHK_ARG * 7  ; Blob struct pointer
+                FUNP := 20000 + AHK_ARG * 5  ; Function pointer
+                
+                {LONG:"Int"
+                ,   OBJECTPOINT:"Ptr"
+                ,   STRINGPOINT:"Astr"
+                ,   FUNCTIONPOINT:"Ptr"
+                ,   OFF_T:"Int64"
+                ,   BLOB:"Ptr"}
+            */
+            static argTypes := {0:{type:"Int",easyType:"CURLOT_LONG"}
+                            ,   1:{type:"Int",easyType:"CURLOT_VALUES"}
+                            ,   2:{type:"Int64",easyType:"CURLOT_OFF_T"}
+                            ,   3:{type:"Ptr",easyType:"CURLOT_OBJECT"}
+                            ,   4:{type:"Astr",easyType:"CURLOT_STRING"}
+                            ,   5:{type:"Ptr",easyType:"CURLOT_SLIST"}
+                            ,   6:{type:"Ptr",easyType:"CURLOT_CBPTR"}
+                            ,   7:{type:"Ptr",easyType:"CURLOT_BLOB"}
+                            ,   8:{type:"Ptr",easyType:"CURLOT_FUNCTION"}}
+            o.type := argTypes[o.rawCurlType].type
+            ,o.easyType := argTypes[o.rawCurlType].easyType
             this.Opt["CURLOPT_" o.name] := this.Opt[o.name] := this.Opt[o.id] := o
         }
     }
@@ -771,203 +795,160 @@ class class_libcurl {
             (!isobject(v))	? ( rets .= "`n [" strOB i "] = [" v "]" ) : ( rets .= ShowOB(v,strOB i "."))
         return isSet(rets)?rets:""
     }
-    class Struct1
-    {
-        static __types := {UInt: 4, UInt64: 8, Int: 4, Int64: 8, Short: 2, UShort: 2, Char: 1, UChar: 1, Double: 8, Float: 4, Ptr: A_PtrSize, UPtr: A_PtrSize}
-        __New(structinfo, ads_pa := unset, offset := 0, bit64 := unset) {
-            if (IsSet(bit64))
-                types := struct.__types.Clone(), types.Ptr := types.UPtr := 4 * (!!bit64 + 1)
-            else types := struct.__types, bit64 := A_PtrSize = 8
-            maxbytes := 0, index := 0, root := true, level := 0, sub := [], this.DefineProp('__bit64', {Value: bit64})
-            this.DefineProp("__member", {Value: {}}), this.DefineProp("__buffer", {Value: {Ptr: 0, Size: 0}}), this.DefineProp("__memberlist", {Value: []})	; this.__member:={}, this.__buffer:=""
-            this.DefineProp('__types', {Value: types}), this.DefineProp("__base", {Value: (IsSet(ads_pa) && Type(ads_pa) = "Buffer") ? (root := false, ads_pa) : Buffer(A_PtrSize, 0)})
-            if (Type(structinfo) = "String") {
-                structinfo := Trim(RegExReplace(structinfo, '//.*'), '`n`r`t ')
-                structinfo := RegExReplace(structinfo := StrReplace(structinfo, ",", "`n"), "m)^\s*unsigned\s*", "U")
-                structinfo := StrSplit(structinfo, "`n", "`r `t")
-            }
-            while (index < structinfo.Length) {
-                index++, LF := structinfo[index]
-                if (LF ~= "^(typedef\s+)?struct\s*") {
-                    if (index > 1) {
-                        level++, submax := 0, sub.Length := 0, name := RegExMatch(LF, 'struct\s+(\w+)', &n) ? n[1] : ''
-                        while (level) {
-                            index++, LF := structinfo[index]
-                            if InStr(LF, "{")
-                                level++
-                            else if InStr(LF, "}") && ((--level) = 0) {
-                                if !RegExMatch(LF, "\}\s*(\w+)", &n)
-                                    throw Error("structure's name not found")
-                                break
-                            } else if RegExMatch(LF, "^(\w+)\s*(\*+)?\s*(\w+)(\[\d+\])?", &m)
-                                _type := this.ahktype(m[1] m[2]), submax := Max(submax, types.%_type%), LF := _type " " m[3] m[4]
-                            sub.Push(LF)
-                        }
-                        offset := Mod(offset, submax) ? (Integer(offset / submax) + 1) * submax : offset
-                        this.__memberlist.Push(n[1]), this.__member.%n[1]% := tmp := struct(sub, this.__base, offset)
-                        tmp.DefineProp('__structname', {Value: name})
-                        offset := tmp.__offset + tmp.__buffer.Size, maxbytes := Max(maxbytes, tmp.__maxbytes)
-                    } else
-                        this.DefineProp('__structname', {Value: RegExMatch(LF, 'struct\s+(\w+)', &n) ? n[1] : ''})
-                    continue
-                }
-                if RegExMatch(LF, "^(\w+)\s*(\*+)?\s*(\w+)(\[\d+\])?", &m) {
-                    _type := root ? this.ahktype(m[1] m[2]) : m[1]
-                    b := types.%_type%, maxbytes := Max(maxbytes, b), offset := Mod(offset, b) ? (Integer(offset / b) + 1) * b : offset
-                    if !IsSet(firstmember)
-                        firstmember := offset
-                    this.DefineProp("__maxbytes", {Value: maxbytes}), this.__memberlist.Push(m[3])
-                    if (n := Integer("0" Trim(m[4], "[]")))
-                        this.__member.%m[3]% := {type: _type, offset: offset, size: n}, offset += b * n
-                    else
-                        this.__member.%m[3]% := {type: _type, offset: offset}, offset += b
-                }
-            }
-            offset := Mod(offset - firstmember, maxbytes) ? ((Integer((offset - firstmember) / maxbytes) + 1) * maxbytes + firstmember) : offset
-            this.DefineProp("__offset", {Value: firstmember})
-            if IsSet(ads_pa) {
-                if Type(ads_pa) = "Buffer"
-                    (this.__buffer := {Size: offset - firstmember}).DefineProp("Ptr", {get: ((p, o, *) => NumGet(p, "Ptr") + o).Bind(ads_pa.Ptr, firstmember)})
-                else
-                    this.__buffer := {Ptr: Integer(ads_pa), Size: offset - firstmember}, NumPut("Ptr", ads_pa, this.__base)
-            } else NumPut("Ptr", (this.__buffer := Buffer(offset - firstmember, 0)).Ptr, this.__base)
 
-            for m in this.__member.OwnProps()
-            ; this.__member.%m%.DefineProp("value", {get: ((n, *) => this.%n%).Bind(m)})
-                if (Type(this.__member.%m%) = "Object") {
-                    offset := this.__member.%m%.offset - this.__offset
-                    _type := this.__member.%m%.type
-                    this.DefineProp(m, {
-                        get: ((o, t, s, p*) => (p.Length ? NumGet(s.__buffer.Ptr, o + p[1] * types.%t%, t) : NumGet(s.__buffer.Ptr, o, t))).Bind(offset, _type),
-                        set: ((o, t, s, v, p*) => (p.Length ? NumPut(t, v, s.__buffer.Ptr, o + p[1] * types.%t%) : NumPut(t, v, s.__buffer.Ptr, o))).Bind(offset, _type)
-                    })
-                } else
-                    this.DefineProp(m, {get: ((n, s, p*) => s.__member.%n%).Bind(m)})
-        }
-        ; __Get(n, params) {
-        ; 	if (Type(this.__member.%n%) = "Object") {
-        ; 		offset := this.__member.%n%.offset - this.__offset
-        ; 		if params.Length {
-        ; 			if (params[1] >= this.__member.%n%.size)
-        ; 				throw Error("Invalid index")
-        ; 			offset += params[1] * this.__types.%(this.__member.%n%.type)%
-        ; 		}
-        ; 		return NumGet(this.__buffer.Ptr, offset, this.__member.%n%.type)
-        ; 	} else return this.__member.%n%
-        ; }
-        ; __Set(n, params, v) {
-        ; 	if (Type(this.__member.%n%) = "Object") {
-        ; 		offset := this.__member.%n%.offset - this.__offset
-        ; 		if params.Length {
-        ; 			if (params[1] >= this.__member.%n%.size)
-        ; 				throw Error("Invalid index")
-        ; 			offset += params[1] * this.__types.%(this.__member.%n%.type)%
-        ; 		}
-        ; 		NumPut(this.__member.%n%.type, v, this.__buffer.Ptr, offset)
-        ; 	} else throw Error("substruct '" n "' can't be overwritten")
-        ; }
-        data() => this.__buffer.Ptr
-        offset(n) => this.__member.%n%.offset
-        size() => this.__buffer.Size
-        __Delete() => (this.__base := this.__buffer := this.__memberlist := this.__member := '')
+    ; Class Storage {
+		
+	; 	; Wrapper for file. Shouldn't be used directly.
+	; 	Class File {
+	; 		__New(filename, accessMode := "w") {
+	; 			this._filename   := filename
+	; 			this._accessMode := accessMode
+	; 			this._fileObject := ""
+	; 		}
+			
+	; 		Open() {
+	; 			If (this._accessMode == "w") {
+	; 				RegexMatch(this._filename, "^.+(?=[\\\/])", fileDirPath)
+	; 				If (fileDirPath)
+	; 					FileCreateDir % fileDirPath
+					
+	; 				this._fileObject := FileOpen(this._filename, this._accessMode, "CP0")
+	; 			}
+	; 		}
+			
+	; 		Close() {
+	; 			this._fileObject.Close()
+	; 		}
 
-        toString() {
-            _str := "// total size:" this.__buffer.Size "  (" ((!!this.__bit64 + 1) * 32) " bit)`nstruct {`n", Dump(this)
-            return _str "};"
-
-            Dump(obj, _indent := 1) {
-                for m in obj.__memberlist {
-                    if ("Object" = _t := Type(n := obj.__member.%m%))
-                        _str .= Indent(_indent) StrLower(n.Type) "`t" m (n.HasOwnProp("size") ? "[" n.size "]" : "") ";`t// " n.offset "`n"
-                    else if (_t = "struct") {
-                        _str .= Indent(_indent) "// struct '" m "' size:" n.__buffer.Size "`n" Indent(_indent) "struct {`n"
-                        Dump(n, _indent + 1)
-                        _str .= Indent(_indent) "} " m ";`n"
-                    }
-                }
-            }
-            Indent(n := 0) {
-                Loop (_ind := "", n)
-                    _ind .= "`t"
-                return _ind
-            }
-        }
-
-        generateClass() {
-            a := generate(this), s := Trim(RegExReplace(RegExReplace(this.toString(), '//(.*)'), '\R\R', '`n'), ' `t`n')
-            if (!RegExMatch(s, 'im)^\s*ptr\s+'))
-                return a
-            b := generate(struct(s, 0, , !this.__bit64)), s := a
-            a := StrSplit(a, '`n'), b := StrSplit(b, '`n')
-            if (a.Length != b.Length) {
-                MsgBox('Error')
-                return s
-            }
-            s := ''
-            loop a.Length {
-                if (a[A_Index] != b[A_Index] && RegExMatch(a[A_Index], '([,(]\s*)?\b(\d+)\b', &m1) && RegExMatch(b[A_Index], '\b(\d+)\b', &m2) && m1 != m2) {
-                    t := 'A_PtrSize = 8 ? ' Max(m1[2], m2[1]) ' : ' Min(m1[2], m2[1])
-                    s .= RegExReplace(a[A_Index], m1[2], m1[1] ? t : '(' t ')', , 1) '`n'
-                } else
-                    s .= a[A_Index] '`n'
-            }
-            return s
-
-            generate(obj) {
-                cl := 'class ' obj.__structname ' {`n`t__New() {`n`t`tthis.__buf := Buffer(' obj.size() '), this.ptr := this.__buf.Ptr`n`t}`n'
-                cl := cl Dump(obj) '}'
-                return cl
-                Dump(obj, _indext := 1) {
-                    local s := ''
-                    for m in obj.__memberlist {
-                        if ("Object" = _t := Type(n := obj.__member.%m%))
-                            s .= Indent(_indext) m ' {`n' Indent(_indext + 1) 'get => NumGet(this.ptr, ' (n.offset - obj.__offset) ', `'' StrLower(n.Type) '`')`n' Indent(_indext + 1) 'set => NumPut(`'' StrLower(n.Type) '`', value, this.ptr, ' (n.offset - obj.__offset) ')`n' Indent(_indext) '}`n'
-                        else if (_t = 'struct') {
-                            c := 'class ' (n.__structname || m) ' {`n`t__New() {`n`t`tthis.__buf := Buffer(' n.size() '), this.ptr := this.__buf.Ptr`n`t}`n'
-                            c .= Dump(n) '}`n'
-                            cl := c cl
-                            s .= Indent(_indext) m ' => {Base: ' (n.__structname || m) '.Prototype, ptr: this.ptr + ' n.__offset ', __buf: this.__buf}`n'
-                        }
-                    }
-                    return s
-                }
-                Indent(n := 0) {
-                    loop (_ind := '', n)
-                        _ind .= '`t'
-                    return _ind
-                }
-            }
-        }
-
-        ahktype(t) {
-            if (!this.__types.HasOwnProp(_type := LTrim(t, "_"))) {
-                switch (_type := StrUpper(_type))
-                {
-                    case "BYTE", "BOOLEAN":
-                        _type := "UChar"
-                    case "ATOM", "LANGID", "WORD", "TBYTE", "TCHAR", "WCHAR", "WCHAR_T", "INTERNET_PORT":
-                        _type := "UShort"
-                    case "BOOL", "HFILE", "HRESULT", "INT32", "LONG", "LONG32", "INTERNET_SCHEME":
-                        _type := "Int"
-                    case "UINT32", "ULONG", "ULONG32", "COLORREF", "DWORD", "DWORD32", "LCID", "LCTYPE", "LGRPID":
-                        _type := "UInt"
-                    case "LONG64", "LONGLONG", "USN":
-                        _type := "Int64"
-                    case "DWORD64", "DWORDLONG", "ULONG64", "ULONGLONG":
-                        _type := "UInt64"
-                    default:
-                        if InStr(_type, "*")
-                            return "Ptr"
-                        _U := (_type ~= "^U[^uU]\w+$" ? ((_type := LTrim(_type, "U")), true) : false)
-                        if (_type == "HALF_PTR")
-                            _type := (_U ? "U" : "") (A_PtrSize = 8 ? "Int" : "Short")
-                        else if (_type ~= "^(\w+_PTR|[WL]PARAM|LRESULT|(H|L?P)\w+|SC_(HANDLE|LOCK)|S?SIZE_T|VOID)$")
-                            _type := (_U ? "U" : "") "Ptr"
-                        if (!this.__types.HasOwnProp(_type))
-                            throw Error("unsupport type: " _type)
-                }
-            }
-            return _type
-        }
-    }
+	; 		Write(data) {
+	; 			If (this._fileObject == "")
+	; 				Return -1
+				
+	; 			Return this._fileObject.Write(data)
+	; 		}
+			
+	; 		RawWrite(srcDataPtr, srcDataSize) {
+	; 			If (this._fileObject == "")
+	; 			|| (this._accessMode != "w")
+	; 				Return -1
+				
+	; 			Return this._fileObject.RawWrite(srcDataPtr+0, srcDataSize)
+	; 		}
+			
+	; 		RawRead(dstDataPtr, dstDataSize) {
+	; 			If (this._fileObject == "")
+	; 			|| (this._accessMode != "r")
+	; 				Return -1
+				
+	; 			Return this._fileObject.RawRead(dstDataPtr+0, dstDataSize)
+	; 		}
+			
+	; 		Seek(offset, origin := 0) {
+	; 			Return !(this._fileObject.Seek(offset, origin))
+	; 		}
+	; 	}
+		
+	; 	; Wrapper for memory buffer, similar to regular FileObject
+	; 	Class MemBuffer {
+	; 		__New(dataPtr := 0, maxCapacity := 0, dataSize := 0) {
+	; 			this._data     := ""
+	; 			this._dataPos  := 0
+				
+	; 			maxCapacity := Max(maxCapacity, dataSize)
+				
+	; 			If (maxCapacity == 0)
+	; 				maxCapacity := 8*1024*1024  ; 8 Mb
+				
+	; 			If (dataPtr != 0) {
+	; 				this._dataMax  := maxCapacity
+	; 				this._dataSize := dataSize
+	; 				this._dataPtr  := dataPtr
+	; 			} Else
+	; 			; No argument, store inside class.
+	; 			{
+	; 				this._dataSize := 0
+	; 				this._dataMax  := ObjSetCapacity(this, "_data", maxCapacity)
+	; 				this._dataPtr  := ObjGetAddress(this, "_data")
+	; 			}
+	; 		}
+			
+	; 		Open() {
+	; 			; Do nothing
+	; 		}
+			
+	; 		Close() {
+	; 			this.Seek(0,0)
+	; 		}
+			
+	; 		Write(data) {
+	; 			srcDataSize := StrPut(srcText, "CP0")
+				
+	; 			If ((this._dataPos + srcDataSize) > this._dataMax)
+	; 				Return -1
+				
+	; 			StrPut(data, this._dataPtr + this._dataPos, "CP0")
+				
+	; 			this._dataPos  += srcDataSize
+	; 			this._dataSize := Max(this._dataSize, this._dataPos)
+				
+	; 			Return srcDataSize
+	; 		}
+			
+	; 		RawWrite(srcDataPtr, srcDataSize) {
+	; 			If ((this._dataPos + srcDataSize) > this._dataMax)
+	; 				Return -1
+				
+	; 			DllCall("ntdll\memcpy"
+	; 			, "Ptr" , this._dataPtr + this._dataPos
+	; 			, "Ptr" , srcDataPtr+0
+	; 			, "Int" , srcDataSize)
+				
+	; 			this._dataPos  += srcDataSize
+	; 			this._dataSize := Max(this._dataSize, this._dataPos)
+				
+	; 			Return srcDataSize
+	; 		}
+			
+	; 		GetAsText(encoding := "UTF-8") {
+	; 			isEncodingWide := ((encoding = "UTF-16") || (encoding = "CP1200"))
+	; 			textMaxLength  := this._dataSize / (isEncodingWide ? 2 : 1)
+	; 			Return StrGet(this._dataPtr, textMaxLength, encoding)
+	; 		}
+			
+	; 		RawRead(dstDataPtr, dstDataSize) {
+	; 			dataLeft := this._dataSize - this._dataPos
+	; 			dstDataSize := Min(dstDataSize, dataLeft)
+				
+	; 			DllCall("ntdll\memcpy"
+	; 			, "Ptr" , dstDataPtr
+	; 			, "Ptr" , this._dataPtr + this._dataPos
+	; 			, "Int" , dstDataSize)
+				
+	; 			Return dstDataSize
+	; 		}
+			
+	; 		Seek(offset, origin := 0) {
+	; 			newDataPos := offset
+	; 			+ ( (origin == 0) ? 0               ; SEEK_SET
+	; 			  : (origin == 1) ? this._dataPos   ; SEEK_CUR
+	; 			  : (origin == 2) ? this._dataSize  ; SEEK_END
+	; 			  : 0 )                             ; Unknown 'origin', use SEEK_SET
+				
+	; 			If (newDataPos > this._dataSize)
+	; 			|| (newDataPos < 0)
+	; 				Return 1  ; CURL_SEEKFUNC_FAIL
+				
+	; 			this._dataPos := newDataPos
+	; 			Return 0  ; CURL_SEEKFUNC_OK
+	; 		}
+			
+	; 		Tell() {
+	; 			Return this._dataPos
+	; 		}
+			
+	; 		Length() {
+	; 			Return this._dataSize
+	; 		}
+	; 	}
+	; }
 }
