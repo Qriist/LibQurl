@@ -20,7 +20,7 @@ Full libcurl wrap for AHK_H v2.
 - [ ] curl_easy_nextheader
 - [X] curl_easy_option_by_id
 - [X] curl_easy_option_by_name
-- [ ] curl_easy_option_next
+- [X] curl_easy_option_next
 - [ ] curl_easy_pause
 - [ ] curl_easy_perform
 - [ ] curl_easy_recv
