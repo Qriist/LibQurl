@@ -13,7 +13,9 @@ hCURL := curl._curl_easy_init()
 curl._curl_easy_setopt(hCURL,"CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")    ;load SSL certs
 ; curl._curl_easy_setopt(hCURL,"SSL_VERIFYSTATUS",1,1) ;last param = shows debug info
 curl._curl_easy_setopt(hCURL,"URL","https://www.google.com")    ;set url
-msgbox curl._curl_easy_perform(hCURL)
+curl.WriteToFile(A_ScriptDir "\test.txt")
+; msgbox curl._curl_easy_perform(hCURL)
+msgbox curl["hCURL"][hCURL]["write"]["filename"]
 
 exitapp
 

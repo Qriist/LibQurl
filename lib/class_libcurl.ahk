@@ -3,8 +3,9 @@ class class_libcurl {
         this.hCURL := Map()
         static curlDLLhandle := ""
         static curlDLLpath := ""
-        this.Opt := Map()
-        this.struct := class_libcurl._struct()
+        this.Opt := Map()   ;option reference matrix
+        this.struct := class_libcurl._struct()  ;holds the various structs
+        this.writes := Map()    ;holds the various write handles
     }
     register(dllPath) {
         if !FileExist(dllPath)
@@ -49,7 +50,7 @@ class class_libcurl {
     }
     _curl_easy_init() {
         newHandle := DllCall(this.curlDLLpath "\curl_easy_init")
-        this.hCURL[newHandle] := Map()
+        this.hCURL[newHandle] := this.hCURL[0] := Map() ;hCURL[0] is a dynamic reference to the last created handle
         this.hCURL[newHandle]["handle"] := newHandle
         If !this.hCURL[newHandle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
@@ -797,8 +798,11 @@ class class_libcurl {
             (!isobject(v))	? ( rets .= "`n [" strOB i "] = [" v "]" ) : ( rets .= ShowOB(v,strOB i "."))
         return isSet(rets)?rets:""
     }
-	WriteToFile(filename) {
-		Return (this._writeTo := new Curl.Storage.File(filename, "w"))
+	WriteToFile(filename,handle?) {
+        if !IsSet(handle)
+            handle := this.hCURL[0]["handle"]   ;defaults to the last created handle
+        hCURL := this.hCURL
+        Return (this.hCURL[handle]["writeHandle"] := class_libcurl.Storage.File(filename, "w",handle,&hCURL))
 	}
     Perform(handle) {
 		; Store handle in global pool so callbacks can access the instance
@@ -848,13 +852,19 @@ class class_libcurl {
 		
 		; Wrapper for file. Shouldn't be used directly.
 		Class File {
-			__New(filename, accessMode := "w") {
-				this._filename   := filename
-				this._accessMode := accessMode
-				this._fileObject := ""
+			__New(filename, accessMode := "w",handle?,&hCURL?) {
+                if !IsSet(handle)
+                    handle := hCURL[0]["handle"]   ;defaults to the last created handle
+                hCURL[handle]["write"] := this.write := Map()   ;binds each instance of the File class to hCURL
+                this.write["writeType"] := "file"
+				,this.write["filename"]   := filename
+				,this.write["accessMode"] := accessMode
+				,this.write["fileObject"] := ""
 			}
 			
-			; Open() {
+			; Open(handle?) {
+            ;     if !IsSet(handle)
+            ;         handle := this.hCURL[0]["handle"]   ;defaults to the last created handle
 			; 	If (this._accessMode == "w") {
 			; 		RegexMatch(this._filename, "^.+(?=[\\\/])", fileDirPath)
 			; 		If (fileDirPath)
