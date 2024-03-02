@@ -1,12 +1,16 @@
 class class_libcurl {
-    __New(){
-        this.hCURL := Map()
+    __New() {
+        this.handleMap := Map()
         static curlDLLhandle := ""
         static curlDLLpath := ""
         this.Opt := Map()   ;option reference matrix
         this.struct := class_libcurl._struct()  ;holds the various structs
         this.writes := Map()    ;holds the various write handles
     }
+    ; __Get(handle){
+    ;     if !IsSet(handle)
+    ;         handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+    ; }
     register(dllPath) {
         if !FileExist(dllPath)
             throw ValueError("libcurl DLL not found!", -1, dllPath)
@@ -17,12 +21,14 @@ class class_libcurl {
         this._curl_global_init()
         ;this.struct := class_libcurl._struct()
         this._buildOptMap()
-
+        ; this.Init()
         ; this._curl_easy_setopt()
 
-        return 1
+        return this.Init()
     }
-
+    Init(){
+        return this._curl_easy_init()
+    }
 
     ;internal libcurl functions called by this class
     _curl_easy_cleanup() {
@@ -31,15 +37,15 @@ class class_libcurl {
     _curl_easy_duphandle() {
 
     }
-    _curl_easy_escape(handle,url) {
+    _curl_easy_escape(handle, url) {
         ;doesn't like unicode, should I use the native windows function for this?
         ;char *curl_easy_escape(CURL *curl, const char *string, int length);
         esc := DllCall(this.curlDLLpath "\curl_easy_escape"
-            ,"Ptr",handle
-            ,"AStr",url
-            ,"Int",0
-            ,"Ptr")
-        return StrGet(esc,"UTF-8")
+            , "Ptr", handle
+            , "AStr", url
+            , "Int", 0
+            , "Ptr")
+        return StrGet(esc, "UTF-8")
 
     }
     _curl_easy_getinfo() {
@@ -50,10 +56,17 @@ class class_libcurl {
     }
     _curl_easy_init() {
         newHandle := DllCall(this.curlDLLpath "\curl_easy_init")
-        this.hCURL[newHandle] := this.hCURL[0] := Map() ;hCURL[0] is a dynamic reference to the last created handle
-        this.hCURL[newHandle]["handle"] := newHandle
-        If !this.hCURL[newHandle]
+        this.handleMap[newHandle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
+        this.handleMap[newHandle]["handle"] := newHandle
+        If !this.handleMap[newHandle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
+
+        ; Curl._CB_Write    := RegisterCallback(Curl._writeCallbackFunction    , "CDecl")
+		; Curl._CB_Header   := RegisterCallback(Curl._HeaderCallback   , "CDecl")
+		; Curl._CB_Read     := RegisterCallback(Curl._ReadCallback     , "CDecl")
+		; Curl._CB_Progress := RegisterCallback(Curl._ProgressCallback , "CDecl")
+		; Curl._CB_Debug    := RegisterCallback(Curl._DebugCallback    , "CDecl")
+
         return newHandle
     }
     _curl_easy_nextheader() {
@@ -77,14 +90,16 @@ class class_libcurl {
         ; return retCode
     }
     _curl_easy_option_next(optPtr) {
-        return DllCall("libcurl-x64\curl_easy_option_next","UInt",optPtr,"Ptr")
+        return DllCall("libcurl-x64\curl_easy_option_next", "UInt", optPtr, "Ptr")
     }
     _curl_easy_pause() {
 
     }
-    _curl_easy_perform(handle) {
+    _curl_easy_perform(handle?) {
+        if !IsSet(handle)
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
         retCode := DllCall(this.curlDLLpath "\curl_easy_perform"
-            ,"Ptr",handle)
+            , "Ptr", handle)
         return retCode
     }
     _curl_easy_recv() {
@@ -92,21 +107,21 @@ class class_libcurl {
     }
     _curl_easy_reset(handle) {
         DllCall(this.curlDLLpath "\curl_easy_reset"
-            ,"Ptr",handle)
+            , "Ptr", handle)
     }
     _curl_easy_send() {
 
     }
-    _curl_easy_setopt(handle,option,parameter,debug?) {
+    _curl_easy_setopt(handle, option, parameter, debug?) {
         if IsSet(debug)
             msgbox this.showob(this.opt[option]) "`n`n`n"
-                ; .   "passed handle: " handle "`n"
-                ; .   "passed id:" this.opt[option].id "`n"
-                ; .   "passed type: " argTypes[this.opt[option].type]
+        ; .   "passed handle: " handle "`n"
+        ; .   "passed id:" this.opt[option].id "`n"
+        ; .   "passed type: " argTypes[this.opt[option].type]
         retCode := DllCall(this.curlDLLpath "\curl_easy_setopt"
-            ,   "Ptr",handle
-            ,   "Int",this.opt[option].id
-            ,   this.opt[option].type, parameter)
+            , "Ptr", handle
+            , "Int", this.opt[option].id
+            , this.opt[option].type, parameter)
         return retCode
     }
     _curl_easy_strerror() {
@@ -349,17 +364,17 @@ class class_libcurl {
     _curl_version_info() {
         /*  https://curl.se/libcurl/c/curl_version_info.html
             curl_version_info - returns run-time libcurl version info
-
+        
             Synopsis
                 #include <curl/curl.h>
- 
+        
                 curl_version_info_data *curl_version_info( CURLversion age);
-
+        
             Description
                  - Returns a pointer to a filled in static struct with information about various features in the running version of libcurl. Age should be set to the version of this functionality by the time you write your program. This way, libcurl will always return a proper struct that your program understands, while programs in the future might get a different struct. CURLVERSION_NOW will be the most recent one for the library you have installed: data = curl_version_info(CURLVERSION_NOW);
                  - Applications should use this information to judge if things are possible to do or not, instead of using compile-time checks, as dynamic/DLL libraries can be changed independent of applications.
                  - This function can alter the returned static data as long as curl_global_init has not been called. It is therefore not thread-safe before libcurl initialization occurs.
-
+        
             The curl_version_info_data struct looks like this
             typedef struct {
                 CURLversion age;          /* see description below
@@ -371,45 +386,45 @@ class class_libcurl {
                 long ssl_version_num;     /* not used, always zero
                 const char *libz_version; /* human readable string
                 const char *const *protocols; /* protocols
- 
+        
                 /* when 'age' is CURLVERSION_SECOND or higher, the members below exist
                 const char *ares;         /* human readable string
                 int ares_num;             /* number
- 
+        
                 /* when 'age' is CURLVERSION_THIRD or higher, the members below exist
                 const char *libidn;       /* human readable string
- 
+        
                 /* when 'age' is CURLVERSION_FOURTH or higher (>= 7.16.1), the members below exist
                 int iconv_ver_num;       /* '_libiconv_version' if iconv support enabled
- 
+        
                 const char *libssh_version; /* human readable string
- 
+        
                 /* when 'age' is CURLVERSION_FIFTH or higher (>= 7.57.0), the members below exist
                 unsigned int brotli_ver_num; /* Numeric Brotli version (MAJOR << 24) | (MINOR << 12) | PATCH
                 const char *brotli_version; /* human readable string.
- 
+        
                 /* when 'age' is CURLVERSION_SIXTH or higher (>= 7.66.0), the members below exist
                 unsigned int nghttp2_ver_num; /* Numeric nghttp2 version (MAJOR << 16) | (MINOR << 8) | PATCH
                 const char *nghttp2_version; /* human readable string.
                 const char *quic_version;    /* human readable quic (+ HTTP/3) library +version or NULL
- 
+        
                 /* when 'age' is CURLVERSION_SEVENTH or higher (>= 7.70.0), the members below exist
                 const char *cainfo;          /* the built-in default CURLOPT_CAINFO, might be NULL
                 const char *capath;          /* the built-in default CURLOPT_CAPATH, might be NULL
-                
+        
                 /* when 'age' is CURLVERSION_EIGHTH or higher (>= 7.71.0), the members below exist
                 unsigned int zstd_ver_num; /* Numeric Zstd version (MAJOR << 24) | (MINOR << 12) | PATCH
                 const char *zstd_version; /* human readable string.
-                
+        
                 /* when 'age' is CURLVERSION_NINTH or higher (>= 7.75.0), the members below exist
                 const char *hyper_version; /* human readable string.
-                
+        
                 /* when 'age' is CURLVERSION_TENTH or higher (>= 7.77.0), the members below exist
                 const char *gsasl_version; /* human readable string.
                 /* when 'age' is CURLVERSION_ELEVENTH or higher (>= 7.87.0), the members below exist
                 const char *const *feature_names; /* Feature names.
             } curl_version_info_data;
-
+        
              - age describes what the age of this struct is. The number depends on how new the libcurl you are using is. You are however guaranteed to get a struct that you have a matching struct for in the header, as you tell libcurl your "age" with the input argument.
              - version is just an ascii string for the libcurl version.
              - version_num is a 24 bit number created like this: <8 bits major number> | <8 bits minor number> | <8 bits patch number>. Version 7.9.8 is therefore returned as 0x070908.
@@ -513,142 +528,141 @@ class class_libcurl {
                     ssl_version_num is always 0.
                     libz_version is an ASCII string (there is no numerical version). If libcurl has no libz support, this is NULL.
                     protocols is a pointer to an array of char * pointers, containing the names protocols that libcurl supports (using lowercase letters). The protocol names are the same as would be used in URLs. The array is terminated by a NULL entry.
-
+        
                 Example
                     curl_version_info_data *ver = curl_version_info(CURLVERSION_NOW);
                     printf("libcurl version %u.%u.%u\n",
                         (ver->version_num >> 16) & 0xff,
                         (ver->version_num >> 8) & 0xff,
                         ver->version_num & 0xff);
-
+        
                 Availability
                     Added in 7.10
-
+        
                 Return value
                     A pointer to a curl_version_info_data struct.
-
+        
                 See also
                     curl_version
         */
         verPtr := DllCall(this.curlDLLpath "\curl_version_info", "Int", 0xA, "Ptr")
-        
-        ;build initial struct string 
+
+        ;build initial struct string
         structStr := ""
-            .   "Int    age;"
-            .   "UPtr   version;"
-            .   "UInt   version_num;"
-            .   "UPtr   host;"
-            .   "Int    features;"
-            .   "UPtr   ssl_version;"
-            .   "Int    ssl_version_num;"
-            .   "UPtr   libz_version;"
-            .   "Ptr    protocols;"
-        verStruct := Struct(structStr,verPtr)
-        
+            . "Int    age;"
+            . "UPtr   version;"
+            . "UInt   version_num;"
+            . "UPtr   host;"
+            . "Int    features;"
+            . "UPtr   ssl_version;"
+            . "Int    ssl_version_num;"
+            . "UPtr   libz_version;"
+            . "Ptr    protocols;"
+        verStruct := Struct(structStr, verPtr)
+
         verAge := verStruct["age"]
-        
+
         ;add features to the struct until we catch up with curl age
-        if (verAge >= 1){  
+        if (verAge >= 1) {
             structStr .= ""
-                .   "UPtr   ares;"
-                .   "Int    ares_num;"
+                . "UPtr   ares;"
+                . "Int    ares_num;"
         }
-        if (verAge >= 2){
+        if (verAge >= 2) {
             structStr .= ""
-                .   "UPtr   libidn;"
+                . "UPtr   libidn;"
         }
-        if (verAge >= 3){
+        if (verAge >= 3) {
             structStr .= ""
-                .   "Int    iconv_ver_num;"
-                .   "UPtr   libssh_version;"
+                . "Int    iconv_ver_num;"
+                . "UPtr   libssh_version;"
         }
-        if (verAge >= 4){
+        if (verAge >= 4) {
             structStr .= ""
-                .   "UInt   brotli_ver_num;"
-                .   "UPtr   brotli_version;"
+                . "UInt   brotli_ver_num;"
+                . "UPtr   brotli_version;"
         }
-        if (verAge >= 5){
+        if (verAge >= 5) {
             structStr .= ""
-                .   "UInt   nghttp2_ver_num;"
-                .   "UPtr   nghttp2_version;"
-                .   "UPtr   quic_version;"
+                . "UInt   nghttp2_ver_num;"
+                . "UPtr   nghttp2_version;"
+                . "UPtr   quic_version;"
         }
-        if (verAge >= 6){
+        if (verAge >= 6) {
             structStr .= ""
-                .   "UPtr   cainfo;"
-                .   "UPtr   capath;"
+                . "UPtr   cainfo;"
+                . "UPtr   capath;"
         }
-        if (verAge >= 7){
+        if (verAge >= 7) {
             structStr .= ""
-                .   "UInt   zstd_ver_num;"
-                .   "UPtr   zstd_version;"
+                . "UInt   zstd_ver_num;"
+                . "UPtr   zstd_version;"
         }
-        if (verAge >= 8){
+        if (verAge >= 8) {
             structStr .= ""
-                .   "UPtr   hyper_version;"
+                . "UPtr   hyper_version;"
         }
-        if (verAge >= 9){
+        if (verAge >= 9) {
             structStr .= ""
-                .   "UPtr   gsasl_version;"
+                . "UPtr   gsasl_version;"
         }
-        if (verAge >= 10){
+        if (verAge >= 10) {
             structStr .= ""
-                .   "Ptr    feature_names;"
+                . "Ptr    feature_names;"
         }
-        
-        
-        
-        verStruct := Struct(structStr,verPtr)
+
+
+        verStruct := Struct(structStr, verPtr)
         ;for k,v in verStruct
         ;    msgbox k " : " v
 
         retObj := Map()
-        retObj["age"] := (verStruct["age"]+1)
+        retObj["age"] := (verStruct["age"] + 1)
         retObj["version"] := StrGet(verStruct["version"], "UTF-8")
         retObj["host"] := StrGet(verStruct["host"], "UTF-8")
         retObj["ssl_version"] := StrGet(verStruct["ssl_version"], "UTF-8")
         retObj["libz_version"] := StrGet(verStruct["libz_version"], "UTF-8")
 
-        for k,v in this._walkPtrArray(verStruct["protocols"])
-           prot .= v "; "
-        retObj["protocols"] := Trim(prot,"; ")
+        for k, v in this._walkPtrArray(verStruct["protocols"])
+            prot .= v "; "
+        retObj["protocols"] := Trim(prot, "; ")
 
         If (verStruct["age"] >= 1)
-            retObj["ares"] := (verStruct["ares"]=0?0:StrGet(verStruct["ares"], "UTF-8"))
+            retObj["ares"] := (verStruct["ares"] = 0 ? 0 : StrGet(verStruct["ares"], "UTF-8"))
         If (verStruct["age"] >= 2)
-            retObj["libidn"] := (verStruct["libidn"]=0?0:StrGet(verStruct["libidn"], "UTF-8"))
-        If (verStruct["age"] >= 3){
-            retObj["iconv_ver_num"] := (verStruct["iconv_ver_num"]=0?0:NumGet(verStruct["iconv_ver_num"],"Int"))
-            retObj["libssh_version"] := (verStruct["libssh_version"]=0?0:StrGet(verStruct["libssh_version"], "UTF-8"))
+            retObj["libidn"] := (verStruct["libidn"] = 0 ? 0 : StrGet(verStruct["libidn"], "UTF-8"))
+        If (verStruct["age"] >= 3) {
+            retObj["iconv_ver_num"] := (verStruct["iconv_ver_num"] = 0 ? 0 : NumGet(verStruct["iconv_ver_num"], "Int"))
+            retObj["libssh_version"] := (verStruct["libssh_version"] = 0 ? 0 : StrGet(verStruct["libssh_version"], "UTF-8"))
         }
-        If (verStruct["age"] >= 4){
+        If (verStruct["age"] >= 4) {
             ;retObj["brotli_ver_num"] := (verStruct["brotli_ver_num"]=0?0:NumGet(verStruct["brotli_ver_num"],"Int"))
-            retObj["brotli_version"] := (verStruct["brotli_version"]=0?0:StrGet(verStruct["brotli_version"], "UTF-8"))
+            retObj["brotli_version"] := (verStruct["brotli_version"] = 0 ? 0 : StrGet(verStruct["brotli_version"], "UTF-8"))
         }
-        If (verStruct["age"] >= 5){
+        If (verStruct["age"] >= 5) {
             ;retObj["nghttp2_ver_num"] := (verStruct["nghttp2_ver_num"]=0?0:NumGet(verStruct["nghttp2_ver_num"],"UInt"))
-            retObj["nghttp2_version"] := (verStruct["nghttp2_version"]=0?0:StrGet(verStruct["nghttp2_version"], "UTF-8"))
-            retObj["quic_version"] := (verStruct["quic_version"]=0?0:StrGet(verStruct["quic_version"], "UTF-8"))
+            retObj["nghttp2_version"] := (verStruct["nghttp2_version"] = 0 ? 0 : StrGet(verStruct["nghttp2_version"], "UTF-8"))
+            retObj["quic_version"] := (verStruct["quic_version"] = 0 ? 0 : StrGet(verStruct["quic_version"], "UTF-8"))
         }
-        If (verStruct["age"] >= 6){
+        If (verStruct["age"] >= 6) {
             ;retObj["nghttp2_ver_num"] := (verStruct["nghttp2_ver_num"]=0?0:NumGet(verStruct["nghttp2_ver_num"],"UInt"))
-            retObj["cainfo"] := (verStruct["cainfo"]=0?0:StrGet(verStruct["cainfo"], "UTF-8"))
-            retObj["capath"] := (verStruct["capath"]=0?0:StrGet(verStruct["capath"], "UTF-8"))
+            retObj["cainfo"] := (verStruct["cainfo"] = 0 ? 0 : StrGet(verStruct["cainfo"], "UTF-8"))
+            retObj["capath"] := (verStruct["capath"] = 0 ? 0 : StrGet(verStruct["capath"], "UTF-8"))
         }
-        If (verStruct["age"] >= 7){
+        If (verStruct["age"] >= 7) {
             ;retObj["zstd_ver_num"] := (verStruct["zstd_ver_num"]=0?0:NumGet(verStruct["zstd_ver_num"],"Int"))
-            retObj["zstd_version"] := (verStruct["zstd_version"]=0?0:StrGet(verStruct["zstd_version"], "UTF-8"))
+            retObj["zstd_version"] := (verStruct["zstd_version"] = 0 ? 0 : StrGet(verStruct["zstd_version"], "UTF-8"))
         }
-        If (verStruct["age"] >= 8){
-            retObj["hyper_version"] := (verStruct["hyper_version"]=0?0:StrGet(verStruct["hyper_version"], "UTF-8"))
+        If (verStruct["age"] >= 8) {
+            retObj["hyper_version"] := (verStruct["hyper_version"] = 0 ? 0 : StrGet(verStruct["hyper_version"], "UTF-8"))
         }
-        If (verStruct["age"] >= 9){
-            retObj["gsasl_version"] := (verStruct["gsasl_version"]=0?0:StrGet(verStruct["gsasl_version"], "UTF-8"))
+        If (verStruct["age"] >= 9) {
+            retObj["gsasl_version"] := (verStruct["gsasl_version"] = 0 ? 0 : StrGet(verStruct["gsasl_version"], "UTF-8"))
         }
-        If (verStruct["age"] >= 10){
-            for k,v in this._walkPtrArray(verStruct["feature_names"])
+        If (verStruct["age"] >= 10) {
+            for k, v in this._walkPtrArray(verStruct["feature_names"])
                 feat .= v "; "
-             retObj["feature_names"] := Trim(feat,"; ")
+            retObj["feature_names"] := Trim(feat, "; ")
         }
 
         return retObj
@@ -665,27 +679,25 @@ class class_libcurl {
 
 
     ;helper methods
-    _walkPtrArray(inPtr){
+    _walkPtrArray(inPtr) {
         retObj := []
         loop {
-            pFeature := NumGet(inPtr + ((A_Index-1) * A_PtrSize), "Ptr")
+            pFeature := NumGet(inPtr + ((A_Index - 1) * A_PtrSize), "Ptr")
             if (pFeature = 0) {
                 break
             }
             ;msgbox inPtr "`n" pFeature
-            retObj.push(StrGet(pFeature,"UTF-8"))
+            retObj.push(StrGet(pFeature, "UTF-8"))
         }
         return retObj
     }
 
 
-
-    
-    _walkStringArray2(ptr,inLen){
+    _walkStringArray2(ptr, inLen) {
         offset := 0
         retObj := []
-        loop inLen+5 {
-            current := NumGet(ptr,"UChar")
+        loop inLen + 5 {
+            current := NumGet(ptr, "UChar")
             if (current != 0)
                 retObj .= Chr(current) a_tab current "`n"
             else
@@ -694,32 +706,32 @@ class class_libcurl {
         }
         return retObj
     }
-    _walkStringArray(ptr){
+    _walkStringArray(ptr) {
         offset := 0
-        loop{
+        loop {
             ret := StrGet(ptr, "UTF-8")
             retLen := StrLen(ret)
-            if (retLen > 0){
+            if (retLen > 0) {
                 retStr .= ret "`n"
-                ptr += retLen+1
+                ptr += retLen + 1
             }
             else
                 break
         }
         return retStr
     }
-    _walkStringArray1(ptr){
+    _walkStringArray1(ptr) {
         offset := 0
-        loop{
+        loop {
             ret := StrGet(ptr, "UTF-8")
             retLen := StrLen(ret)
-            if (retLen > 0){
+            if (retLen > 0) {
                 retStr .= ret "`n"
             }
             else
                 break
             ptr += retLen
-            endCheck := NumGet(ptr,"UShort")
+            endCheck := NumGet(ptr, "UShort")
             if (endCheck = 0)
                 break
             else
@@ -731,29 +743,48 @@ class class_libcurl {
     {
         static CRYPT_STRING_BASE64 := 0x00000001
         static CRYPT_STRING_NOCRLF := 0x40000000
-    
+
         Binary := Buffer(StrPut(String, Encoding))
         StrPut(String, Binary, Encoding)
         if !(DllCall("crypt32\CryptBinaryToStringW", "Ptr", Binary, "UInt", Binary.Size - 1, "UInt", (CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF), "Ptr", 0, "UInt*", &Size := 0))
             throw OSError()
-    
+
         Base64 := Buffer(Size << 1, 0)
         if !(DllCall("crypt32\CryptBinaryToStringW", "Ptr", Binary, "UInt", Binary.Size - 1, "UInt", (CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF), "Ptr", Base64, "UInt*", Size))
             throw OSError()
-    
+
         return StrGet(Base64)
     }
     class _struct {
-        curl_easyoption(ptr){
-            return {name:StrGet(numget(ptr,"Ptr"),"CP0")
-                ,id:numget(ptr,8,"UInt")
-                ,rawCurlType:numget(ptr,12,"UInt")
-                ,flags:numget(ptr,16,"UInt")}
+        curl_easyoption(ptr) {
+            return { name: StrGet(numget(ptr, "Ptr"), "CP0")
+                , id: numget(ptr, 8, "UInt")
+                , rawCurlType: numget(ptr, 12, "UInt")
+                , flags: numget(ptr, 16, "UInt") }
         }
     }
     _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
-        this.Opt.CaseSense := "Off" 
+        this.Opt.CaseSense := "Off"
         optPtr := 0
+        ; argTypes := Map(0, Map("type", "Int", "easyType", "CURLOT_LONG")
+        ; , 1, Map("type", "Int", "easyType", "CURLOT_VALUES")
+        ; , 2, Map("type", "Int64", "easyType", "CURLOT_OFF_T")
+        ; , 3, Map("type", "Ptr", "easyType", "CURLOT_OBJECT")
+        ; , 4, Map("type", "Astr", "easyType", "CURLOT_STRING")
+        ; , 5, Map("type", "Ptr", "easyType", "CURLOT_SLIST")
+        ; , 6, Map("type", "Ptr", "easyType", "CURLOT_CBPTR")
+        ; , 7, Map("type", "Ptr", "easyType", "CURLOT_BLOB")
+        ; , 8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
+        ; argTypes[0].type := "Int",  argTypes[0].easyType := "CURLOT_LONG"
+        ; argTypes[1].type := "Int",  argTypes[1].easyType := "CURLOT_VALUES"
+        ; argTypes[2].type := "Int64",  argTypes[2].easyType := "CURLOT_OFF_T"
+        ; argTypes[3].type := "Ptr",  argTypes[3].easyType := "CURLOT_OBJECT"
+        ; argTypes[4].type := "Astr",  argTypes[4].easyType := "CURLOT_STRING"
+        ; argTypes[5].type := "Ptr",  argTypes[5].easyType := "CURLOT_SLIST"
+        ; argTypes[6].type := "Ptr",  argTypes[6].easyType := "CURLOT_CBPTR"
+        ; argTypes[7].type := "Ptr",  argTypes[7].easyType := "CURLOT_BLOB"
+        ; argTypes[8].type := "Ptr",  argTypes[8].easyType := "CURLOT_FUNCTION"
+        
         Loop {
             optPtr := this._curl_easy_option_next(optPtr)
             if (optPtr = 0)
@@ -770,7 +801,7 @@ class class_libcurl {
                 CBPT := OBJP                 ; Argument pointer passed to callback
                 BLOB := 40000 + AHK_ARG * 7  ; Blob struct pointer
                 FUNP := 20000 + AHK_ARG * 5  ; Function pointer
-                
+            
                 {LONG:"Int"
                 ,   OBJECTPOINT:"Ptr"
                 ,   STRINGPOINT:"Astr"
@@ -778,235 +809,317 @@ class class_libcurl {
                 ,   OFF_T:"Int64"
                 ,   BLOB:"Ptr"}
             */
-            static argTypes := {0:{type:"Int",easyType:"CURLOT_LONG"}
-                            ,   1:{type:"Int",easyType:"CURLOT_VALUES"}
-                            ,   2:{type:"Int64",easyType:"CURLOT_OFF_T"}
-                            ,   3:{type:"Ptr",easyType:"CURLOT_OBJECT"}
-                            ,   4:{type:"Astr",easyType:"CURLOT_STRING"}
-                            ,   5:{type:"Ptr",easyType:"CURLOT_SLIST"}
-                            ,   6:{type:"Ptr",easyType:"CURLOT_CBPTR"}
-                            ,   7:{type:"Ptr",easyType:"CURLOT_BLOB"}
-                            ,   8:{type:"Ptr",easyType:"CURLOT_FUNCTION"}}
+
+            ; o.type := argTypes[o.rawCurlType].type
+            ;     , o.easyType := argTypes[o.rawCurlType].easyType
+            ; this.Opt["CURLOPT_" o.name] := this.Opt[o.name] := this.Opt[o.id] := o
+            static argTypes := { 0: { type: "Int", easyType: "CURLOT_LONG" }
+                , 1: { type: "Int", easyType: "CURLOT_VALUES" }
+                , 2: { type: "Int64", easyType: "CURLOT_OFF_T" }
+                , 3: { type: "Ptr", easyType: "CURLOT_OBJECT" }
+                , 4: { type: "Astr", easyType: "CURLOT_STRING" }
+                , 5: { type: "Ptr", easyType: "CURLOT_SLIST" }
+                , 6: { type: "Ptr", easyType: "CURLOT_CBPTR" }
+                , 7: { type: "Ptr", easyType: "CURLOT_BLOB" }
+                , 8: { type: "Ptr", easyType: "CURLOT_FUNCTION" } }
             o.type := argTypes[o.rawCurlType].type
-            ,o.easyType := argTypes[o.rawCurlType].easyType
+                , o.easyType := argTypes[o.rawCurlType].easyType
             this.Opt["CURLOPT_" o.name] := this.Opt[o.name] := this.Opt[o.id] := o
         }
+        ; msgbox this.ShowOB(this.opt)
     }
-    ShowOB(ob,strOB:="") {  ; returns `n list.  pass object, returns list of elements. nice chart format with `n.  strOB for internal use only.
-        (Type(Ob) ~= 'Object|Gui')	? Ob := Ob.OwnProps() : 1
+    ShowOB(ob, strOB := "") {  ; returns `n list.  pass object, returns list of elements. nice chart format with `n.  strOB for internal use only.
+        (Type(Ob) ~= 'Object|Gui') ? Ob := Ob.OwnProps() : 1
         for i, v in ob
-            (!isobject(v))	? ( rets .= "`n [" strOB i "] = [" v "]" ) : ( rets .= ShowOB(v,strOB i "."))
-        return isSet(rets)?rets:""
+        (!isobject(v)) ? (rets .= "`n [" strOB i "] = [" v "]") : (rets .= ShowOB(v, strOB i "."))
+        return isSet(rets) ? rets : ""
     }
-	WriteToFile(filename,handle?) {
+    SetOpt(option,parameter,handle?){
         if !IsSet(handle)
-            handle := this.hCURL[0]["handle"]   ;defaults to the last created handle
-        hCURL := this.hCURL
-        Return (this.hCURL[handle]["writeHandle"] := class_libcurl.Storage.File(filename, "w",handle,&hCURL))
-	}
-    Perform(handle) {
-		; Store handle in global pool so callbacks can access the instance
-        /*
-		Curl.activePool[this._handle] := this
-		
-		; Prepare callbacks, removing old callbacks if necessary.
-		needWriteCallback := True
-		this.SetOpt(Curl.Opt.WRITEDATA    , (!needWriteCallback ? 0 : this._handle))
-		this.SetOpt(Curl.Opt.WRITEFUNCTION, (!needWriteCallback ? 0 : Curl._CB_Write))
-		
-		needHeaderCallback := (this._headerTo || this.OnHeader)
-		this.SetOpt(Curl.Opt.HEADERDATA     , (!needHeaderCallback ? 0 : this._handle))
-		this.SetOpt(Curl.Opt.HEADERFUNCTION , (!needHeaderCallback ? 0 : Curl._CB_Header))
-		
-		needReadCallback := (this._readFrom || this.OnRead)
-		this.SetOpt(Curl.Opt.READDATA     , (!needReadCallback ? 0 : this._handle))
-		this.SetOpt(Curl.Opt.READFUNCTION , (!needReadCallback ? 0 : Curl._CB_Read))
-		
-		needProgressCallback := (this.OnProgress)
-		this.SetOpt(Curl.Opt.NOPROGRESS       , (!needProgressCallback ? 1 : 0))
-		this.SetOpt(Curl.Opt.XFERINFODATA     , (!needProgressCallback ? 0 : this._handle))
-		this.SetOpt(Curl.Opt.XFERINFOFUNCTION , (!needProgressCallback ? 0 : Curl._CB_Progress))
-		
-		needDebugCallback := (this.OnDebug)
-		this.SetOpt(Curl.Opt.VERBOSE       , (!needDebugCallback ? 0 : 1))
-		this.SetOpt(Curl.Opt.DEBUGDATA     , (!needDebugCallback ? 0 : this._handle))
-		this.SetOpt(Curl.Opt.DEBUGFUNCTION , (!needDebugCallback ? 0 : Curl._CB_Debug))
-		
-		(this._writeTo)   ?  this._writeTo.Open()
-		(this._headerTo)  ?  this._headerTo.Open()
-		(this._readFrom)  ?  this._readFrom.Open()
-		
-		; TODO: cookies? headers?
-		retCode := DllCall(Curl.dllFilename . "\curl_easy_perform", "Ptr", this._handle, "CDecl")
-		
-		(this._writeTo)   ?  this._writeTo.Close()
-		(this._headerTo)  ?  this._headerTo.Close()
-		(this._readFrom)  ?  this._readFrom.Close()
-		
-		Curl.activePool.Delete(this._handle)
-		
-		Return this._SetLastCode(retCode, "Perform")
-        */
-	}
-    Class Storage {
-		
-		; Wrapper for file. Shouldn't be used directly.
-		Class File {
-			__New(filename, accessMode := "w",handle?,&hCURL?) {
-                if !IsSet(handle)
-                    handle := hCURL[0]["handle"]   ;defaults to the last created handle
-                hCURL[handle]["write"] := this.write := Map()   ;binds each instance of the File class to hCURL
-                this.write["writeType"] := "file"
-				,this.write["filename"]   := filename
-				,this.write["accessMode"] := accessMode
-				,this.write["fileObject"] := ""
-			}
-			
-			; Open(handle?) {
-            ;     if !IsSet(handle)
-            ;         handle := this.hCURL[0]["handle"]   ;defaults to the last created handle
-			; 	If (this._accessMode == "w") {
-			; 		RegexMatch(this._filename, "^.+(?=[\\\/])", fileDirPath)
-			; 		If (fileDirPath)
-			; 			FileCreateDir % fileDirPath
-					
-			; 		this._fileObject := FileOpen(this._filename, this._accessMode, "CP0")
-			; 	}
-			; }
-			
-			; Close() {
-			; 	this._fileObject.Close()
-			; }
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        return this._curl_easy_setopt(handle,option,parameter)
+    }
+    WriteToFile(filename, handle?) {
+        if !IsSet(handle)
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        ;instanstiate Storage.File
+        this._setCallbacks(handle)
+        this.handleMap[handle]["storageHandle"] := class_libcurl.Storage.File(filename, "w", &passedHandleMap, handle)
+        this._curl_easy_setopt(handle,"WRITEDATA",this.handleMap[handle]["storageHandle"])
+        this._curl_easy_setopt(handle,"WRITEFUNCTION",this.handleMap[handle]["writeCallbackFunction"]) 
+        Return
+    }
+    _setCallbacks(handle?){
+        if !IsSet(handle)
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        this.handleMap[handle]["writeCallbackFunction"] := CallbackCreate((p*) => this._writeCallbackFunction(p*),, this._writeCallbackFunction.MinParams-1)
+        ; Curl._CB_Header   := CallbackCreate(Curl._HeaderCallback)
+		; Curl._CB_Read     := CallbackCreate(Curl._ReadCallback)
+		; Curl._CB_Progress := CallbackCreate(Curl._ProgressCallback)
+		; Curl._CB_Debug    := CallbackCreate(Curl._DebugCallback)
+    }
+    Perform(handle?){
+        if !IsSet(handle)
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        this.handleMap[handle]["storageHandle"].Open()
+        retCode := DllCall("libcurl-x64\curl_easy_perform","Ptr",handle)
+        ; msgbox "perform code: " retCode
+        this.handleMap[handle]["storageHandle"].Close()
 
-			; Write(data) {
-			; 	If (this._fileObject == "")
-			; 		Return -1
-				
-			; 	Return this._fileObject.Write(data)
-			; }
-			
-			; RawWrite(srcDataPtr, srcDataSize) {
-			; 	If (this._fileObject == "")
-			; 	|| (this._accessMode != "w")
-			; 		Return -1
-				
-			; 	Return this._fileObject.RawWrite(srcDataPtr+0, srcDataSize)
-			; }
-			
-			; RawRead(dstDataPtr, dstDataSize) {
-			; 	If (this._fileObject == "")
-			; 	|| (this._accessMode != "r")
-			; 		Return -1
-				
-			; 	Return this._fileObject.RawRead(dstDataPtr+0, dstDataSize)
-			; }
-			
-			; Seek(offset, origin := 0) {
-			; 	Return !(this._fileObject.Seek(offset, origin))
-			; }
-		}
+        return retCode
+    }
+	; Callbacks
+	; =========
+	; Note: because those are class methods, arguments are shifted by one,
+	; and 'this' variable is actually stores the first argument.
+	
+	_writeCallbackFunction(dataPtr, size, sizeBytes, userdata) {
+        handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+		dataSize := size * sizeBytes
+        ; msgbox 
+        ; ListVars
+        ; msgbox Type(class_libcurl)
+        ; msgbox Type(this) "`n" Type(userdata)
+        ; msgbox "dataPtr: " dataPtr "`n"
+        ;     .   "size: "    size    "`n"
+        ;     .   "sizeBytes: " sizeBytes  "`n"
+        ;     .   "userdata: "    userdata    "`n`n"
+        ;     .   "handle from curl class: " handle "`n"
+        ;     .   "Type(writeTo): " Type(this.handleMap[handle]["writeInfo"]["writeTo"])
+        ;     ; .   userdata.OnWrite
+        
+        ; return this.handleMap[handle]["writeInfo"]["writeTo"].RawWrite(dataPtr, dataSize)
+        return this.handleMap[handle]["storageHandle"].RawWrite(dataPtr, dataSize)
+		; curlInstance := Curl.activePool[userdata]
 		
-		; Wrapper for memory buffer, similar to regular FileObject
-		; Class MemBuffer {
-		; 	__New(dataPtr := 0, maxCapacity := 0, dataSize := 0) {
-		; 		this._data     := ""
-		; 		this._dataPos  := 0
-				
-		; 		maxCapacity := Max(maxCapacity, dataSize)
-				
-		; 		If (maxCapacity == 0)
-		; 			maxCapacity := 8*1024*1024  ; 8 Mb
-				
-		; 		If (dataPtr != 0) {
-		; 			this._dataMax  := maxCapacity
-		; 			this._dataSize := dataSize
-		; 			this._dataPtr  := dataPtr
-		; 		} Else
-		; 		; No argument, store inside class.
-		; 		{
-		; 			this._dataSize := 0
-		; 			this._dataMax  := ObjSetCapacity(this, "_data", maxCapacity)
-		; 			this._dataPtr  := ObjGetAddress(this, "_data")
-		; 		}
-		; 	}
-			
-		; 	Open() {
-		; 		; Do nothing
-		; 	}
-			
-		; 	Close() {
-		; 		this.Seek(0,0)
-		; 	}
-			
-		; 	Write(data) {
-		; 		srcDataSize := StrPut(srcText, "CP0")
-				
-		; 		If ((this._dataPos + srcDataSize) > this._dataMax)
-		; 			Return -1
-				
-		; 		StrPut(data, this._dataPtr + this._dataPos, "CP0")
-				
-		; 		this._dataPos  += srcDataSize
-		; 		this._dataSize := Max(this._dataSize, this._dataPos)
-				
-		; 		Return srcDataSize
-		; 	}
-			
-		; 	RawWrite(srcDataPtr, srcDataSize) {
-		; 		If ((this._dataPos + srcDataSize) > this._dataMax)
-		; 			Return -1
-				
-		; 		DllCall("ntdll\memcpy"
-		; 		, "Ptr" , this._dataPtr + this._dataPos
-		; 		, "Ptr" , srcDataPtr+0
-		; 		, "Int" , srcDataSize)
-				
-		; 		this._dataPos  += srcDataSize
-		; 		this._dataSize := Max(this._dataSize, this._dataPos)
-				
-		; 		Return srcDataSize
-		; 	}
-			
-		; 	GetAsText(encoding := "UTF-8") {
-		; 		isEncodingWide := ((encoding = "UTF-16") || (encoding = "CP1200"))
-		; 		textMaxLength  := this._dataSize / (isEncodingWide ? 2 : 1)
-		; 		Return StrGet(this._dataPtr, textMaxLength, encoding)
-		; 	}
-			
-		; 	RawRead(dstDataPtr, dstDataSize) {
-		; 		dataLeft := this._dataSize - this._dataPos
-		; 		dstDataSize := Min(dstDataSize, dataLeft)
-				
-		; 		DllCall("ntdll\memcpy"
-		; 		, "Ptr" , dstDataPtr
-		; 		, "Ptr" , this._dataPtr + this._dataPos
-		; 		, "Int" , dstDataSize)
-				
-		; 		Return dstDataSize
-		; 	}
-			
-		; 	Seek(offset, origin := 0) {
-		; 		newDataPos := offset
-		; 		+ ( (origin == 0) ? 0               ; SEEK_SET
-		; 		  : (origin == 1) ? this._dataPos   ; SEEK_CUR
-		; 		  : (origin == 2) ? this._dataSize  ; SEEK_END
-		; 		  : 0 )                             ; Unknown 'origin', use SEEK_SET
-				
-		; 		If (newDataPos > this._dataSize)
-		; 		|| (newDataPos < 0)
-		; 			Return 1  ; CURL_SEEKFUNC_FAIL
-				
-		; 		this._dataPos := newDataPos
-		; 		Return 0  ; CURL_SEEKFUNC_OK
-		; 	}
-			
-		; 	Tell() {
-		; 		Return this._dataPos
-		; 	}
-			
-		; 	Length() {
-		; 		Return this._dataSize
-		; 	}
+		; ; User callback
+		; userCallbackReply := ""
+		; If (curlInstance.OnWrite) {
+		; 	userCallbackReply := curlInstance.OnWrite.Call(dataPtr, dataSize, curlInstance)
 		; }
+		
+		; ; If (userCallbackReply = "Pause")
+		; ; 	Return 0x10000001  ; CURL_WRITEFUNC_PAUSE
+		
+		; If (userCallbackReply != "")
+		; 	Return userCallbackReply
+		
+		; If (curlInstance._writeTo) {
+		; 	n := curlInstance._writeTo.RawWrite(dataPtr, dataSize)
+		; 	Return n
+		; }
+		; Return dataSize
 	}
+
+    pPerform(handle) {
+        ; Store handle in global pool so callbacks can access the instance
+        /*
+        		Curl.activePool[this._handle] := this
+        
+        		; Prepare callbacks, removing old callbacks if necessary.
+        		needwriteCallbackFunction := True
+        		this.SetOpt(Curl.Opt.WRITEDATA    , (!needwriteCallbackFunction ? 0 : this._handle))
+        		this.SetOpt(Curl.Opt.WRITEFUNCTION, (!needwriteCallbackFunction ? 0 : Curl._CB_Write))
+        
+        		needHeaderCallback := (this._headerTo || this.OnHeader)
+        		this.SetOpt(Curl.Opt.HEADERDATA     , (!needHeaderCallback ? 0 : this._handle))
+        		this.SetOpt(Curl.Opt.HEADERFUNCTION , (!needHeaderCallback ? 0 : Curl._CB_Header))
+        
+        		needReadCallback := (this._readFrom || this.OnRead)
+        		this.SetOpt(Curl.Opt.READDATA     , (!needReadCallback ? 0 : this._handle))
+        		this.SetOpt(Curl.Opt.READFUNCTION , (!needReadCallback ? 0 : Curl._CB_Read))
+        
+        		needProgressCallback := (this.OnProgress)
+        		this.SetOpt(Curl.Opt.NOPROGRESS       , (!needProgressCallback ? 1 : 0))
+        		this.SetOpt(Curl.Opt.XFERINFODATA     , (!needProgressCallback ? 0 : this._handle))
+        		this.SetOpt(Curl.Opt.XFERINFOFUNCTION , (!needProgressCallback ? 0 : Curl._CB_Progress))
+        
+        		needDebugCallback := (this.OnDebug)
+        		this.SetOpt(Curl.Opt.VERBOSE       , (!needDebugCallback ? 0 : 1))
+        		this.SetOpt(Curl.Opt.DEBUGDATA     , (!needDebugCallback ? 0 : this._handle))
+        		this.SetOpt(Curl.Opt.DEBUGFUNCTION , (!needDebugCallback ? 0 : Curl._CB_Debug))
+        
+        		(this._writeTo)   ?  this._writeTo.Open()
+        		(this._headerTo)  ?  this._headerTo.Open()
+        		(this._readFrom)  ?  this._readFrom.Open()
+        
+        		; TODO: cookies? headers?
+        		retCode := DllCall(Curl.dllFilename . "\curl_easy_perform", "Ptr", this._handle, "CDecl")
+        
+        		(this._writeTo)   ?  this._writeTo.Close()
+        		(this._headerTo)  ?  this._headerTo.Close()
+        		(this._readFrom)  ?  this._readFrom.Close()
+        
+        		Curl.activePool.Delete(this._handle)
+        
+        		Return this._SetLastCode(retCode, "Perform")
+        */
+    }
+    Class Storage {
+        ; Wrapper for file. Shouldn't be used directly.
+        Class File {
+            __New(filename, accessMode := "w", &handleMap?, handle?) {
+                if !IsSet(handle)
+                    handle := handleMap[0]["handle"]   ;defaults to the last created handle
+                handleMap[handle]["writeInfo"] := this.writeObj := Map()   ;binds each instance of the File class to handleMap
+                this.writeObj["writeType"] := "file"
+                    , this.writeObj["filename"] := filename
+                    , this.writeObj["accessMode"] := accessMode
+                    , this.writeObj["writeTo"] := ""
+                ; ; User callbacks
+                ; this.OnWrite    := ""
+                ; this.OnRead     := ""
+                ; this.OnHeader   := ""
+                ; this.OnProgress := ""
+                ; this.OnDebug    := ""
+                
+                ; ; Input/output
+                ; this._writeTo  := ""
+                ; this._headerTo := ""
+                ; this._readFrom := ""
+            }
+
+            Open() {
+                If (this.writeObj["accessMode"] == "w") {
+                    SplitPath(this.writeObj["filename"], , &fileDirPath)
+                    If fileDirPath
+                        DirCreate fileDirPath
+                    this.writeObj["writeTo"] := FileOpen(this.writeObj["filename"], this.writeObj["accessMode"], "CP0")
+                }
+            }
+
+            Close() {
+            	this.writeObj["writeTo"].Close()
+            }
+
+            Write(data) {
+                ; If (this._fileObject == "")
+                ; 	Return -1
+                Return this.writeObj["writeTo"].Write(data)
+            }
+
+            RawWrite(srcDataPtr, srcDataSize) {
+            	; If (this._fileObject == "")
+            	; || (this._accessMode != "w")
+            	; 	Return -1
+
+            	Return this.writeObj["writeTo"].RawWrite(srcDataPtr+0, srcDataSize)
+            }
+
+            ; RawRead(dstDataPtr, dstDataSize) {
+            ; 	If (this._fileObject == "")
+            ; 	|| (this._accessMode != "r")
+            ; 		Return -1
+
+            ; 	Return this._fileObject.RawRead(dstDataPtr+0, dstDataSize)
+            ; }
+
+            ; Seek(offset, origin := 0) {
+            ; 	Return !(this._fileObject.Seek(offset, origin))
+            ; }
+        }
+
+        ; Wrapper for memory buffer, similar to regular FileObject
+        ; Class MemBuffer {
+        ; 	__New(dataPtr := 0, maxCapacity := 0, dataSize := 0) {
+        ; 		this._data     := ""
+        ; 		this._dataPos  := 0
+
+        ; 		maxCapacity := Max(maxCapacity, dataSize)
+
+        ; 		If (maxCapacity == 0)
+        ; 			maxCapacity := 8*1024*1024  ; 8 Mb
+
+        ; 		If (dataPtr != 0) {
+        ; 			this._dataMax  := maxCapacity
+        ; 			this._dataSize := dataSize
+        ; 			this._dataPtr  := dataPtr
+        ; 		} Else
+        ; 		; No argument, store inside class.
+        ; 		{
+        ; 			this._dataSize := 0
+        ; 			this._dataMax  := ObjSetCapacity(this, "_data", maxCapacity)
+        ; 			this._dataPtr  := ObjGetAddress(this, "_data")
+        ; 		}
+        ; 	}
+
+        ; 	Open() {
+        ; 		; Do nothing
+        ; 	}
+
+        ; 	Close() {
+        ; 		this.Seek(0,0)
+        ; 	}
+
+        ; 	Write(data) {
+        ; 		srcDataSize := StrPut(srcText, "CP0")
+
+        ; 		If ((this._dataPos + srcDataSize) > this._dataMax)
+        ; 			Return -1
+
+        ; 		StrPut(data, this._dataPtr + this._dataPos, "CP0")
+
+        ; 		this._dataPos  += srcDataSize
+        ; 		this._dataSize := Max(this._dataSize, this._dataPos)
+
+        ; 		Return srcDataSize
+        ; 	}
+
+        ; 	RawWrite(srcDataPtr, srcDataSize) {
+        ; 		If ((this._dataPos + srcDataSize) > this._dataMax)
+        ; 			Return -1
+
+        ; 		DllCall("ntdll\memcpy"
+        ; 		, "Ptr" , this._dataPtr + this._dataPos
+        ; 		, "Ptr" , srcDataPtr+0
+        ; 		, "Int" , srcDataSize)
+
+        ; 		this._dataPos  += srcDataSize
+        ; 		this._dataSize := Max(this._dataSize, this._dataPos)
+
+        ; 		Return srcDataSize
+        ; 	}
+
+        ; 	GetAsText(encoding := "UTF-8") {
+        ; 		isEncodingWide := ((encoding = "UTF-16") || (encoding = "CP1200"))
+        ; 		textMaxLength  := this._dataSize / (isEncodingWide ? 2 : 1)
+        ; 		Return StrGet(this._dataPtr, textMaxLength, encoding)
+        ; 	}
+
+        ; 	RawRead(dstDataPtr, dstDataSize) {
+        ; 		dataLeft := this._dataSize - this._dataPos
+        ; 		dstDataSize := Min(dstDataSize, dataLeft)
+
+        ; 		DllCall("ntdll\memcpy"
+        ; 		, "Ptr" , dstDataPtr
+        ; 		, "Ptr" , this._dataPtr + this._dataPos
+        ; 		, "Int" , dstDataSize)
+
+        ; 		Return dstDataSize
+        ; 	}
+
+        ; 	Seek(offset, origin := 0) {
+        ; 		newDataPos := offset
+        ; 		+ ( (origin == 0) ? 0               ; SEEK_SET
+        ; 		  : (origin == 1) ? this._dataPos   ; SEEK_CUR
+        ; 		  : (origin == 2) ? this._dataSize  ; SEEK_END
+        ; 		  : 0 )                             ; Unknown 'origin', use SEEK_SET
+
+        ; 		If (newDataPos > this._dataSize)
+        ; 		|| (newDataPos < 0)
+        ; 			Return 1  ; CURL_SEEKFUNC_FAIL
+
+        ; 		this._dataPos := newDataPos
+        ; 		Return 0  ; CURL_SEEKFUNC_OK
+        ; 	}
+
+        ; 	Tell() {
+        ; 		Return this._dataPos
+        ; 	}
+
+        ; 	Length() {
+        ; 		Return this._dataSize
+        ; 	}
+        ; }
+    }
 }

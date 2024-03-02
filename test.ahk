@@ -5,31 +5,50 @@
 
 
 curl := class_libcurl()
-
 curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
-hCURL := curl._curl_easy_init()
+; hCURL := curl._curl_easy_init()
+curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 
-; msgbox curl.showob(curl.opt)
-curl._curl_easy_setopt(hCURL,"CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")    ;load SSL certs
-; curl._curl_easy_setopt(hCURL,"SSL_VERIFYSTATUS",1,1) ;last param = shows debug info
-curl._curl_easy_setopt(hCURL,"URL","https://www.google.com")    ;set url
-curl.WriteToFile(A_ScriptDir "\test.txt")
-; msgbox curl._curl_easy_perform(hCURL)
-msgbox curl["hCURL"][hCURL]["write"]["filename"]
+
+curl.SetOpt("URL","https://database.lichess.org/standard/lichess_db_standard_rated_2014-07.pgn.zst")
+curl.WriteToFile(a_scriptdir "\download\lichess.zst")
+curl.Perform()
+
+curl.SetOpt("URL","https://www.titsandasses.org")
+curl.WriteToFile(a_scriptdir "\download\titsandasses.html")
+curl.Perform()
+
+curl.SetOpt("URL","https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png")
+curl.WriteToFile(a_scriptdir "\download\google.png")
+curl.Perform()
+
+curl.SetOpt("URL","https://www.google.com")
+curl.WriteToFile(a_scriptdir "\download\google.html")
+curl.Perform()
+
+; DllCall(Curl.dllFilename . "\curl_easy_perform", "Ptr", this._handle, "CDecl")
+; curl["hCURL"][hCURL]["storageHandle"].open()
+; msgbox curl["hCURL"][hCURL]["storageHandle"].write("a")
+; msgbox curl["hCURL"][hCURL]["storageHandle"]
+; msgbox DllCall("libcurl-x64\curl_easy_perform","Ptr",curl["hCURL"][hCURL]["writeInfo"]["writeTo"])
 
 exitapp
 
 
 ;doge-style code below
-DllCall("GetModuleHandleA","AStr","libcurl-x64.dll") || DllCall("LoadLibraryA","AStr","libcurl-x64.dll") ;replaces #DllLoad libcurl-x64.dll
+; DllCall("GetModuleHandleA","AStr","libcurl-x64.dll") || DllCall("LoadLibraryA","AStr","libcurl-x64.dll") ;replaces #DllLoad libcurl-x64.dll
 curl_handle:=DllCall("libcurl-x64\curl_easy_init","Ptr")
+; msgbox curl_handle
 ; CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",64,"Int",1) ;10064=CURLOPT_SSL_VERIFYPEER
 CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",10002,"AStr","https://titsandasses.org/") ;10002=CURLOPT_URL=CURLOPTTYPE_OBJECTPOINT+2
 CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",10002,"AStr","https://www.google.com") ;10002=CURLOPT_URL=CURLOPTTYPE_OBJECTPOINT+2
 CURLcode:=DllCall("libcurl-x64\curl_easy_setopt","Ptr",curl_handle,"Int",10065,"AStr",A_ScriptDir "\lib\curl-ca-bundle.crt") ;10065=CURLOPT_CAINFO
-
+CURLcode:=DllCall("libcurl-x64\curl_easy_perform","Ptr",outw(data)) ;10065=CURLOPT_CAINFO
+msgbox CURLcode
 exitapp
-
+outw(data){
+    FileOpen("test.txt","w").Write(data)
+}
 
 /* v1 function path for writing to file
 myCurl.SetUrl("https://example.com")    ;uses .setOpt(), unremarkable

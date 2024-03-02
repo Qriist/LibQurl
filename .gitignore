@@ -398,3 +398,9 @@ curl-ca-bundle.crt
 curl-8.6.0_1-win64-mingw.zip
 dump.html
 lib/curl.exe
+.vscode/settings.json
+.vscode/launch.json
+download/google.html
+download/google.png
+download/lichess.zst
+download/titsandasses.html
