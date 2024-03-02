@@ -6,7 +6,7 @@
 
 curl := class_libcurl()
 curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
-; hCURL := curl._curl_easy_init()
+hCURL := curl._curl_easy_init()
 curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 
 

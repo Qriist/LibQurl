@@ -844,6 +844,7 @@ class class_libcurl {
             handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
         ;instanstiate Storage.File
         this._setCallbacks(handle)
+        passedHandleMap := this.handleMap
         this.handleMap[handle]["storageHandle"] := class_libcurl.Storage.File(filename, "w", &passedHandleMap, handle)
         this._curl_easy_setopt(handle,"WRITEDATA",this.handleMap[handle]["storageHandle"])
         this._curl_easy_setopt(handle,"WRITEFUNCTION",this.handleMap[handle]["writeCallbackFunction"]) 
