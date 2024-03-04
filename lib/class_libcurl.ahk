@@ -19,32 +19,25 @@ class class_libcurl {
         this.curlDLLpath := dllpath
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
         this._curl_global_init()
-        ;this.struct := class_libcurl._struct()
         this._buildOptMap()
-        ; this.Init()
-        ; this._curl_easy_setopt()
 
         return this.Init()
     }
-    listhandles(){
+    ListHandles(){
         ret := ""
         for k,v in this.handleMap {
             ret .= k "`n"
         }
-        return ret
+        return Trim(ret,"`n")
     }
     Init(){
         handle := this._curl_easy_init()
         this.handleMap[handle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
-        this.handleMap[handle]["handle"] := handle
         If !this.handleMap[handle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
-        this.SetOpt("ACCEPT_ENCODING","",handle)
-        ; if !this.handleMap.Has("assoc")
-        ;     this.handleMap["assoc"] := Map()
-        ; this.handleMap[handle]["headerCallbackFunction"] := CallbackCreate((p*) => this._headerCallbackFunction(p*),, this._headerCallbackFunction.MinParams-1)
-        ; msgbox this.handleMap[handle]["headerCallbackFunction"]
-        ; ExitApp
+        this.handleMap[handle]["handle"] := handle
+        ,this.handleMap[handle]["options"] := Map()  ;prepares option storage
+        ,this.SetOpt("ACCEPT_ENCODING","",handle)    ;enables compressed transfers without affecting input headers
         ; Curl._CB_Write    := RegisterCallback(Curl._writeCallbackFunction    , "CDecl")
 		; Curl._CB_Header   := RegisterCallback(Curl._HeaderCallback   , "CDecl")
 		; Curl._CB_Read     := RegisterCallback(Curl._ReadCallback     , "CDecl")
@@ -52,13 +45,40 @@ class class_libcurl {
 		; Curl._CB_Debug    := RegisterCallback(Curl._DebugCallback    , "CDecl")
         return handle
     }
+    EasyInit(){
+        return this.Init()
+    }
+    DupeInit(handle?){
+        newHandle := this._curl_easy_duphandle(handle)
+        If !this.handleMap[handle]
+            throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
+            this.handleMap[newHandle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
+        ,this.handleMap[newHandle]["options"] := Map()  ;prepares option storage
+        for k,v in this.handleMap[handle]["options"]
+            this.SetOpt(newHandle,k,v)
+        return newHandle        
+    }
+    ListOpts(handle?){  ;returns human-readable printout of the set options
+        if !IsSet(handle)
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        ret := "These are the options that have been set for this handle:`n"
+        for k,v in this.handleMap[handle]["options"]{
+                if (v!="")
+                    ret .= k ": " (!IsObject(v)?v:"<OBJECT>") "`n"
+                else
+                    ret .= k ": " "<NULL>" "`n"
+        }
+        return ret
+    }
 
     ;internal libcurl functions called by this class
-    _curl_easy_cleanup() {
+    _curl_easy_cleanup(handle) {
 
     }
-    _curl_easy_duphandle() {
-
+    _curl_easy_duphandle(handle) {
+        newHandle := DllCall(this.curl_easy_duphandle "\curl_easy_reset"
+            , "Ptr", handle)
+        return newHandle
     }
     _curl_easy_escape(handle, url) {
         ;doesn't like unicode, should I use the native windows function for this?
@@ -162,8 +182,8 @@ class class_libcurl {
     _curl_global_cleanup() {
 
     }
-    _curl_global_init() {
-        /* https://curl.se/libcurl/c/curl_global_init.html
+    _curl_global_init() {   ;https://curl.se/libcurl/c/curl_global_init.html
+        /* 
             curl_global_init - Global libcurl initialization
         
             CURLcode curl_global_init(long flags);
@@ -848,6 +868,7 @@ class class_libcurl {
     SetOpt(option,parameter,handle?){
         if !IsSet(handle)
             handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        this.handleMap[handle]["options"][option] := parameter
         return this._curl_easy_setopt(handle,option,parameter)
     }
     WriteToFile(filename, handle?) {
@@ -857,8 +878,8 @@ class class_libcurl {
         this._setCallbacks(handle)
         passedHandleMap := this.handleMap
         this.handleMap[handle]["storageHandle"] := class_libcurl.Storage.File(filename, "w", &passedHandleMap, handle)
-        this._curl_easy_setopt(handle,"WRITEDATA",this.handleMap[handle]["storageHandle"])
-        this._curl_easy_setopt(handle,"WRITEFUNCTION",this.handleMap[handle]["writeCallbackFunction"]) 
+        ,this.SetOpt("WRITEDATA",this.handleMap[handle]["storageHandle"],handle)
+        ,this.SetOpt("WRITEFUNCTION",this.handleMap[handle]["writeCallbackFunction"],handle) 
         Return
     }
     _setCallbacks(handle?){
@@ -897,7 +918,7 @@ class class_libcurl {
 	; and 'this' variable is actually stores the first argument.
 	
 	; _writeCallbackFunction(dataPtr, size, sizeBytes, userdata) {
-    _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, passed_curl_handle) {
+    _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, handle) {
             ; msgbox "handles in handleMap:`n" StrSplit(this.listhandles(),"`n")[2] "`n`nhandle from curl:`n" passed_curl_handle
         ; msgbox "listhandles:`n" this.listhandles() "`n`n`n" "callbakc" curl "`n" this.handleMap[0]["handle"]
         ; handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
@@ -918,7 +939,7 @@ class class_libcurl {
         ; return this.handleMap[handle]["writeInfo"]["writeTo"].RawWrite(dataPtr, dataSize)
         ; msgbox this.handleMap[handle]["storageHandle"].getCurlHandle()
 
-        return this.handleMap[passed_curl_handle]["storageHandle"].RawWrite(dataPtr, dataSize)
+        return this.handleMap[handle]["storageHandle"].RawWrite(dataPtr, dataSize)
 		; curlInstance := Curl.activePool[userdata]
 		
 		; ; User callback

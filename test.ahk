@@ -12,6 +12,7 @@ curl.SetOpt("URL","https://www.titsandasses.org")
 curl.WriteToFile(a_scriptdir "\download\titsandasses.html")
 curl.Perform()
 
+; msgbox curl.ListOpts()
 
 ; curl.SetOpt("URL","https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png")
 ; curl.WriteToFile(a_scriptdir "\download\google.png")
