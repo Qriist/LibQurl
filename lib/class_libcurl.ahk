@@ -936,7 +936,7 @@ class class_libcurl {
 		; If (curlInstance._writeTo) {
 		; 	n := curlInstance._writeTo.RawWrite(dataPtr, dataSize)
 		; 	Return n
-        
+
 		; }
 		; Return dataSize
 	}
@@ -1054,23 +1054,21 @@ class class_libcurl {
                 return this.writeObj["curlHandle"]
             }
 
-            ; RawRead(dstDataPtr, dstDataSize) {
+            RawRead(dstDataPtr, dstDataSize) {
             ; 	If (this._fileObject == "")
             ; 	|| (this._accessMode != "r")
             ; 		Return -1
 
-            ; 	Return this._fileObject.RawRead(dstDataPtr+0, dstDataSize)
-            ; }
+                Return this.writeObj["writeTo"].RawRead(dstDataPtr+0, dstDataSize)
+            }
 
-            ; Seek(offset, origin := 0) {
-            ; 	Return !(this._fileObject.Seek(offset, origin))
-            ; }
-
-
+            Seek(offset, origin := 0) {
+            	Return !(this.writeObj["writeTo"].Seek(offset, origin))
+            }
         }
 
-        ; Wrapper for memory buffer, similar to regular FileObject
         ; Class MemBuffer {
+        ; Wrapper for memory buffer, similar to regular FileObject
         ; 	__New(dataPtr := 0, maxCapacity := 0, dataSize := 0) {
         ; 		this._data     := ""
         ; 		this._dataPos  := 0
