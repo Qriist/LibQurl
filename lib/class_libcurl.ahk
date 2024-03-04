@@ -26,8 +26,31 @@ class class_libcurl {
 
         return this.Init()
     }
+    listhandles(){
+        ret := ""
+        for k,v in this.handleMap {
+            ret .= k "`n"
+        }
+        return ret
+    }
     Init(){
-        return this._curl_easy_init()
+        handle := this._curl_easy_init()
+        this.handleMap[handle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
+        this.handleMap[handle]["handle"] := handle
+        If !this.handleMap[handle]
+            throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
+        this.SetOpt("ACCEPT_ENCODING","",handle)
+        ; if !this.handleMap.Has("assoc")
+        ;     this.handleMap["assoc"] := Map()
+        ; this.handleMap[handle]["headerCallbackFunction"] := CallbackCreate((p*) => this._headerCallbackFunction(p*),, this._headerCallbackFunction.MinParams-1)
+        ; msgbox this.handleMap[handle]["headerCallbackFunction"]
+        ; ExitApp
+        ; Curl._CB_Write    := RegisterCallback(Curl._writeCallbackFunction    , "CDecl")
+		; Curl._CB_Header   := RegisterCallback(Curl._HeaderCallback   , "CDecl")
+		; Curl._CB_Read     := RegisterCallback(Curl._ReadCallback     , "CDecl")
+		; Curl._CB_Progress := RegisterCallback(Curl._ProgressCallback , "CDecl")
+		; Curl._CB_Debug    := RegisterCallback(Curl._DebugCallback    , "CDecl")
+        return handle
     }
 
     ;internal libcurl functions called by this class
@@ -55,19 +78,7 @@ class class_libcurl {
 
     }
     _curl_easy_init() {
-        newHandle := DllCall(this.curlDLLpath "\curl_easy_init")
-        this.handleMap[newHandle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
-        this.handleMap[newHandle]["handle"] := newHandle
-        If !this.handleMap[newHandle]
-            throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
-
-        ; Curl._CB_Write    := RegisterCallback(Curl._writeCallbackFunction    , "CDecl")
-		; Curl._CB_Header   := RegisterCallback(Curl._HeaderCallback   , "CDecl")
-		; Curl._CB_Read     := RegisterCallback(Curl._ReadCallback     , "CDecl")
-		; Curl._CB_Progress := RegisterCallback(Curl._ProgressCallback , "CDecl")
-		; Curl._CB_Debug    := RegisterCallback(Curl._DebugCallback    , "CDecl")
-
-        return newHandle
+        return DllCall(this.curlDLLpath "\curl_easy_init")
     }
     _curl_easy_nextheader() {
 
@@ -853,7 +864,18 @@ class class_libcurl {
     _setCallbacks(handle?){
         if !IsSet(handle)
             handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
-        this.handleMap[handle]["writeCallbackFunction"] := CallbackCreate((p*) => this._writeCallbackFunction(p*),, this._writeCallbackFunction.MinParams-1)
+        ; msgbox handle
+        ; passed_curl_handle := handle
+        this.handleMap[handle]["writeCallbackFunction"] := CallbackCreate(
+            (dataPtr, size, sizeBytes, userdata) =>
+              this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, handle)
+          )
+        
+        ;non-lambda rewrite
+        ;   actualCallbackFunction(dataPtr, size, sizeBytes, userdata) {
+        ;     return this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, passed_curl_handle)
+        ;   }
+        ;   this.handleMap[handle]["writeCallbackFunction"] := CallbackCreate(actualCallbackFunction)
         ; Curl._CB_Header   := CallbackCreate(Curl._HeaderCallback)
 		; Curl._CB_Read     := CallbackCreate(Curl._ReadCallback)
 		; Curl._CB_Progress := CallbackCreate(Curl._ProgressCallback)
@@ -874,8 +896,12 @@ class class_libcurl {
 	; Note: because those are class methods, arguments are shifted by one,
 	; and 'this' variable is actually stores the first argument.
 	
-	_writeCallbackFunction(dataPtr, size, sizeBytes, userdata) {
-        handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+	; _writeCallbackFunction(dataPtr, size, sizeBytes, userdata) {
+    _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, passed_curl_handle) {
+            ; msgbox "handles in handleMap:`n" StrSplit(this.listhandles(),"`n")[2] "`n`nhandle from curl:`n" passed_curl_handle
+        ; msgbox "listhandles:`n" this.listhandles() "`n`n`n" "callbakc" curl "`n" this.handleMap[0]["handle"]
+        ; handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        ; handle := this.handleMap["assoc"][this.handleMap["writeTo"].handle]
 		dataSize := size * sizeBytes
         ; msgbox 
         ; ListVars
@@ -890,7 +916,9 @@ class class_libcurl {
         ;     ; .   userdata.OnWrite
         
         ; return this.handleMap[handle]["writeInfo"]["writeTo"].RawWrite(dataPtr, dataSize)
-        return this.handleMap[handle]["storageHandle"].RawWrite(dataPtr, dataSize)
+        ; msgbox this.handleMap[handle]["storageHandle"].getCurlHandle()
+
+        return this.handleMap[passed_curl_handle]["storageHandle"].RawWrite(dataPtr, dataSize)
 		; curlInstance := Curl.activePool[userdata]
 		
 		; ; User callback
@@ -908,10 +936,19 @@ class class_libcurl {
 		; If (curlInstance._writeTo) {
 		; 	n := curlInstance._writeTo.RawWrite(dataPtr, dataSize)
 		; 	Return n
+        
 		; }
 		; Return dataSize
 	}
 
+	; _headerCallbackFunction(dataPtr, size, sizeBytes, userdata) {
+    ;     handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+	; 	dataSize := size * sizeBytes
+
+    ;     retSize := this.handleMap[handle]["headerHandle"].RawWrite(dataPtr, dataSize)
+
+	; 	Return retSize
+	; }
     pPerform(handle) {
         ; Store handle in global pool so callbacks can access the instance
         /*
@@ -960,13 +997,15 @@ class class_libcurl {
         ; Wrapper for file. Shouldn't be used directly.
         Class File {
             __New(filename, accessMode := "w", &handleMap?, handle?) {
+                this.handleMap := handleMap
                 if !IsSet(handle)
                     handle := handleMap[0]["handle"]   ;defaults to the last created handle
-                handleMap[handle]["writeInfo"] := this.writeObj := Map()   ;binds each instance of the File class to handleMap
+                this.handleMap[handle]["writeInfo"] := this.writeObj := Map()   ;binds each instance of the File class to handleMap
                 this.writeObj["writeType"] := "file"
                     , this.writeObj["filename"] := filename
                     , this.writeObj["accessMode"] := accessMode
                     , this.writeObj["writeTo"] := ""
+                    , this.writeObj["curlHandle"] := handle
                 ; ; User callbacks
                 ; this.OnWrite    := ""
                 ; this.OnRead     := ""
@@ -985,12 +1024,17 @@ class class_libcurl {
                     SplitPath(this.writeObj["filename"], , &fileDirPath)
                     If fileDirPath
                         DirCreate fileDirPath
-                    this.writeObj["writeTo"] := FileOpen(this.writeObj["filename"], this.writeObj["accessMode"], "CP0")
+                    this.writeObj["writeTo"] := FileOpen(this.writeObj["filename"], this.writeObj["accessMode"], "CP0") 
+                    
+                    ;associates the write object with the curl handle
+                    ; this.handleMap["assoc"][this.writeObj["writeTo"].handle] := this.getCurlHandle()
+                    ; msgbox this.handleMap["assoc"][this.getHandle()]
                 }
             }
 
             Close() {
             	this.writeObj["writeTo"].Close()
+                ; this.handleMap["assoc"].Delete(this.writeObj["writeTo"].handle)
             }
 
             Write(data) {
@@ -1003,8 +1047,11 @@ class class_libcurl {
             	; If (this._fileObject == "")
             	; || (this._accessMode != "w")
             	; 	Return -1
-
             	Return this.writeObj["writeTo"].RawWrite(srcDataPtr+0, srcDataSize)
+            }
+
+            getCurlHandle() {
+                return this.writeObj["curlHandle"]
             }
 
             ; RawRead(dstDataPtr, dstDataSize) {
@@ -1018,6 +1065,8 @@ class class_libcurl {
             ; Seek(offset, origin := 0) {
             ; 	Return !(this._fileObject.Seek(offset, origin))
             ; }
+
+
         }
 
         ; Wrapper for memory buffer, similar to regular FileObject

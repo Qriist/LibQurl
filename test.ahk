@@ -6,25 +6,25 @@
 
 curl := class_libcurl()
 curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
-hCURL := curl._curl_easy_init()
 curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
-
-
-curl.SetOpt("URL","https://database.lichess.org/standard/lichess_db_standard_rated_2014-07.pgn.zst")
-curl.WriteToFile(a_scriptdir "\download\lichess.zst")
-curl.Perform()
 
 curl.SetOpt("URL","https://www.titsandasses.org")
 curl.WriteToFile(a_scriptdir "\download\titsandasses.html")
 curl.Perform()
 
-curl.SetOpt("URL","https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png")
-curl.WriteToFile(a_scriptdir "\download\google.png")
-curl.Perform()
 
-curl.SetOpt("URL","https://www.google.com")
-curl.WriteToFile(a_scriptdir "\download\google.html")
-curl.Perform()
+; curl.SetOpt("URL","https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png")
+; curl.WriteToFile(a_scriptdir "\download\google.png")
+; curl.Perform()
+
+; curl.SetOpt("URL","https://www.google.com")
+; curl.WriteToFile(a_scriptdir "\download\google.html")
+; curl.Perform()
+
+;; known good large binary download
+; curl.SetOpt("URL","https://database.lichess.org/standard/lichess_db_standard_rated_2014-07.pgn.zst")
+; curl.WriteToFile(a_scriptdir "\download\lichess.zst")
+; curl.Perform()
 
 ; DllCall(Curl.dllFilename . "\curl_easy_perform", "Ptr", this._handle, "CDecl")
 ; curl["hCURL"][hCURL]["storageHandle"].open()
