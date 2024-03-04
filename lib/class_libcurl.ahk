@@ -1191,4 +1191,28 @@ class class_libcurl {
         ; 	}
         ; }
     }
+    DeepClone(obj) {    ;https://github.com/thqby/ahk2_lib/blob/master/deepclone.ahk
+        ;fully copies an object without any shared references. No recursion.
+        objs := Map(), objs.Default := ''
+        return clone(obj)
+    
+        clone(obj) {
+            switch Type(obj) {
+                case 'Array', 'Map':
+                    o := obj.Clone()
+                    for k, v in o
+                        if IsObject(v)
+                            o[k] := objs[p := ObjPtr(v)] || (objs[p] := clone(v))
+                    return o
+                case 'Object':
+                    o := obj.Clone()
+                    for k, v in o.OwnProps()
+                        if IsObject(v)
+                            o.%k% := objs[p := ObjPtr(v)] || (objs[p] := clone(v))
+                    return o
+                default:
+                    return obj
+            }
+        }
+    }
 }
