@@ -6,6 +6,7 @@ class class_libcurl {
         this.Opt := Map()   ;option reference matrix
         this.struct := class_libcurl._struct()  ;holds the various structs
         this.writes := Map()    ;holds the various write handles
+        this.CURL_ERROR_SIZE := 256
     }
     ; __Get(handle){
     ;     if !IsSet(handle)
@@ -24,6 +25,7 @@ class class_libcurl {
         return this.Init()
     }
     ListHandles(){
+        ;returns the 
         ret := ""
         for k,v in this.handleMap {
             ret .= k "`n"
@@ -52,7 +54,7 @@ class class_libcurl {
         newHandle := this._curl_easy_duphandle(handle)
         If !this.handleMap[handle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
-            this.handleMap[newHandle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
+        this.handleMap[newHandle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
         ,this.handleMap[newHandle]["options"] := Map()  ;prepares option storage
         for k,v in this.handleMap[handle]["options"]
             this.SetOpt(newHandle,k,v)
@@ -344,8 +346,11 @@ class class_libcurl {
     _curl_share_strerror() {
 
     }
-    _curl_slist_append() {
-
+    _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
+        return DllCall(this.curlDLLpath "\curl_slist_append"
+            , "Ptr" , ptrSList
+            , "AStr", strArray[A_Index]
+            , "Ptr")
     }
     _curl_slist_free_all() {
 
@@ -1191,8 +1196,23 @@ class class_libcurl {
         ; 	}
         ; }
     }
+
+    
+    ErrorHandler(callingMethod,invokedCurlFunction,curlErrorCodeType,incomingValue?){
+        If (curlErrorCodeType = "Curlcode") {
+
+        } else if (curlErrorCodeType = "Curlmcode") {
+
+        } else if (curlErrorCodeType = "Curlshcode") {
+
+        } else if (curlErrorCodeType = "Curlucode") {
+
+        } else if (curlErrorCodeType = "Curlhcode") {
+
+        }
+    }
     DeepClone(obj) {    ;https://github.com/thqby/ahk2_lib/blob/master/deepclone.ahk
-        ;fully copies an object without any shared references. No recursion.
+        ;fully copies an object without any shared references.
         objs := Map(), objs.Default := ''
         return clone(obj)
     
@@ -1215,4 +1235,55 @@ class class_libcurl {
             }
         }
     }
+    	; Linked-list
+	; ===========
+	
+	; Converts an array of strings to linked-list.
+	; Returns pointer to linked-list, or 0 if something went wrong.
+	
+	_ArrayToSList(strArray) {
+		ptrSList := 0
+		ptrTemp  := 0
+		
+		Loop strArray.Length {
+			ptrTemp := this._curl_slist_append(ptrSList,strArray[A_Index])
+            
+    		If (ptrTemp == 0) {
+				Curl._FreeSList(ptrSList)
+				Return 0
+			}
+			
+			ptrSList := ptrTemp
+		}
+		
+		Return ptrSList
+	}
+	
+	
+	; Converts linked-list to an array of strings.
+	
+	; _SListToArray(ptrSList) {
+	; 	result  := []
+	; 	ptrNext := ptrSList
+		
+	; 	Loop {
+	; 		If (ptrNext == 0)
+	; 			Break
+			
+	; 		ptrData := NumGet(ptrNext, 0, "Ptr")
+	; 		ptrNext := NumGet(ptrNext, A_PtrSize, "Ptr")
+			
+	; 		result.Push(StrGet(ptrData, "CP0"))
+	; 	}
+		
+	; 	Return result
+	; }
+	
+	
+	; _FreeSList(ptrSList) {
+	; 	If ((ptrSList == "") || (ptrSList == 0))
+	; 		Return
+		
+	; 	DllCall(Curl.dllFilename . "\curl_slist_free_all", "Ptr", ptrSList, "CDecl")
+	; }
 }

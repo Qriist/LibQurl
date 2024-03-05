@@ -8,7 +8,7 @@ curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 
 curl.SetOpt("URL","https://www.titsandasses.org")
 curl.WriteToFile(a_scriptdir "\download\titsandasses.html")
-msgbox curl.Perform()
+curl.Perform()
 
 ; msgbox curl.ListOpts()()
 
