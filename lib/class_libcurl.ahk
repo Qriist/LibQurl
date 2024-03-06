@@ -40,6 +40,8 @@ class class_libcurl {
         this.handleMap[handle]["handle"] := handle
         ,this.handleMap[handle]["options"] := Map()  ;prepares option storage
         ,this.SetOpt("ACCEPT_ENCODING","",handle)    ;enables compressed transfers without affecting input headers
+        ,this.SetOpt("FOLLOWLOCATION",1)    ;allows curl to follow redirects
+        ,this.SetOpt("MAXREDIRS",30)    ;limits redirects to 30 (matches recent curl default)
         ; Curl._CB_Write    := RegisterCallback(Curl._writeCallbackFunction    , "CDecl")
 		; Curl._CB_Header   := RegisterCallback(Curl._HeaderCallback   , "CDecl")
 		; Curl._CB_Read     := RegisterCallback(Curl._ReadCallback     , "CDecl")
@@ -47,7 +49,7 @@ class class_libcurl {
 		; Curl._CB_Debug    := RegisterCallback(Curl._DebugCallback    , "CDecl")
         return handle
     }
-    EasyInit(){
+    EasyInit(){ ;just a clarifying alias for Init()
         return this.Init()
     }
     DupeInit(handle?){
