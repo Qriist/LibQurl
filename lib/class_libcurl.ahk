@@ -174,6 +174,18 @@ class class_libcurl {
 
         return retCode
     }
+    Cleanup(handle?){
+        if !IsSet(handle)
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        for k,v in this.handleMap[handle]["callbacks"]
+            if IsInteger(this.handleMap[handle]["callbacks"][k]["CBF"])
+                CallbackFree(this.handleMap[handle]["callbacks"][k]["CBF"])
+        this.handleMap.Delete(handle)
+        this._curl_easy_cleanup(handle)
+    }
+    EasyCleanup(handle?){   ;alias for Cleanup
+        this.Cleanup(handle?)
+    }
 	; Callbacks
 	; =========
     _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, handle) {
@@ -185,50 +197,7 @@ class class_libcurl {
 		dataSize := size * sizeBytes
 		Return this.handleMap[handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
 	}
-    pPerform(handle) {
-        ; Store handle in global pool so callbacks can access the instance
-        /*
-        		Curl.activePool[this._handle] := this
-        
-        		; Prepare callbacks, removing old callbacks if necessary.
-        		needwriteCallbackFunction := True
-        		this.SetOpt(Curl.Opt.WRITEDATA    , (!needwriteCallbackFunction ? 0 : this._handle))
-        		this.SetOpt(Curl.Opt.WRITEFUNCTION, (!needwriteCallbackFunction ? 0 : Curl._CB_Write))
-        
-        		needHeaderCallback := (this._headerTo || this.OnHeader)
-        		this.SetOpt(Curl.Opt.HEADERDATA     , (!needHeaderCallback ? 0 : this._handle))
-        		this.SetOpt(Curl.Opt.HEADERFUNCTION , (!needHeaderCallback ? 0 : Curl._CB_Header))
-        
-        		needReadCallback := (this._readFrom || this.OnRead)
-        		this.SetOpt(Curl.Opt.READDATA     , (!needReadCallback ? 0 : this._handle))
-        		this.SetOpt(Curl.Opt.READFUNCTION , (!needReadCallback ? 0 : Curl._CB_Read))
-        
-        		needProgressCallback := (this.OnProgress)
-        		this.SetOpt(Curl.Opt.NOPROGRESS       , (!needProgressCallback ? 1 : 0))
-        		this.SetOpt(Curl.Opt.XFERINFODATA     , (!needProgressCallback ? 0 : this._handle))
-        		this.SetOpt(Curl.Opt.XFERINFOFUNCTION , (!needProgressCallback ? 0 : Curl._CB_Progress))
-        
-        		needDebugCallback := (this.OnDebug)
-        		this.SetOpt(Curl.Opt.VERBOSE       , (!needDebugCallback ? 0 : 1))
-        		this.SetOpt(Curl.Opt.DEBUGDATA     , (!needDebugCallback ? 0 : this._handle))
-        		this.SetOpt(Curl.Opt.DEBUGFUNCTION , (!needDebugCallback ? 0 : Curl._CB_Debug))
-        
-        		(this._writeTo)   ?  this._writeTo.Open()
-        		(this._headerTo)  ?  this._headerTo.Open()
-        		(this._readFrom)  ?  this._readFrom.Open()
-        
-        		; TODO: cookies? headers?
-        		retCode := DllCall(Curl.dllFilename . "\curl_easy_perform", "Ptr", this._handle, "CDecl")
-        
-        		(this._writeTo)   ?  this._writeTo.Close()
-        		(this._headerTo)  ?  this._headerTo.Close()
-        		(this._readFrom)  ?  this._readFrom.Close()
-        
-        		Curl.activePool.Delete(this._handle)
-        
-        		Return this._SetLastCode(retCode, "Perform")
-        */
-    }
+ 
     Class Storage {
         ; Wrapper for file. Shouldn't be used directly.
         Class File {
@@ -630,8 +599,8 @@ class class_libcurl {
     _curl_getdate() {
 
     }
-    _curl_global_cleanup() {
-
+    _curl_global_cleanup(handle) {
+        DllCall(this.curlDLLpath "\curl_global_cleanup")
     }
     _curl_global_init() {   ;https://curl.se/libcurl/c/curl_global_init.html
         ;can't find the various flag values so it's locked to the default "everything" mode for now - prolly okay
