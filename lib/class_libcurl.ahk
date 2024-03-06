@@ -5,7 +5,7 @@ class class_libcurl {
         static curlDLLpath := ""
         this.Opt := Map()   ;option reference matrix
         this.struct := class_libcurl._struct()  ;holds the various structs
-        this.writes := Map()    ;holds the various write handles
+        this.writeRefs := Map()    ;holds the various write handles
         this.CURL_ERROR_SIZE := 256
     }
     ; __Get(handle){
@@ -55,16 +55,37 @@ class class_libcurl {
     EasyInit(){ ;just a clarifying alias for Init()
         return this.Init()
     }
-    DupeInit(handle?){
+    ; DupeInit(handle?){
+        ; newHandle := this._curl_easy_duphandle(handle)
+        ; this.handleMap[newHandle] := this.handleMap[0] := this.DeepClone(this.handleMap[handle])
+        ; If !this.handleMap[newHandle]
+        ;     throw ValueError("Problem in 'curl_easy_duphandle'! Unable to init easy interface!", -1, this.curlDLLpath)
+        ; this.handleMap[newHandle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
+        ; ,this.handleMap[newHandle]["options"] := Map()  ;prepares option storage
+        ; for k,v in this.handleMap[handle]["options"]
+        ;     this.SetOpt(k,v,newHandle)
+        ; this.handleMap[newHandle]["handle"] := newHandle
+        ; return newHandle 
+        /*
+        if !IsSet(handle)
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
         newHandle := this._curl_easy_duphandle(handle)
         If !this.handleMap[handle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
-        this.handleMap[newHandle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
-        ,this.handleMap[newHandle]["options"] := Map()  ;prepares option storage
-        for k,v in this.handleMap[handle]["options"]
-            this.SetOpt(newHandle,k,v)
-        return newHandle        
-    }
+        ; msgbox handle "`n" newHandle "`n`n" this.handleMap[0]["handle"]
+        this.handleMap[newHandle] := this.DeepClone(this.handleMap[handle])
+        msgbox this.ShowOB(this.handleMap[newHandle])
+        this.handleMap[0]["handle"] := this.handleMap[newHandle]["handle"]
+        ; msgbox this.handleMap[newHandle]["handle"] "`n" this.handleMap[handle]["handle"] "`n`n" this.handleMap[0]["handle"]
+        ; this.handleMap[newHandle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
+        ; ,this.handleMap[newHandle]["options"] := Map()  ;prepares option storage
+
+
+        ; for k,v in this.handleMap[handle]["options"]
+        ;     this.SetOpt(k,v,newHandle)
+        return newHandle   
+        */     
+    ; }
     ListOpts(handle?){  ;returns human-readable printout of the set options
         if !IsSet(handle)
             handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
@@ -132,21 +153,42 @@ class class_libcurl {
     _setCallbacks(body?,header?,read?,progress?,debug?,handle?){
         if !IsSet(handle)
             handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
-        if IsSet(body)
-            if IsInteger(this.handleMap[handle]["callbacks"]["body"]["CBF"])
-                CallbackFree(this.handleMap[handle]["callbacks"]["body"]["CBF"])
-            this.handleMap[handle]["callbacks"]["body"]["CBF"] := CallbackCreate(
+
+        if IsSet(body){
+            CBF := this.handleMap[handle]["callbacks"]["body"]["CBF"]
+            if IsInteger(CBF){  ;checks if this callback already exists
+                this.writeRefs[CBF] -= 1    ;decrement the reference tracker
+                ,CallbackFree(CBF)
+                ,(CBF=0?writeRefs.delete(CBF):"")   ;remove key if done with it
+            }
+
+            this.handleMap[handle]["callbacks"]["body"]["CBF"] := CBF := CallbackCreate(
                 (dataPtr, size, sizeBytes, userdata) =>
                 this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, handle)
             )
 
-        if IsSet(header)
-            if IsInteger(this.handleMap[handle]["callbacks"]["header"]["CBF"])
-                CallbackFree(this.handleMap[handle]["callbacks"]["header"]["CBF"])
-            this.handleMap[handle]["callbacks"]["header"]["CBF"] := CallbackCreate(
+            ;creates the tracking key
+            this.writeRefs[CBF] := 1
+        }
+
+
+        if IsSet(header){
+            CBF := this.handleMap[handle]["callbacks"]["header"]["CBF"]
+            if IsInteger(CBF){  ;checks if this callback already exists
+                this.writeRefs[CBF] -= 1    ;decrement the reference tracker
+                ,CallbackFree(CBF)
+                ,(CBF=0?writeRefs.delete(CBF):"")   ;remove key if done with it
+            }
+            ; if IsInteger(this.handleMap[handle]["callbacks"]["header"]["CBF"])
+            ;     CallbackFree(this.handleMap[handle]["callbacks"]["header"]["CBF"])
+            this.handleMap[handle]["callbacks"]["header"]["CBF"] := CBF := CallbackCreate(
                 (dataPtr, size, sizeBytes, userdata) =>
                 this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, handle)
             )
+            
+            ;creates the tracking key
+            this.writeRefs[CBF] := 1
+        }
         ; if IsSet(read)
         ; if IsSet(progress)
         ; if IsSet(debug)
@@ -195,6 +237,7 @@ class class_libcurl {
 
 	_headerCallbackFunction(dataPtr, size, sizeBytes, userdata, handle) {
 		dataSize := size * sizeBytes
+        ; msgbox type(this.handleMap[handle]["callbacks"]["header"]["storageHandle"])
 		Return this.handleMap[handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
 	}
  
@@ -496,9 +539,9 @@ class class_libcurl {
 
     }
     _curl_easy_duphandle(handle) {
-        newHandle := DllCall(this.curl_easy_duphandle "\curl_easy_reset"
-            , "Ptr", handle)
-        return newHandle
+        ret := DllCall(this.curlDLLpath "\curl_easy_duphandle"
+            , "Int", handle)
+        return ret
     }
     _curl_easy_escape(handle, url) {
         ;doesn't like unicode, should I use the native windows function for this?
