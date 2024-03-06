@@ -26,7 +26,7 @@ Full libcurl wrap for AHK_H v2.
 - [ ] curl_easy_recv
 - [X] curl_easy_reset
 - [ ] curl_easy_send
-- [ ] curl_easy_setopt
+- [X] curl_easy_setopt
 - [ ] curl_easy_strerror
 - [ ] curl_easy_unescape
 - [ ] curl_easy_upkeep
@@ -35,7 +35,7 @@ Full libcurl wrap for AHK_H v2.
 - [ ] curl_formget
 - [ ] curl_free
 - [ ] curl_getdate
-- [] curl_global_cleanup
+- [ ] curl_global_cleanup
 - [x] curl_global_init  --only default mode for now
 - [ ] curl_global_init_mem
 - [ ] curl_global_sslset
@@ -73,7 +73,7 @@ Full libcurl wrap for AHK_H v2.
 - [ ] curl_share_setopt
 - [ ] curl_share_strerror
 - [X] curl_slist_append
-- [ ] curl_slist_free_all
+- [X] curl_slist_free_all
 - [ ] curl_url
 - [ ] curl_url_cleanup
 - [ ] curl_url_dup

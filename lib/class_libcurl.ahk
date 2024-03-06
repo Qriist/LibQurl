@@ -349,11 +349,12 @@ class class_libcurl {
     _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
         return DllCall(this.curlDLLpath "\curl_slist_append"
             , "Ptr" , ptrSList
-            , "AStr", strArray[A_Index]
+            , "AStr", strArrayItem
             , "Ptr")
     }
-    _curl_slist_free_all() {
-
+    _curl_slist_free_all(ptrSList) {
+        return DllCall(Curl.curlDLLpath . "\curl_slist_free_all"
+            , "Ptr", ptrSList)
     }
     _curl_url() {
 
@@ -876,6 +877,7 @@ class class_libcurl {
         this.handleMap[handle]["options"][option] := parameter
         return this._curl_easy_setopt(handle,option,parameter)
     }
+
     WriteToFile(filename, handle?) {
         if !IsSet(handle)
             handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
@@ -1235,6 +1237,29 @@ class class_libcurl {
             }
         }
     }
+    ; Sets custom HTTP headers for request.
+	; Pass an array of "Header: value" strings OR a Map of the same.
+	; Use empty value ("Header: ") to disable internally used header.
+	; Use semicolon ("Header;") to add the header with no value.
+	SetHeaders(headersArrayOrMap,&headersPtr?,handle?) {
+        if (Type(headersArrayOrMap)="Map"){
+            headersArray := []
+            for k,v in headersArrayOrMap{
+                switch v {
+                    case "":    ;diabled
+                        headersArray.Push(k ": ")
+                    case ";":   ;empty
+                        headersArray.Push(k ";")
+                    default:
+                        headersArray.Push(k ": " v)
+                }
+            }
+        } else {
+            headersArray := headersArrayOrMap
+        }
+        headersPtr := this._ArrayToSList(headersArray)
+		Return this.SetOpt("HTTPHEADER", headersPtr,handle?)
+	}
     	; Linked-list
 	; ===========
 	
@@ -1252,7 +1277,6 @@ class class_libcurl {
 				Curl._FreeSList(ptrSList)
 				Return 0
 			}
-			
 			ptrSList := ptrTemp
 		}
 		
@@ -1262,28 +1286,28 @@ class class_libcurl {
 	
 	; Converts linked-list to an array of strings.
 	
-	; _SListToArray(ptrSList) {
-	; 	result  := []
-	; 	ptrNext := ptrSList
+	_SListToArray(ptrSList) {
+		result  := []
+		ptrNext := ptrSList
 		
-	; 	Loop {
-	; 		If (ptrNext == 0)
-	; 			Break
+		Loop {
+			If (ptrNext == 0)
+				Break
 			
-	; 		ptrData := NumGet(ptrNext, 0, "Ptr")
-	; 		ptrNext := NumGet(ptrNext, A_PtrSize, "Ptr")
+			ptrData := NumGet(ptrNext, 0, "Ptr")
+			ptrNext := NumGet(ptrNext, A_PtrSize, "Ptr")
 			
-	; 		result.Push(StrGet(ptrData, "CP0"))
-	; 	}
+			result.Push(StrGet(ptrData, "CP0"))
+		}
 		
-	; 	Return result
-	; }
+		Return result
+	}
 	
 	
-	; _FreeSList(ptrSList) {
-	; 	If ((ptrSList == "") || (ptrSList == 0))
-	; 		Return
+	_FreeSList(ptrSList?) {
+		If (!IsSet(ptrSList) || (ptrSList == 0))
+			Return
 		
-	; 	DllCall(Curl.dllFilename . "\curl_slist_free_all", "Ptr", ptrSList, "CDecl")
-	; }
+		this._curl_slist_free_all(ptrSList)
+	}
 }

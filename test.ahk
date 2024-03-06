@@ -4,13 +4,24 @@
 
 curl := class_libcurl()
 curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
+
 curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
+
+curl.SetOpt("URL","https://httpbin.org/headers")
+curl.SetHeaders(Map("jank","extraJank","tidbit","is a header"))
+curl.WriteToFile(a_scriptdir "\download\httpbin.json")
+curl.Perform()
 
 curl.SetOpt("URL","https://www.titsandasses.org")
 curl.WriteToFile(a_scriptdir "\download\titsandasses.html")
 curl.Perform()
 
-; msgbox curl.ListOpts()()
+; curl.SetHeaders(Map("jank","extraJank","tidbit","was here"),desiredhandle)
+; curl.Perform(desiredhandle)
+
+
+
+; msgbox curl.ListOpts()
 
 ; curl.SetOpt("URL","https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png")
 ; curl.WriteToFile(a_scriptdir "\download\google.png")
