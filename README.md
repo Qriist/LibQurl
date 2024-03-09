@@ -2,7 +2,7 @@
 Full libcurl wrap for AHK_H v2.
 
 ## Roadmap
-- [ ] Establish basic communication with the DLL
+- [X] Establish basic communication with the DLL
 - [ ] Get feature list from DLL and dynamically enable/disable class features
 - [ ] Wrap Easy
 - [ ] Wrap Multi

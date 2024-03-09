@@ -2,38 +2,33 @@
 #Include <class_libcurl>
 #Warn VarUnset, Off
 
+
 curl := class_libcurl()
 h := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
-; msgbox h "`n" curl.ListHandles()
-; msgbox curl.ShowOB(curl.handleMap[0])
-h2 := curl.DupeInit(h)
-
-; curl.Cleanup(h)
-
-; msgbox curl.ShowOB(curl.writeRefs)
-
-; ExitApp
 curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 
 curl.SetOpt("URL","https://httpbin.org/headers")
 curl.SetHeaders(Map("jank","extraJank","tidbit","is a header"))
-curl.WriteToFile(a_scriptdir "\download\httpbin.json")
-curl.HeaderToFile(a_scriptdir "\download\httpbin.header.txt")
-curl.Perform()
+curl.WriteToFile(a_scriptdir "\download\httpbin-body.json")
+; header := curl.HeaderToFile(a_scriptdir "\download\httpbin-header.txt")
+; curl.HeaderToMem()
+perfCode := curl.Perform()
+msgbox curl.LastHeaders() perfCode
 
+ExitApp
 ; loop 1 {
 ;     ToolTip a_index
 curl.SetOpt("URL","https://www.titsandasses.org")
 curl.WriteToFile(a_scriptdir "\download\titsandasses.html")
-; curl.HeaderToFile(a_scriptdir "\download\titsandasses.header.txt")
+header := curl.HeaderToMem()
+ ; curl.HeaderToFile(a_scriptdir "\download\titsandasses.header.txt")
 curl.Perform()
 ; }
 
 ; curl.SetHeaders(Map("jank","extraJank","tidbit","was here"),desiredhandle)
 ; curl.Perform(desiredhandle)
 
-
-
+ 
 ; msgbox curl.ListOpts()
 
 ; curl.SetOpt("URL","https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png")

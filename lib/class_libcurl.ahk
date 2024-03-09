@@ -141,9 +141,15 @@ class class_libcurl {
 		Return
 	}
 	
-	; HeaderToMem(maxCapacity := 0) {
-	; 	Return (this._headerTo := new Curl.Storage.MemBuffer(0, maxCapacity))
-	; }
+	HeaderToMem(maxCapacity := 0, handle?) {
+        if !IsSet(handle)
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        passedHandleMap := this.handleMap
+		this.handleMap[handle]["callbacks"]["header"]["storageHandle"] := class_libcurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "header", handle)
+        this.SetOpt("HEADERDATA",this.handleMap[handle]["callbacks"]["header"]["storageHandle"],handle)
+        this.SetOpt("HEADERFUNCTION",this.handleMap[handle]["callbacks"]["header"]["CBF"],handle)
+        Return
+	}
 	
 	; HeaderToNone() {
 	; 	Return (this._headerTo := "")
@@ -188,6 +194,7 @@ class class_libcurl {
             
             ;creates the tracking key
             this.writeRefs[CBF] := 1
+            ; msgbox (CBF)
         }
         ; if IsSet(read)
         ; if IsSet(progress)
@@ -214,7 +221,16 @@ class class_libcurl {
         this.handleMap[handle]["callbacks"]["body"]["storageHandle"].Close()
         this.handleMap[handle]["callbacks"]["header"]["storageHandle"].Close()
 
+        ;accessibly attach headers to handle output
+        headerObj := this.handleMap[handle]["callbacks"]["header"]
+        lastHeaders := (headerObj["writeType"]="memory"?StrGet(headerObj["writeTo"],"UTF-8"):FileOpen(headerObj["filename"],"r").Read())
+        this.handleMap[handle]["lastHeaders"] := lastHeaders
         return retCode
+    }
+    LastHeaders(handle?){
+        if !IsSet(handle)
+            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        return this.handleMap[handle]["lastHeaders"]
     }
     Cleanup(handle?){
         if !IsSet(handle)
@@ -255,6 +271,7 @@ class class_libcurl {
                 this.writeObj["accessMode"] := accessMode
                 this.writeObj["writeTo"] := ""
                 this.writeObj["curlHandle"] := handle
+                this.storageCategory := storageCategory
                 ; ; User callbacks
                 ; this.OnWrite    := ""
                 ; this.OnRead     := ""
@@ -316,108 +333,117 @@ class class_libcurl {
             }
         }
 
-        ; Class MemBuffer {
+        Class MemBuffer {
         ; Wrapper for memory buffer, similar to regular FileObject
-        ; 	__New(dataPtr := 0, maxCapacity := 0, dataSize := 0) {
-        ; 		this._data     := ""
-        ; 		this._dataPos  := 0
+        	__New(dataPtr := 0, maxCapacity?, dataSize := 0, &handleMap?, storageCategory?, handle?) {
+        		; this._data     := ""
+        		this._dataPos  := 0
+                this.handleMap := handleMap
+                if !IsSet(handle)
+                    handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+                this.handle := handle
+                this.storageCategory := storageCategory
+                this.writeObj := this.handleMap[handle]["callbacks"][storageCategory]
+                this.writeObj["writeType"] := "memory"
 
-        ; 		maxCapacity := Max(maxCapacity, dataSize)
+                If !IsSet(maxCapacity)
+        			maxCapacity := 8*1024*1024  ; 8 Mb
+                this.writeObj["maxCapacity"] := maxCapacity
+                this.writeObj["writeTo"] := Buffer(maxCapacity := Max(maxCapacity, dataSize))
+                ; this.writeObj["writeTo"] := Buffer(maxCapacity)
+                this.writeObj["curlHandle"] := handle
+                this.writeObj["interimPtr"] := 0
+        		
 
-        ; 		If (maxCapacity == 0)
-        ; 			maxCapacity := 8*1024*1024  ; 8 Mb
 
-        ; 		If (dataPtr != 0) {
-        ; 			this._dataMax  := maxCapacity
-        ; 			this._dataSize := dataSize
-        ; 			this._dataPtr  := dataPtr
-        ; 		} Else
-        ; 		; No argument, store inside class.
-        ; 		{
-        ; 			this._dataSize := 0
-        ; 			this._dataMax  := ObjSetCapacity(this, "_data", maxCapacity)
-        ; 			this._dataPtr  := ObjGetAddress(this, "_data")
-        ; 		}
-        ; 	}
 
-        ; 	Open() {
-        ; 		; Do nothing
-        ; 	}
+        		If (dataPtr != 0) {
+        			this._dataMax  := maxCapacity
+        			this._dataSize := dataSize
+        			this._dataPtr  := dataPtr
+        		} Else
+        		; No argument, store inside class.
+        		{
+        			this._dataSize := 0
+        			this._dataMax  := ObjSetCapacity(this.writeObj["writeTo"], maxCapacity)
+        			this._dataPtr  := "" ;ObjGetAddress(this._data)
+        		}
+        	}
 
-        ; 	Close() {
-        ; 		this.Seek(0,0)
-        ; 	}
+        	Open() {
+        		; Do nothing
+        	}
 
-        ; 	Write(data) {
-        ; 		srcDataSize := StrPut(srcText, "CP0")
+        	Close() {
+        		; this.handleMap[this.handle]["lastHeaders"] := this.writeObj["writeTo"]
+                ; msgbox strget(this.writeObj["writeBuffer"],"UTF-8")
+        	}
 
-        ; 		If ((this._dataPos + srcDataSize) > this._dataMax)
-        ; 			Return -1
+        	; Write(data) {
+        	; 	srcDataSize := StrPut(srcText, "CP0")
 
-        ; 		StrPut(data, this._dataPtr + this._dataPos, "CP0")
+        	; 	If ((this._dataPos + srcDataSize) > this._dataMax)
+        	; 		Return -1
 
-        ; 		this._dataPos  += srcDataSize
-        ; 		this._dataSize := Max(this._dataSize, this._dataPos)
+        	; 	StrPut(data, this._dataPtr + this._dataPos, "CP0")
 
-        ; 		Return srcDataSize
-        ; 	}
+        	; 	this._dataPos  += srcDataSize
+        	; 	this._dataSize := Max(this._dataSize, this._dataPos)
 
-        ; 	RawWrite(srcDataPtr, srcDataSize) {
-        ; 		If ((this._dataPos + srcDataSize) > this._dataMax)
-        ; 			Return -1
+        	; 	Return srcDataSize
+        	; }
 
-        ; 		DllCall("ntdll\memcpy"
-        ; 		, "Ptr" , this._dataPtr + this._dataPos
-        ; 		, "Ptr" , srcDataPtr+0
-        ; 		, "Int" , srcDataSize)
+            RawWrite(srcDataPtr, srcDataSize) {
+                Offset := this.writeObj["writeTo"].Size
+                this.writeObj["writeTo"].Size += srcDataSize
+                DllCall("ntdll\memcpy"
+                    , "Ptr" , this.writeObj["writeTo"].Ptr + Offset
+                    , "Ptr" , srcDataPtr+0
+                    , "Int" , srcDataSize)
+                Return srcDataSize
+            }
 
-        ; 		this._dataPos  += srcDataSize
-        ; 		this._dataSize := Max(this._dataSize, this._dataPos)
+        	; GetAsText(encoding := "UTF-8") {
+        	; 	isEncodingWide := ((encoding = "UTF-16") || (encoding = "CP1200"))
+        	; 	textMaxLength  := this._dataSize / (isEncodingWide ? 2 : 1)
+        	; 	Return StrGet(this._dataPtr, textMaxLength, encoding)
+        	; }
 
-        ; 		Return srcDataSize
-        ; 	}
+        	; RawRead(dstDataPtr, dstDataSize) {
+        	; 	dataLeft := this._dataSize - this._dataPos
+        	; 	dstDataSize := Min(dstDataSize, dataLeft)
 
-        ; 	GetAsText(encoding := "UTF-8") {
-        ; 		isEncodingWide := ((encoding = "UTF-16") || (encoding = "CP1200"))
-        ; 		textMaxLength  := this._dataSize / (isEncodingWide ? 2 : 1)
-        ; 		Return StrGet(this._dataPtr, textMaxLength, encoding)
-        ; 	}
+        	; 	DllCall("ntdll\memcpy"
+        	; 	, "Ptr" , dstDataPtr
+        	; 	, "Ptr" , this._dataPtr + this._dataPos
+        	; 	, "Int" , dstDataSize)
 
-        ; 	RawRead(dstDataPtr, dstDataSize) {
-        ; 		dataLeft := this._dataSize - this._dataPos
-        ; 		dstDataSize := Min(dstDataSize, dataLeft)
+        	; 	Return dstDataSize
+        	; }
 
-        ; 		DllCall("ntdll\memcpy"
-        ; 		, "Ptr" , dstDataPtr
-        ; 		, "Ptr" , this._dataPtr + this._dataPos
-        ; 		, "Int" , dstDataSize)
+        	; Seek(offset, origin := 0) {
+        	; 	newDataPos := offset
+        	; 	+ ( (origin == 0) ? 0               ; SEEK_SET
+        	; 	  : (origin == 1) ? this._dataPos   ; SEEK_CUR
+        	; 	  : (origin == 2) ? this._dataSize  ; SEEK_END
+        	; 	  : 0 )                             ; Unknown 'origin', use SEEK_SET
 
-        ; 		Return dstDataSize
-        ; 	}
+        	; 	If (newDataPos > this._dataSize)
+        	; 	|| (newDataPos < 0)
+        	; 		Return 1  ; CURL_SEEKFUNC_FAIL
 
-        ; 	Seek(offset, origin := 0) {
-        ; 		newDataPos := offset
-        ; 		+ ( (origin == 0) ? 0               ; SEEK_SET
-        ; 		  : (origin == 1) ? this._dataPos   ; SEEK_CUR
-        ; 		  : (origin == 2) ? this._dataSize  ; SEEK_END
-        ; 		  : 0 )                             ; Unknown 'origin', use SEEK_SET
+        	; 	this._dataPos := newDataPos
+        	; 	Return 0  ; CURL_SEEKFUNC_OK
+        	; }
 
-        ; 		If (newDataPos > this._dataSize)
-        ; 		|| (newDataPos < 0)
-        ; 			Return 1  ; CURL_SEEKFUNC_FAIL
+        	; Tell() {
+        	; 	Return this._dataPos
+        	; }
 
-        ; 		this._dataPos := newDataPos
-        ; 		Return 0  ; CURL_SEEKFUNC_OK
-        ; 	}
-
-        ; 	Tell() {
-        ; 		Return this._dataPos
-        ; 	}
-
-        ; 	Length() {
-        ; 		Return this._dataSize
-        ; 	}
-        ; }
+        	Length() {
+        		Return this._dataSize
+        	}
+        }
     }
 
     
@@ -462,7 +488,7 @@ class class_libcurl {
 	; Pass an array of "Header: value" strings OR a Map of the same.
 	; Use empty value ("Header: ") to disable internally used header.
 	; Use semicolon ("Header;") to add the header with no value.
-	SetHeaders(headersArrayOrMap,&headersPtr?,handle?) {
+	SetHeaders(headersArrayOrMap,handle?) {
         if (Type(headersArrayOrMap)="Map"){
             headersArray := []
             for k,v in headersArrayOrMap{
@@ -614,8 +640,8 @@ class class_libcurl {
         ; .   "passed type: " argTypes[this.opt[option].type]
         retCode := DllCall(this.curlDLLpath "\curl_easy_setopt"
             , "Ptr", handle
-            , "Int", this.opt[option].id
-            , this.opt[option].type, parameter)
+            , "Int", this.opt[option]["id"]
+            , this.opt[option]["type"], parameter)
         return retCode
     }
     _curl_easy_strerror() {
@@ -1003,24 +1029,28 @@ class class_libcurl {
     }
     class _struct {
         curl_easyoption(ptr) {
-            return { name: StrGet(numget(ptr, "Ptr"), "CP0")
-                , id: numget(ptr, 8, "UInt")
-                , rawCurlType: numget(ptr, 12, "UInt")
-                , flags: numget(ptr, 16, "UInt") }
+            ; return { name: StrGet(numget(ptr, "Ptr"), "CP0")
+            ;     , id: numget(ptr, 8, "UInt")
+            ;     , rawCurlType: numget(ptr, 12, "UInt")
+            ;     , flags: numget(ptr, 16, "UInt") }
+            return Map("name",StrGet(numget(ptr, "Ptr"), "CP0")
+            , "id", numget(ptr, 8, "UInt")
+            , "rawCurlType", numget(ptr, 12, "UInt")
+            , "flags", numget(ptr, 16, "UInt"))
         }
     }
     _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
         this.Opt.CaseSense := "Off"
         optPtr := 0
-        ; argTypes := Map(0, Map("type", "Int", "easyType", "CURLOT_LONG")
-        ; , 1, Map("type", "Int", "easyType", "CURLOT_VALUES")
-        ; , 2, Map("type", "Int64", "easyType", "CURLOT_OFF_T")
-        ; , 3, Map("type", "Ptr", "easyType", "CURLOT_OBJECT")
-        ; , 4, Map("type", "Astr", "easyType", "CURLOT_STRING")
-        ; , 5, Map("type", "Ptr", "easyType", "CURLOT_SLIST")
-        ; , 6, Map("type", "Ptr", "easyType", "CURLOT_CBPTR")
-        ; , 7, Map("type", "Ptr", "easyType", "CURLOT_BLOB")
-        ; , 8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
+        argTypes := Map(0, Map("type", "Int", "easyType", "CURLOT_LONG")
+            , 1, Map("type", "Int", "easyType", "CURLOT_VALUES")
+            , 2, Map("type", "Int64", "easyType", "CURLOT_OFF_T")
+            , 3, Map("type", "Ptr", "easyType", "CURLOT_OBJECT")
+            , 4, Map("type", "Astr", "easyType", "CURLOT_STRING")
+            , 5, Map("type", "Ptr", "easyType", "CURLOT_SLIST")
+            , 6, Map("type", "Ptr", "easyType", "CURLOT_CBPTR")
+            , 7, Map("type", "Ptr", "easyType", "CURLOT_BLOB")
+            , 8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
         ; argTypes[0].type := "Int",  argTypes[0].easyType := "CURLOT_LONG"
         ; argTypes[1].type := "Int",  argTypes[1].easyType := "CURLOT_VALUES"
         ; argTypes[2].type := "Int64",  argTypes[2].easyType := "CURLOT_OFF_T"
@@ -1059,18 +1089,21 @@ class class_libcurl {
             ; o.type := argTypes[o.rawCurlType].type
             ;     , o.easyType := argTypes[o.rawCurlType].easyType
             ; this.Opt["CURLOPT_" o.name] := this.Opt[o.name] := this.Opt[o.id] := o
-            static argTypes := { 0: { type: "Int", easyType: "CURLOT_LONG" }
-                , 1: { type: "Int", easyType: "CURLOT_VALUES" }
-                , 2: { type: "Int64", easyType: "CURLOT_OFF_T" }
-                , 3: { type: "Ptr", easyType: "CURLOT_OBJECT" }
-                , 4: { type: "Astr", easyType: "CURLOT_STRING" }
-                , 5: { type: "Ptr", easyType: "CURLOT_SLIST" }
-                , 6: { type: "Ptr", easyType: "CURLOT_CBPTR" }
-                , 7: { type: "Ptr", easyType: "CURLOT_BLOB" }
-                , 8: { type: "Ptr", easyType: "CURLOT_FUNCTION" } }
-            o.type := argTypes[o.rawCurlType].type
-                , o.easyType := argTypes[o.rawCurlType].easyType
-            this.Opt["CURLOPT_" o.name] := this.Opt[o.name] := this.Opt[o.id] := o
+            ; static argTypes := { 0: { type: "Int", easyType: "CURLOT_LONG" }
+            ;     , 1: { type: "Int", easyType: "CURLOT_VALUES" }
+            ;     , 2: { type: "Int64", easyType: "CURLOT_OFF_T" }
+            ;     , 3: { type: "Ptr", easyType: "CURLOT_OBJECT" }
+            ;     , 4: { type: "Astr", easyType: "CURLOT_STRING" }
+            ;     , 5: { type: "Ptr", easyType: "CURLOT_SLIST" }
+            ;     , 6: { type: "Ptr", easyType: "CURLOT_CBPTR" }
+            ;     , 7: { type: "Ptr", easyType: "CURLOT_BLOB" }
+            ;     , 8: { type: "Ptr", easyType: "CURLOT_FUNCTION" } }
+            ; o.type := argTypes[o.rawCurlType].type
+            ;     , o.easyType := argTypes[o.rawCurlType].easyType
+            ; this.Opt["CURLOPT_" o.name] := this.Opt[o.name] := this.Opt[o.id] := o
+            o["type"] := argTypes[o["rawCurlType"]]["type"]
+                , o["easyType"] := argTypes[o["rawCurlType"]]["easyType"]
+            this.Opt["CURLOPT_" o["name"]] := this.Opt[o["name"]] := this.Opt[o["id"]] := o
         }
         ; msgbox this.ShowOB(this.opt)
     }
