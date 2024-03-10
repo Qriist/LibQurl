@@ -1,19 +1,21 @@
 #requires Autohotkey v2.0
-#Include <class_libcurl>
+#Include <LibQurl>
 #Warn VarUnset, Off
 
+; msgbox a_temp
 
-curl := class_libcurl()
+curl := LibQurl()
 h := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
 ; curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 
 curl.SetOpt("URL","https://httpbin.org/headers")
 curl.SetHeaders(Map("jank","extraJank","tidbit","is a header"))
 curl.WriteToFile(a_scriptdir "\download\httpbin-body.json")
+curl.WriteToMem()
 ; curl.HeaderToFile(a_scriptdir "\download\httpbin-header.txt")
-curl.HeaderToMem()
+; curl.HeaderToMem()
 perfCode := curl.Perform()
-msgbox curl.GetLastHeaders() perfCode
+curl.GetLastBody()
 
 ExitApp
 ; loop 1 {
