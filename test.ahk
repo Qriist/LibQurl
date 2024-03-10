@@ -10,10 +10,10 @@ curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 curl.SetOpt("URL","https://httpbin.org/headers")
 curl.SetHeaders(Map("jank","extraJank","tidbit","is a header"))
 curl.WriteToFile(a_scriptdir "\download\httpbin-body.json")
-; header := curl.HeaderToFile(a_scriptdir "\download\httpbin-header.txt")
+; curl.HeaderToFile(a_scriptdir "\download\httpbin-header.txt")
 ; curl.HeaderToMem()
 perfCode := curl.Perform()
-msgbox curl.LastHeaders() perfCode
+msgbox curl.GetLastHeaders() perfCode
 
 ExitApp
 ; loop 1 {

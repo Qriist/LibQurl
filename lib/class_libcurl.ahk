@@ -50,6 +50,7 @@ class class_libcurl {
             this.handleMap[handle]["callbacks"][v]["CBF"] := ""
         }
         this._setCallbacks(1,1,1,1,,handle) ;don't enable debug by default
+        this.HeaderToMem(handle)    ;automatically save lastHeader to memory
         return handle
     }
     EasyInit(){ ;just a clarifying alias for Init()
@@ -227,7 +228,7 @@ class class_libcurl {
         this.handleMap[handle]["lastHeaders"] := lastHeaders
         return retCode
     }
-    LastHeaders(handle?){
+    GetLastHeaders(handle?){
         if !IsSet(handle)
             handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
         return this.handleMap[handle]["lastHeaders"]
