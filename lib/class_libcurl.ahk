@@ -43,9 +43,10 @@ class class_libcurl {
         ,this.SetOpt("MAXREDIRS",30,handle)    ;limits redirects to 30 (matches recent curl default)
         
         ;try to auto-load curl's cert bundle
-        ; SplitPath(this.curlDLLpath,,&dlldir)
-        ; If FileExist(dlldir "\curl-ca-bundle.crt")
-        ;     this.SetOpt("CAINFO",dlldir "\curl-ca-bundle.crt",handle)
+        ;can still be set per handle
+        SplitPath(this.curlDLLpath,,&dlldir)
+        If FileExist(dlldir "\curl-ca-bundle.crt")
+            this.SetOpt("CAINFO",dlldir "\curl-ca-bundle.crt",handle)
 
         this.handleMap[handle]["callbacks"] := Map()  ;prepares write callbacks
         for k,v in ["body","header","read","progress","debug"]{

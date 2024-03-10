@@ -5,7 +5,7 @@
 
 curl := class_libcurl()
 h := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
-curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
+; curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 
 curl.SetOpt("URL","https://httpbin.org/headers")
 curl.SetHeaders(Map("jank","extraJank","tidbit","is a header"))
