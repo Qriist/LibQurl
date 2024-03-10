@@ -5,18 +5,15 @@
 ; msgbox a_temp
 
 curl := LibQurl()
-h := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
-; curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
-
+curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
+curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 curl.SetOpt("URL","https://httpbin.org/headers")
-curl.SetHeaders(Map("jank","extraJank","tidbit","is a header"))
-curl.WriteToFile(a_scriptdir "\download\httpbin-body.json")
-curl.WriteToMem()
-; curl.HeaderToFile(a_scriptdir "\download\httpbin-header.txt")
+curl.SetHeaders(Map("tidbit","is a header"))
+curl.WriteToFile(a_scriptdir "\download\1httpbin-body.json")
+curl.HeaderToFile(a_scriptdir "\download\1httpbin-header.txt")
 ; curl.HeaderToMem()
-perfCode := curl.Perform()
-curl.GetLastBody()
-
+curl.Perform()
+; msgbox curl.GetLastHeaders() "`n`n" curl.GetLastBody("Object").read()
 ExitApp
 ; loop 1 {
 ;     ToolTip a_index

@@ -250,26 +250,34 @@ class LibQurl {
 
         ;accessibly attach body to handle output
         bodyObj := this.handleMap[handle]["callbacks"]["body"]
-        lastBody := (bodyObj["writeType"]="memory"?bodyObj["writeTo"]:FileOpen(bodyObj["filename"],"r").Read())
+        lastBody := (bodyObj["writeType"]="memory"?bodyObj["writeTo"]:FileOpen(bodyObj["filename"],"rw"))
         this.handleMap[handle]["lastBody"] := lastBody
 
         ;accessibly attach headers to handle output
         headerObj := this.handleMap[handle]["callbacks"]["header"]
-        lastHeaders := (headerObj["writeType"]="memory"?StrGet(headerObj["writeTo"],"UTF-8"):FileOpen(headerObj["filename"],"r").Read())
+        lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
         this.handleMap[handle]["lastHeaders"] := lastHeaders
         return retCode
     }
-    GetLastHeaders(handle?){
+    GetLastHeaders(returnAsEncoding := "UTF-8",handle?){
         if !IsSet(handle)
             handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
-        return this.handleMap[handle]["lastHeaders"]
+        lastHeaders := this.handleMap[handle]["lastHeaders"]
+        if (returnAsEncoding = "Object") 
+        || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
+        || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
+            return lastHeaders
+        return (Type(lastHeaders)="File"?lastHeaders.read():StrGet(lastHeaders,"UTF-8"))
     }
     GetLastBody(returnAsEncoding := "UTF-8",handle?){
         if !IsSet(handle)
             handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
-        if (returnAsEncoding = "Buffer")
-            return this.handleMap[handle]["lastBody"]
-        return StrGet(this.handleMap[handle]["lastBody"],,returnAsEncoding)
+        lastBody := this.handleMap[handle]["lastBody"]
+        if (returnAsEncoding = "Object") 
+        || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
+        || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
+            return lastBody 
+        return (Type(lastBody)="File"?lastBody.read():StrGet(lastBody,"UTF-8"))
     }
     Cleanup(handle?){
         if !IsSet(handle)

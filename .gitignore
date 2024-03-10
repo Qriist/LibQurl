@@ -414,3 +414,5 @@ class_libcurl.7z
 AutoHotkey64.exe
 download/httpbin-body.json
 download/httpbin-header.txt
+download/1httpbin-body.json
+download/1httpbin-header.txt
