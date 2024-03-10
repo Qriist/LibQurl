@@ -847,67 +847,6 @@ class class_libcurl {
     }
 
 
-    ;helper methods
-    _walkPtrArray(inPtr) {
-        retObj := []
-        loop {
-            pFeature := NumGet(inPtr + ((A_Index - 1) * A_PtrSize), "Ptr")
-            if (pFeature = 0) {
-                break
-            }
-            ;msgbox inPtr "`n" pFeature
-            retObj.push(StrGet(pFeature, "UTF-8"))
-        }
-        return retObj
-    }
-
-
-    _walkStringArray2(ptr, inLen) {
-        offset := 0
-        retObj := []
-        loop inLen + 5 {
-            current := NumGet(ptr, "UChar")
-            if (current != 0)
-                retObj .= Chr(current) a_tab current "`n"
-            else
-                retObj .= "<<<0>>>`n"
-            ptr += 1
-        }
-        return retObj
-    }
-    _walkStringArray(ptr) {
-        offset := 0
-        loop {
-            ret := StrGet(ptr, "UTF-8")
-            retLen := StrLen(ret)
-            if (retLen > 0) {
-                retStr .= ret "`n"
-                ptr += retLen + 1
-            }
-            else
-                break
-        }
-        return retStr
-    }
-    _walkStringArray1(ptr) {
-        offset := 0
-        loop {
-            ret := StrGet(ptr, "UTF-8")
-            retLen := StrLen(ret)
-            if (retLen > 0) {
-                retStr .= ret "`n"
-            }
-            else
-                break
-            ptr += retLen
-            endCheck := NumGet(ptr, "UShort")
-            if (endCheck = 0)
-                break
-            else
-                ptr += 1
-        }
-        return retStr
-    }
     StringToBase64(String, Encoding := "UTF-8")
     {
         static CRYPT_STRING_BASE64 := 0x00000001
@@ -932,7 +871,6 @@ class class_libcurl {
                 if (pFeature = 0) {
                     break
                 }
-                ;msgbox inPtr "`n" pFeature
                 retObj.push(StrGet(pFeature, "UTF-8"))
             }
             return retObj
@@ -1002,23 +940,14 @@ class class_libcurl {
         this.Opt.CaseSense := "Off"
         optPtr := 0
         argTypes := Map(0, Map("type", "Int", "easyType", "CURLOT_LONG")
-            , 1, Map("type", "Int", "easyType", "CURLOT_VALUES")
-            , 2, Map("type", "Int64", "easyType", "CURLOT_OFF_T")
-            , 3, Map("type", "Ptr", "easyType", "CURLOT_OBJECT")
-            , 4, Map("type", "Astr", "easyType", "CURLOT_STRING")
-            , 5, Map("type", "Ptr", "easyType", "CURLOT_SLIST")
-            , 6, Map("type", "Ptr", "easyType", "CURLOT_CBPTR")
-            , 7, Map("type", "Ptr", "easyType", "CURLOT_BLOB")
-            , 8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
-        ; argTypes[0].type := "Int",  argTypes[0].easyType := "CURLOT_LONG"
-        ; argTypes[1].type := "Int",  argTypes[1].easyType := "CURLOT_VALUES"
-        ; argTypes[2].type := "Int64",  argTypes[2].easyType := "CURLOT_OFF_T"
-        ; argTypes[3].type := "Ptr",  argTypes[3].easyType := "CURLOT_OBJECT"
-        ; argTypes[4].type := "Astr",  argTypes[4].easyType := "CURLOT_STRING"
-        ; argTypes[5].type := "Ptr",  argTypes[5].easyType := "CURLOT_SLIST"
-        ; argTypes[6].type := "Ptr",  argTypes[6].easyType := "CURLOT_CBPTR"
-        ; argTypes[7].type := "Ptr",  argTypes[7].easyType := "CURLOT_BLOB"
-        ; argTypes[8].type := "Ptr",  argTypes[8].easyType := "CURLOT_FUNCTION"
+                    ,   1, Map("type", "Int", "easyType", "CURLOT_VALUES")
+                    ,   2, Map("type", "Int64", "easyType", "CURLOT_OFF_T")
+                    ,   3, Map("type", "Ptr", "easyType", "CURLOT_OBJECT")
+                    ,   4, Map("type", "Astr", "easyType", "CURLOT_STRING")
+                    ,   5, Map("type", "Ptr", "easyType", "CURLOT_SLIST")
+                    ,   6, Map("type", "Ptr", "easyType", "CURLOT_CBPTR")
+                    ,   7, Map("type", "Ptr", "easyType", "CURLOT_BLOB")
+                    ,   8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
         
         Loop {
             optPtr := this._curl_easy_option_next(optPtr)
