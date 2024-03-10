@@ -21,8 +21,16 @@ class class_libcurl {
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
         this._curl_global_init()
         this._buildOptMap()
+        ; msgbox this["CurlVersionInfo"]
+        this["Version Info"] := this.GetVersionInfo()
         return this.Init()
     }
+    GetVersionInfo(){
+        verPtr := this._curl_version_info()
+        retObj := this.struct.curl_version_info_data(verPtr)
+        return retObj
+    }
+
     ListHandles(){
         ;returns the 
         ret := ""
@@ -824,125 +832,9 @@ class class_libcurl {
         
         verPtr := DllCall(this.curlDLLpath "\curl_version_info", "Int", 0xA, "Ptr")
 
-        ;build initial struct string
-        structStr := ""
-            . "Int    age;"
-            . "UPtr   version;"
-            . "UInt   version_num;"
-            . "UPtr   host;"
-            . "Int    features;"
-            . "UPtr   ssl_version;"
-            . "Int    ssl_version_num;"
-            . "UPtr   libz_version;"
-            . "Ptr    protocols;"
-        verStruct := Struct(structStr, verPtr)
-
-        verAge := verStruct["age"]
-
-        ;add features to the struct until we catch up with curl age
-        if (verAge >= 1) {
-            structStr .= ""
-                . "UPtr   ares;"
-                . "Int    ares_num;"
-        }
-        if (verAge >= 2) {
-            structStr .= ""
-                . "UPtr   libidn;"
-        }
-        if (verAge >= 3) {
-            structStr .= ""
-                . "Int    iconv_ver_num;"
-                . "UPtr   libssh_version;"
-        }
-        if (verAge >= 4) {
-            structStr .= ""
-                . "UInt   brotli_ver_num;"
-                . "UPtr   brotli_version;"
-        }
-        if (verAge >= 5) {
-            structStr .= ""
-                . "UInt   nghttp2_ver_num;"
-                . "UPtr   nghttp2_version;"
-                . "UPtr   quic_version;"
-        }
-        if (verAge >= 6) {
-            structStr .= ""
-                . "UPtr   cainfo;"
-                . "UPtr   capath;"
-        }
-        if (verAge >= 7) {
-            structStr .= ""
-                . "UInt   zstd_ver_num;"
-                . "UPtr   zstd_version;"
-        }
-        if (verAge >= 8) {
-            structStr .= ""
-                . "UPtr   hyper_version;"
-        }
-        if (verAge >= 9) {
-            structStr .= ""
-                . "UPtr   gsasl_version;"
-        }
-        if (verAge >= 10) {
-            structStr .= ""
-                . "Ptr    feature_names;"
-        }
 
 
-        verStruct := Struct(structStr, verPtr)
-        ;for k,v in verStruct
-        ;    msgbox k " : " v
-
-        retObj := Map()
-        retObj["age"] := (verStruct["age"] + 1)
-        retObj["version"] := StrGet(verStruct["version"], "UTF-8")
-        retObj["host"] := StrGet(verStruct["host"], "UTF-8")
-        retObj["ssl_version"] := StrGet(verStruct["ssl_version"], "UTF-8")
-        retObj["libz_version"] := StrGet(verStruct["libz_version"], "UTF-8")
-
-        for k, v in this._walkPtrArray(verStruct["protocols"])
-            prot .= v "; "
-        retObj["protocols"] := Trim(prot, "; ")
-
-        If (verStruct["age"] >= 1)
-            retObj["ares"] := (verStruct["ares"] = 0 ? 0 : StrGet(verStruct["ares"], "UTF-8"))
-        If (verStruct["age"] >= 2)
-            retObj["libidn"] := (verStruct["libidn"] = 0 ? 0 : StrGet(verStruct["libidn"], "UTF-8"))
-        If (verStruct["age"] >= 3) {
-            retObj["iconv_ver_num"] := (verStruct["iconv_ver_num"] = 0 ? 0 : NumGet(verStruct["iconv_ver_num"], "Int"))
-            retObj["libssh_version"] := (verStruct["libssh_version"] = 0 ? 0 : StrGet(verStruct["libssh_version"], "UTF-8"))
-        }
-        If (verStruct["age"] >= 4) {
-            ;retObj["brotli_ver_num"] := (verStruct["brotli_ver_num"]=0?0:NumGet(verStruct["brotli_ver_num"],"Int"))
-            retObj["brotli_version"] := (verStruct["brotli_version"] = 0 ? 0 : StrGet(verStruct["brotli_version"], "UTF-8"))
-        }
-        If (verStruct["age"] >= 5) {
-            ;retObj["nghttp2_ver_num"] := (verStruct["nghttp2_ver_num"]=0?0:NumGet(verStruct["nghttp2_ver_num"],"UInt"))
-            retObj["nghttp2_version"] := (verStruct["nghttp2_version"] = 0 ? 0 : StrGet(verStruct["nghttp2_version"], "UTF-8"))
-            retObj["quic_version"] := (verStruct["quic_version"] = 0 ? 0 : StrGet(verStruct["quic_version"], "UTF-8"))
-        }
-        If (verStruct["age"] >= 6) {
-            ;retObj["nghttp2_ver_num"] := (verStruct["nghttp2_ver_num"]=0?0:NumGet(verStruct["nghttp2_ver_num"],"UInt"))
-            retObj["cainfo"] := (verStruct["cainfo"] = 0 ? 0 : StrGet(verStruct["cainfo"], "UTF-8"))
-            retObj["capath"] := (verStruct["capath"] = 0 ? 0 : StrGet(verStruct["capath"], "UTF-8"))
-        }
-        If (verStruct["age"] >= 7) {
-            ;retObj["zstd_ver_num"] := (verStruct["zstd_ver_num"]=0?0:NumGet(verStruct["zstd_ver_num"],"Int"))
-            retObj["zstd_version"] := (verStruct["zstd_version"] = 0 ? 0 : StrGet(verStruct["zstd_version"], "UTF-8"))
-        }
-        If (verStruct["age"] >= 8) {
-            retObj["hyper_version"] := (verStruct["hyper_version"] = 0 ? 0 : StrGet(verStruct["hyper_version"], "UTF-8"))
-        }
-        If (verStruct["age"] >= 9) {
-            retObj["gsasl_version"] := (verStruct["gsasl_version"] = 0 ? 0 : StrGet(verStruct["gsasl_version"], "UTF-8"))
-        }
-        If (verStruct["age"] >= 10) {
-            for k, v in this._walkPtrArray(verStruct["feature_names"])
-                feat .= v "; "
-            retObj["feature_names"] := Trim(feat, "; ")
-        }
-
-        return retObj
+        return verPtr
     }
     _curl_ws_recv() {
 
@@ -1033,16 +925,78 @@ class class_libcurl {
         return StrGet(Base64)
     }
     class _struct {
-        curl_easyoption(ptr) {
-            ; return { name: StrGet(numget(ptr, "Ptr"), "CP0")
-            ;     , id: numget(ptr, 8, "UInt")
-            ;     , rawCurlType: numget(ptr, 12, "UInt")
-            ;     , flags: numget(ptr, 16, "UInt") }
-            return Map("name",StrGet(numget(ptr, "Ptr"), "CP0")
-            , "id", numget(ptr, 8, "UInt")
-            , "rawCurlType", numget(ptr, 12, "UInt")
-            , "flags", numget(ptr, 16, "UInt"))
+        walkPtrArray(inPtr) {
+            retObj := []
+            loop {
+                pFeature := NumGet(inPtr + ((A_Index - 1) * A_PtrSize), "Ptr")
+                if (pFeature = 0) {
+                    break
+                }
+                ;msgbox inPtr "`n" pFeature
+                retObj.push(StrGet(pFeature, "UTF-8"))
+            }
+            return retObj
         }
+        curl_easyoption(ptr) {
+            return Map("name",StrGet(numget(ptr, "Ptr"), "CP0")
+                ,   "id", numget(ptr, 8, "UInt")
+                ,   "rawCurlType", numget(ptr, 12, "UInt")
+                ,   "flags", numget(ptr, 16, "UInt"))
+        }
+        curl_version_info_data(ptr){
+            ;build initial struct map
+            retObj := Map()
+            retObj["age"] := NumGet(ptr,(Offset := 0),"Int") +1 
+            retObj["version"] := StrGet(NumGet(ptr,8,"UPtr"),"UTF-8")
+            retObj["version_num"] := NumGet(ptr,16,"UInt")
+            retObj["host"] := StrGet(NumGet(ptr,24,"UPtr"),"UTF-8")
+            retObj["features"] := NumGet(ptr,32,"UInt")
+            retObj["ssl_version"] := StrGet(NumGet(ptr,40,"UPtr"),"UTF-8")
+            retObj["ssl_version_num"] := NumGet(ptr,48,"UInt")
+            retObj["libz_version"] := StrGet(NumGet(ptr,56,"UPtr"),"UTF-8")
+            retObj["protocols"] := this.walkPtrArray(NumGet(ptr,64,"UPtr"))
+
+            ;walk through optional struct members
+            If (retObj["age"] >= 2) {
+                retObj["ares"] := (NumGet(ptr,72,"Ptr")=0?0:StrGet(NumGet(ptr,72,"Ptr"),"UTF-8"))
+                retObj["ares"] := NumGet(ptr,80,"Int")
+            }
+            If (retObj["age"] >= 3) {
+                retObj["libidn"] := (NumGet(ptr,88,"Ptr")=0?0:StrGet(NumGet(ptr,88,"Ptr"),"UTF-8"))
+            }
+            If (retObj["age"] >= 4) {
+                retObj["iconv_ver_num"] := NumGet(ptr, 96, "Int")
+                retObj["libssh_version"] := (NumGet(ptr,104,"Ptr")=0?0:StrGet(NumGet(ptr,104,"Ptr"),"UTF-8"))
+            }
+            If (retObj["age"] >= 5) {
+                retObj["brotli_ver_num"] := NumGet(ptr, 112, "Int")
+                retObj["brotli_version"] := StrGet(NumGet(ptr + 120, "Ptr"), "UTF-8")
+            }
+            If (retObj["age"] >= 6) {
+                retObj["nghttp2_version"] := NumGet(ptr + 128, "UInt")
+                retObj["nghttp2"] := (NumGet(ptr,136,"Ptr")=0?0:StrGet(NumGet(ptr,136,"Ptr"),"UTF-8"))
+                retObj["quic_version"] := (NumGet(ptr,144,"Ptr")=0?0:StrGet(NumGet(ptr,144,"Ptr"),"UTF-8"))
+            }
+            If (retObj["age"] >= 7) {
+                retObj["cainfo"] := (NumGet(ptr,152,"Ptr")=0?0:StrGet(NumGet(ptr,152,"Ptr"),"UTF-8"))
+                retObj["capath"] := (NumGet(ptr,160,"Ptr")=0?0:StrGet(NumGet(ptr,160,"Ptr"),"UTF-8"))    
+            }
+            If (retObj["age"] >= 8) {
+                retObj["zstd_ver_num"] := NumGet(ptr,168,"Ptr")
+                retObj["zstd_version"] := (NumGet(ptr,176,"Ptr")=0?0:StrGet(NumGet(ptr,176,"Ptr"),"UTF-8"))
+            }
+            If (retObj["age"] >= 9) {
+                retObj["hyper_version"] := (NumGet(ptr,184,"Ptr")=0?0:StrGet(NumGet(ptr,184,"Ptr"),"UTF-8"))
+            }
+            If (retObj["age"] >= 10) {
+                retObj["gsasl_version"] := (NumGet(ptr,192,"Ptr")=0?0:StrGet(NumGet(ptr,192,"Ptr"),"UTF-8"))
+            }
+            If (retObj["age"] >= 11) {
+                retObj["feature_names"] := this.walkPtrArray(NumGet(ptr,200,"Ptr"))
+            }
+            return retObj
+        }
+
     }
     _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
         this.Opt.CaseSense := "Off"

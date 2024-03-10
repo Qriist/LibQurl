@@ -11,7 +11,7 @@ curl.SetOpt("URL","https://httpbin.org/headers")
 curl.SetHeaders(Map("jank","extraJank","tidbit","is a header"))
 curl.WriteToFile(a_scriptdir "\download\httpbin-body.json")
 ; curl.HeaderToFile(a_scriptdir "\download\httpbin-header.txt")
-; curl.HeaderToMem()
+curl.HeaderToMem()
 perfCode := curl.Perform()
 msgbox curl.GetLastHeaders() perfCode
 
