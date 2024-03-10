@@ -21,7 +21,6 @@ class class_libcurl {
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
         this._curl_global_init()
         this._buildOptMap()
-
         return this.Init()
     }
     ListHandles(){
@@ -40,9 +39,13 @@ class class_libcurl {
         this.handleMap[handle]["handle"] := handle
         this.handleMap[handle]["options"] := Map()  ;prepares option storage
         ,this.SetOpt("ACCEPT_ENCODING","",handle)    ;enables compressed transfers without affecting input headers
-        ,this.SetOpt("FOLLOWLOCATION",1)    ;allows curl to follow redirects
-        ,this.SetOpt("MAXREDIRS",30)    ;limits redirects to 30 (matches recent curl default)
+        ,this.SetOpt("FOLLOWLOCATION",1,handle)    ;allows curl to follow redirects
+        ,this.SetOpt("MAXREDIRS",30,handle)    ;limits redirects to 30 (matches recent curl default)
         
+        ;try to auto-load curl's cert bundle
+        ; SplitPath(this.curlDLLpath,,&dlldir)
+        ; If FileExist(dlldir "\curl-ca-bundle.crt")
+        ;     this.SetOpt("CAINFO",dlldir "\curl-ca-bundle.crt",handle)
 
         this.handleMap[handle]["callbacks"] := Map()  ;prepares write callbacks
         for k,v in ["body","header","read","progress","debug"]{
@@ -50,7 +53,7 @@ class class_libcurl {
             this.handleMap[handle]["callbacks"][v]["CBF"] := ""
         }
         this._setCallbacks(1,1,1,1,,handle) ;don't enable debug by default
-        this.HeaderToMem(handle)    ;automatically save lastHeader to memory
+        this.HeaderToMem(0,handle)    ;automatically save lastHeader to memory
         return handle
     }
     EasyInit(){ ;just a clarifying alias for Init()
