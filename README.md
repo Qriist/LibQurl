@@ -1,4 +1,4 @@
-# class_libcurl
+# LibQurl
 Full libcurl wrap for AHK_H v2.
 
 ## Roadmap
