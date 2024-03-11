@@ -120,6 +120,19 @@ class LibQurl {
         this.handleMap[handle]["options"][option] := parameter
         return this._curl_easy_setopt(handle,option,parameter)
     }
+    SetOpts(optionMap,&optErrMap,handle?){  ;for setting multiple options at once
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
+        optErrMap := Map()
+        optErrVal := 0
+        ;TODO - add handling for Opts with scaffolding
+        for k,v in optionMap {
+            Switch k, "OFF" {
+                ; case "URL":{}
+                Default: optErrVal += optErrMap[k] := this.SetOpt(k,v,handle)
+            }
+        }
+        return optErrVal    ;any non-zero value means you should check the optErrMap
+    }
 
     WriteToFile(filename, handle?) {
         handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle

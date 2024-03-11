@@ -3,8 +3,19 @@
 #Warn VarUnset, Off
 curl := LibQurl()
 
-;points the class at the libcurl dll and (optionally) save the handle
 handleA := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
+optionMap := Map("URL","https://httpbin.org/headers","CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
+msgbox curl.SetOpts(optionMap,&optErrMap)
+
+
+msgbox curl.showob(optErrMap)
+
+
+
+
+
+exitapp
+;points the class at the libcurl dll and (optionally) save the handle
 
 ;this line is commented because the class attempts to find the crt with the dll
 ; curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
