@@ -1,8 +1,0 @@
-HTTP/2 200 
-date: Mon, 11 Mar 2024 06:50:26 GMT
-content-type: application/json
-content-length: 220
-server: gunicorn/19.9.0
-access-control-allow-origin: *
-access-control-allow-credentials: true
-

@@ -1,3 +1,4 @@
+#requires Autohotkey v2.1-alpha.2
 class LibQurl {
     __New() {
         this.handleMap := Map()
@@ -36,8 +37,6 @@ class LibQurl {
     Init(){
         handle := this._curl_easy_init()
         this.handleMap[handle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
-        ; this.handleMap[handle] := Map() ;handleMap[0] is a dynamic reference to the last created handle
-        ; this.lastHand
         If !this.handleMap[handle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
         this.handleMap[handle]["handle"] := handle
@@ -99,8 +98,7 @@ class LibQurl {
         return StrGet(this._curl_easy_strerror(errornum),"UTF-8")
     }
     ListOpts(handle?){  ;returns human-readable printout of the given handle's set options
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         ret := "These are the options that have been set for this handle:`n"
         for k,v in this.handleMap[handle]["options"]{
                 if (v!="")
@@ -118,15 +116,13 @@ class LibQurl {
         return isSet(rets) ? rets : ""
     }
     SetOpt(option,parameter,handle?){
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         this.handleMap[handle]["options"][option] := parameter
         return this._curl_easy_setopt(handle,option,parameter)
     }
 
     WriteToFile(filename, handle?) {
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         ;instanstiate Storage.File
         passedHandleMap := this.handleMap
         this.handleMap[handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "body", "w", handle)
@@ -136,8 +132,7 @@ class LibQurl {
     }
 
     WriteToMem(maxCapacity := 0, handle?) {
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         passedHandleMap := this.handleMap
         this.handleMap[handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "body", handle)
         this.SetOpt("WRITEDATA",this.handleMap[handle]["callbacks"]["body"]["storageHandle"],handle)
@@ -161,8 +156,7 @@ class LibQurl {
     ; }
 	
 	HeaderToFile(filename, handle?) {
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         passedHandleMap := this.handleMap
         this.handleMap[handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "header", "w", handle)
         this.SetOpt("HEADERDATA",this.handleMap[handle]["callbacks"]["header"]["storageHandle"],handle)
@@ -171,8 +165,7 @@ class LibQurl {
 	}
 	
 	HeaderToMem(maxCapacity := 0, handle?) {
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         passedHandleMap := this.handleMap
 		this.handleMap[handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "header", handle)
         this.SetOpt("HEADERDATA",this.handleMap[handle]["callbacks"]["header"]["storageHandle"],handle)
@@ -186,8 +179,7 @@ class LibQurl {
 
 
     _setCallbacks(body?,header?,read?,progress?,debug?,handle?){
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
 
         if IsSet(body){
             CBF := this.handleMap[handle]["callbacks"]["body"]["CBF"]
@@ -241,8 +233,7 @@ class LibQurl {
 		; Curl._CB_Debug    := CallbackCreate(Curl._DebugCallback)
     }
     Perform(handle?){
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         this.handleMap[handle]["callbacks"]["body"]["storageHandle"].Open()
         this.handleMap[handle]["callbacks"]["header"]["storageHandle"].Open()
         retCode := DllCall("libcurl-x64\curl_easy_perform","Ptr",handle)
@@ -285,8 +276,7 @@ class LibQurl {
             :StrGet(lastBody,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
     }
     Cleanup(handle?){
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         for k,v in this.handleMap[handle]["callbacks"]
             if IsInteger(this.handleMap[handle]["callbacks"][k]["CBF"])
                 CallbackFree(this.handleMap[handle]["callbacks"][k]["CBF"])
@@ -314,8 +304,7 @@ class LibQurl {
         Class File {
             __New(filename, &handleMap, storageCategory, accessMode := "w", handle?) {
                 this.handleMap := handleMap
-                if !IsSet(handle)
-                    handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+                handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
 
                 this.writeObj := this.handleMap[handle]["callbacks"][storageCategory]
                 this.writeObj["writeType"] := "file"
@@ -391,8 +380,7 @@ class LibQurl {
         		; this._data     := ""
         		this._dataPos  := 0
                 this.handleMap := handleMap
-                if !IsSet(handle)
-                    handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+                handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
                 ; msgbox handle
 
                 this.handle := handle

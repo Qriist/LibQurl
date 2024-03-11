@@ -1,14 +1,20 @@
-#requires Autohotkey v2.0
+#requires Autohotkey v2.1-alpha.2
 #Include <LibQurl>
 #Warn VarUnset, Off
 curl := LibQurl()
-handleA := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
-curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 
+;points the class at the libcurl dll and (optionally) save the handle
+handleA := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
+
+;this line is commented because the class attempts to find the crt with the dll
+; curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
+
+;Set some options.
+;Note that we don't need to pass the saved handle when we aren't multitasking.
 curl.SetOpt("URL","https://httpbin.org/headers")
-curl.SetHeaders(Map("tidbit","is a header"))
+curl.SetHeaders(Map("tidbit","is a header")) ;pass some outgoing headers
 curl.WriteToFile(a_scriptdir "\download\httpbin-body.json")
-curl.HeaderToFile(a_scriptdir "\download\httpbin-head.txt")
+; curl.HeaderToMem() ;headers are written into memory by default
 curl.Perform()
 msgbox "=== handleA ===`n"
     .   "[[[   HEADERS   ]]]`n" 
@@ -16,32 +22,46 @@ msgbox "=== handleA ===`n"
     .   "[[[   BODY   ]]]`n" 
     .   curl.GetLastBody()
 
+
+;program dictates we need to work with two sets of independent options now
 handleB := curl.Init()
 
+;handleA has *technically* already set URL but I'm setting it again here for clarity
 curl.SetOpt("URL","https://httpbin.org/headers",handleA)
 curl.SetHeaders(Map("tidbit","is a header","jank","extraJank"),handleA)
+
+;handleA routine determined it wants to write to file
 curl.WriteToFile(a_scriptdir "\download\a-body.json",handleA)
 curl.HeaderToFile(a_scriptdir "\download\a-head.txt",handleA)
 
+;start working on handleB options
 curl.SetOpt("URL","https://www.titsandasses.org",handleB)
-; curl.SetOpt("URL","https://httpbin.org/headers",handleB)
 curl.WriteToFile(a_scriptdir "\download\b-body.json",handleB)
 curl.HeaderToFile(a_scriptdir "\download\b-head.txt",handleB)
 
-
-curl.WriteToMem(,handleA)   ;there is an optional first parameter
+;something changed, now we want to save handleA in memory
+;note the comma: there is an optional first parameter
+curl.WriteToMem(,handleA)   
 curl.HeaderToMem(,handleA)
 
+;download on each of our handles
+;multiple Perform() operations don't have to be sequential
 curl.Perform(handleA)
 curl.Perform(handleB)
 
+msgbox "=== handleA (again) ===`n"
+    .   "[[[   HEADERS   ]]]`n" 
+    .   curl.GetLastHeaders(,handleA) "`n`n"
+    .   "[[[   BODY   ]]]`n" 
+    .   curl.GetLastBody(,handleA)
+
 msgbox "=== handleB ===`n"
     .   "[[[   HEADERS   ]]]`n" 
-    .   curl.GetLastHeaders(handleB) "`n`n"
+    .   curl.GetLastHeaders(,handleB) "`n`n"
     .   "[[[   BODY   ]]]`n" 
-    .   curl.GetLastBody(handleB)
+    .   curl.GetLastBody(,handleB)
 
-;will return the reference object regardless of type
+;"object" will return the reference object regardless of type
 headersA := curl.GetLastHeaders("object",handleA)
 headersB := curl.GetLastHeaders("object",handleB)
 
@@ -49,17 +69,17 @@ msgbox "The Type() of handleA headers is: " Type(headersA) "`n`n"
     .   "The Type() of handleB headers is: " Type(headersB)
 
 MsgBox "This msgbox will show that the object is returned only if the requested subtype matches. "
-    .   "Otherwise, it will try to return a string in the correct encoding."
+    .   "Otherwise, it will try to return a string in the correct encoding. "
     .   "Will return UTF-8 as a last resort.`n`n"
 
     .   "HeaderToMem(,handleA)   =>   GetLastHeaders(<request>,handleA)`n"
-    .   "no special request" a_tab a_tab "headersA Type() = " Type(curl.GetLastHeaders(,handleA)) "`n"    ;"String"
+    .   "no special request" a_tab a_tab "headersA Type() = " Type(curl.GetLastHeaders(unset,handleA)) "`n"    ;"String"
     .   "Requesting 'Object'" a_tab "headersA Type() = " Type(curl.GetLastHeaders("object",handleA)) "`n"    ;"Buffer"
     .   "Requesting 'File'" a_tab a_tab "headersA Type() = " Type(curl.GetLastHeaders("File",handleA)) "`n"    ;"String"
     .   "Requesting 'Buffer'" a_tab a_tab "headersA Type() = " Type(curl.GetLastHeaders("Buffer",handleA)) "`n`n"     ;"Buffer"
 
     .   "HeaderToFile(,handleB)   =>   GetLastHeaders(<request>,handleB)`n"
-    .   "no special request" a_tab a_tab "headersB Type() = " Type(curl.GetLastHeaders(,handleB)) "`n"    ;"String"
+    .   "no special request" a_tab a_tab "headersB Type() = " Type(curl.GetLastHeaders(unset,handleB)) "`n"    ;"String"
     .   "Requesting 'Object'" a_tab "headersB Type() = " Type(curl.GetLastHeaders("object",handleB)) "`n"    ;"File"
     .   "Requesting 'File'" a_tab a_tab "headersB Type() = " Type(curl.GetLastHeaders("File",handleB)) "`n"    ;"File"
     .   "Requesting 'Buffer'" a_tab a_tab "headersB Type() = " Type(curl.GetLastHeaders("Buffer",handleB)) "`n"   ;"String"
