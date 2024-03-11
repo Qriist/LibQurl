@@ -1,5 +1,5 @@
 # LibQurl
-Full libcurl wrap for AHK_H v2.
+Full libcurl wrap for AHKv2.
 
 ## Roadmap
 - [X] Establish basic communication with the DLL
