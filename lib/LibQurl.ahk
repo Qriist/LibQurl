@@ -16,7 +16,7 @@ class LibQurl {
         this._curl_global_init()
         this._buildOptMap()
         ; msgbox this["CurlVersionInfo"]
-        this["Version Info"] := this.GetVersionInfo()
+        this.VersionInfo := this.GetVersionInfo()
         return this.Init()
     }
     GetVersionInfo(){
@@ -36,6 +36,8 @@ class LibQurl {
     Init(){
         handle := this._curl_easy_init()
         this.handleMap[handle] := this.handleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created handle
+        ; this.handleMap[handle] := Map() ;handleMap[0] is a dynamic reference to the last created handle
+        ; this.lastHand
         If !this.handleMap[handle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
         this.handleMap[handle]["handle"] := handle
@@ -260,24 +262,27 @@ class LibQurl {
         return retCode
     }
     GetLastHeaders(returnAsEncoding := "UTF-8",handle?){
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         lastHeaders := this.handleMap[handle]["lastHeaders"]
-        if (returnAsEncoding = "Object") 
-        || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
-        || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
+        if ((returnAsEncoding = "Object") && IsObject(lastHeaders))
+        || ((returnAsEncoding = "File") && (Type(lastHeaders) = "File"))
+        || ((returnAsEncoding = "Buffer") && (Type(lastHeaders) = "Buffer"))
             return lastHeaders
-        return (Type(lastHeaders)="File"?lastHeaders.read():StrGet(lastHeaders,"UTF-8"))
+        RegexMatch(returnAsEncoding,"i)(?:Object|File|Buffer|(\S+))",&f) ;filter object types
+        return (Type(lastHeaders)="File"?(lastHeaders.seek(0,0)=1?"":"") lastHeaders.read()
+            :StrGet(lastHeaders,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
     }
+
     GetLastBody(returnAsEncoding := "UTF-8",handle?){
-        if !IsSet(handle)
-            handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+        handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         lastBody := this.handleMap[handle]["lastBody"]
-        if (returnAsEncoding = "Object") 
+        if ((returnAsEncoding = "Object") && IsObject(lastBody))
         || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
         || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
-            return lastBody 
-        return (Type(lastBody)="File"?lastBody.read():StrGet(lastBody,"UTF-8"))
+            return lastBody
+        RegexMatch(returnAsEncoding,"i)(?:Object|File|Buffer|(\S+))",&f) ;filter object types
+        return (Type(lastBody)="File"?(lastBody.seek(0,0)=1?"":"") lastBody.read()
+            :StrGet(lastBody,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
     }
     Cleanup(handle?){
         if !IsSet(handle)
@@ -388,6 +393,8 @@ class LibQurl {
                 this.handleMap := handleMap
                 if !IsSet(handle)
                     handle := this.handleMap[0]["handle"]   ;defaults to the last created handle
+                ; msgbox handle
+
                 this.handle := handle
                 this.storageCategory := storageCategory
                 this.writeObj := this.handleMap[handle]["callbacks"][storageCategory]

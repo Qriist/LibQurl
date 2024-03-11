@@ -1,22 +1,72 @@
 #requires Autohotkey v2.0
 #Include <LibQurl>
 #Warn VarUnset, Off
-
-; msgbox a_temp
-
 curl := LibQurl()
-curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
+handleA := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
 curl.SetOpt("CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
+
 curl.SetOpt("URL","https://httpbin.org/headers")
 curl.SetHeaders(Map("tidbit","is a header"))
-curl.WriteToFile(a_scriptdir "\download\1httpbin-body.json")
-curl.HeaderToFile(a_scriptdir "\download\1httpbin-header.txt")
-; curl.HeaderToMem()
+curl.WriteToFile(a_scriptdir "\download\httpbin-body.json")
+curl.HeaderToFile(a_scriptdir "\download\httpbin-head.txt")
 curl.Perform()
-; msgbox curl.GetLastHeaders() "`n`n" curl.GetLastBody("Object").read()
+msgbox "=== handleA ===`n"
+    .   "[[[   HEADERS   ]]]`n" 
+    .   curl.GetLastHeaders() "`n`n"
+    .   "[[[   BODY   ]]]`n" 
+    .   curl.GetLastBody()
+
+handleB := curl.Init()
+
+curl.SetOpt("URL","https://httpbin.org/headers",handleA)
+curl.SetHeaders(Map("tidbit","is a header","jank","extraJank"),handleA)
+curl.WriteToFile(a_scriptdir "\download\a-body.json",handleA)
+curl.HeaderToFile(a_scriptdir "\download\a-head.txt",handleA)
+
+curl.SetOpt("URL","https://www.titsandasses.org",handleB)
+; curl.SetOpt("URL","https://httpbin.org/headers",handleB)
+curl.WriteToFile(a_scriptdir "\download\b-body.json",handleB)
+curl.HeaderToFile(a_scriptdir "\download\b-head.txt",handleB)
+
+
+curl.WriteToMem(,handleA)   ;there is an optional first parameter
+curl.HeaderToMem(,handleA)
+
+curl.Perform(handleA)
+curl.Perform(handleB)
+
+msgbox "=== handleB ===`n"
+    .   "[[[   HEADERS   ]]]`n" 
+    .   curl.GetLastHeaders(handleB) "`n`n"
+    .   "[[[   BODY   ]]]`n" 
+    .   curl.GetLastBody(handleB)
+
+;will return the reference object regardless of type
+headersA := curl.GetLastHeaders("object",handleA)
+headersB := curl.GetLastHeaders("object",handleB)
+
+msgbox "The Type() of handleA headers is: " Type(headersA) "`n`n"
+    .   "The Type() of handleB headers is: " Type(headersB)
+
+MsgBox "This msgbox will show that the object is returned only if the requested subtype matches. "
+    .   "Otherwise, it will try to return a string in the correct encoding."
+    .   "Will return UTF-8 as a last resort.`n`n"
+
+    .   "HeaderToMem(,handleA)   =>   GetLastHeaders(<request>,handleA)`n"
+    .   "no special request" a_tab a_tab "headersA Type() = " Type(curl.GetLastHeaders(,handleA)) "`n"    ;"String"
+    .   "Requesting 'Object'" a_tab "headersA Type() = " Type(curl.GetLastHeaders("object",handleA)) "`n"    ;"Buffer"
+    .   "Requesting 'File'" a_tab a_tab "headersA Type() = " Type(curl.GetLastHeaders("File",handleA)) "`n"    ;"String"
+    .   "Requesting 'Buffer'" a_tab a_tab "headersA Type() = " Type(curl.GetLastHeaders("Buffer",handleA)) "`n`n"     ;"Buffer"
+
+    .   "HeaderToFile(,handleB)   =>   GetLastHeaders(<request>,handleB)`n"
+    .   "no special request" a_tab a_tab "headersB Type() = " Type(curl.GetLastHeaders(,handleB)) "`n"    ;"String"
+    .   "Requesting 'Object'" a_tab "headersB Type() = " Type(curl.GetLastHeaders("object",handleB)) "`n"    ;"File"
+    .   "Requesting 'File'" a_tab a_tab "headersB Type() = " Type(curl.GetLastHeaders("File",handleB)) "`n"    ;"File"
+    .   "Requesting 'Buffer'" a_tab a_tab "headersB Type() = " Type(curl.GetLastHeaders("Buffer",handleB)) "`n"   ;"String"
+
 ExitApp
-; loop 1 {
-;     ToolTip a_index
+
+
 curl.SetOpt("URL","https://www.titsandasses.org")
 curl.WriteToFile(a_scriptdir "\download\titsandasses.html")
 header := curl.HeaderToMem()
