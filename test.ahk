@@ -10,7 +10,7 @@ handleA := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
 ; msgbox curl.SetOpts(optionMap,&optErrMap)
 
 
-msgbox curl.showob(curl.getversioninfo())
+; msgbox curl.showob(curl.getversioninfo())
 
 
 

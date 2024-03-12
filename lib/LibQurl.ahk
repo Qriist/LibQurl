@@ -276,7 +276,6 @@ class LibQurl {
         return (Type(lastHeaders)="File"?(lastHeaders.seek(0,0)=1?"":"") lastHeaders.read()
             :StrGet(lastHeaders,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
     }
-
     GetLastBody(returnAsEncoding := "UTF-8",handle?){
         handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         lastBody := this.handleMap[handle]["lastBody"]
@@ -288,6 +287,7 @@ class LibQurl {
         return (Type(lastBody)="File"?(lastBody.seek(0,0)=1?"":"") lastBody.read()
             :StrGet(lastBody,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
     }
+
     Cleanup(handle?){
         handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
         for k,v in this.handleMap[handle]["callbacks"]
@@ -609,17 +609,17 @@ class LibQurl {
 	_FreeSList(ptrSList?) {
 		If (!IsSet(ptrSList) || (ptrSList == 0))
 			Return
-		
 		this._curl_slist_free_all(ptrSList)
 	}
 
 
     
     ;internal libcurl functions called by this class
-    _curl_easy_cleanup(handle) {
-
+    _curl_easy_cleanup(handle) {    ;untested https://curl.se/libcurl/c/curl_easy_cleanup.html
+        DllCall(this.curlDLLpath "\curl_easy_cleanup"
+            ,   "Ptr", handle)
     }
-    _curl_easy_duphandle(handle) {
+    _curl_easy_duphandle(handle) {  ;untested   https://curl.se/libcurl/c/curl_easy_duphandle.html
         ret := DllCall(this.curlDLLpath "\curl_easy_duphandle"
             , "Int", handle)
         return ret
@@ -635,8 +635,11 @@ class LibQurl {
         return StrGet(esc, "UTF-8")
 
     }
-    _curl_easy_getinfo() {
-
+    _curl_easy_getinfo(handle,info,&retCode) {  ;untested   https://curl.se/libcurl/c/curl_easy_getinfo.html
+        return DllCall(this.curlDLLpath "\curl_easy_getinfo"
+            ,   "Ptr", handle
+            ,   "UInt", info
+            ,   "Int", retCode)
     }
     _curl_easy_header() {
 
@@ -664,8 +667,10 @@ class LibQurl {
         ;     ,"Ptr")
         ; return retCode
     }
-    _curl_easy_option_next(optPtr) {
-        return DllCall("libcurl-x64\curl_easy_option_next", "UInt", optPtr, "Ptr")
+    _curl_easy_option_next(optPtr) {    ;https://curl.se/libcurl/c/curl_easy_option_next.html
+        return DllCall("libcurl-x64\curl_easy_option_next"
+            ,   "UInt", optPtr
+            ,   "Ptr")
     }
     _curl_easy_pause() {
 
@@ -680,7 +685,7 @@ class LibQurl {
     _curl_easy_recv() {
 
     }
-    _curl_easy_reset(handle) {
+    _curl_easy_reset(handle) {  ;https://curl.se/libcurl/c/curl_easy_reset.html
         DllCall(this.curlDLLpath "\curl_easy_reset"
             , "Ptr", handle)
     }
@@ -710,22 +715,46 @@ class LibQurl {
     _curl_easy_upkeep() {
 
     }
-    _curl_formadd() {
+    _curl_formadd() {   ;untested   https://curl.se/libcurl/c/curl_formadd.html
+        ;This function is deprecated. Use curl_mime_init instead.
+        /*
+            curl_formadd(ByRef firstitem, ByRef lastitem, params*) {
+                strA := []
+                For idx, val in params {
+                    if !Mod(idx, 2) && ( curl.type(val) = "string" ) {
+                        curl.strPutVar(val, valA, "UTF-8")
+                        strA[idx] := valA
+                        params[idx] := strA.GetAddress(idx)
+                    }
+                }
+                return DllCall("libcurl\curl_formadd"
+                    , "ptr*", firstitem
+                    , "ptr*", lastitem
+                    , "uint", curl.const(params.1), "ptr", params.2
+                    , "uint", curl.const(params.3), "ptr", params.4
+                    , "uint", curl.const(params.5), "ptr", params.6
+                    , "uint", curl.const(params.7), "ptr", params.8
+                    , "uint", curl.const(params.9)
+                    , "cdecl")
+        */
+    }
+    _curl_formfree() {  ;untested   https://curl.se/libcurl/c/curl_formfree.html
+        ;This function is deprecated. Do not use. See curl_mime_init instead!
+        /*
+        	DllCall("libcurl\curl_formfree", "ptr", form, "cdecl")
+        */
+    }
+    _curl_formget() {   ;untested   https://curl.se/libcurl/c/curl_formget.html
 
     }
-    _curl_formfree() {
-
-    }
-    _curl_formget() {
-
-    }
-    _curl_free() {
-
+    _curl_free(pStr) {  ;untested   ;https://curl.se/libcurl/c/curl_free.html
+        DllCall("libcurl\curl_free"
+            ,   "Ptr", pStr)
     }
     _curl_getdate() {
 
     }
-    _curl_global_cleanup(handle) {
+    _curl_global_cleanup(handle) {  ;untested   https://curl.se/libcurl/c/curl_global_cleanup.html
         DllCall(this.curlDLLpath "\curl_global_cleanup")
     }
     _curl_global_init() {   ;https://curl.se/libcurl/c/curl_global_init.html
@@ -777,14 +806,17 @@ class LibQurl {
     _curl_mime_type() {
 
     }
-    _curl_multi_add_handle() {
-
+    _curl_multi_add_handle(multi_handle, easy_handle) { ;untested   https://curl.se/libcurl/c/curl_multi_add_handle.html
+        return  DllCall(this.curlDLLpath "\curl_multi_add_handle"
+            ,   "Ptr", multi_handle
+            ,   "Ptr", easy_handle)
     }
     _curl_multi_assign() {
 
     }
-    _curl_multi_cleanup() {
-
+    _curl_multi_cleanup() { ;untested   https://curl.se/libcurl/c/curl_multi_cleanup.html
+        return  DllCall(this.curlDLLpath "\curl_multi_cleanup"
+            ,   "Ptr", multi_handle)
     }
     _curl_multi_fdset() {
 
@@ -792,16 +824,21 @@ class LibQurl {
     _curl_multi_info_read() {
 
     }
-    _curl_multi_init() {
-
+    _curl_multi_init() {    ;untested   https://curl.se/libcurl/c/curl_multi_init.html
+        return DllCall(this.curlDLLpath "curl_multi_init"
+            ,   "Ptr")
     }
-    _curl_multi_perform() {
-
+    _curl_multi_perform(multi_handle, running_handles) {    ;untested   https://curl.se/libcurl/c/curl_multi_perform.html
+        return  DllCall(this.curlDLLpath "\curl_multi_add_handle"
+            ,   "Ptr", multi_handle
+            ,   "Ptr", running_handles)
     }
-    _curl_multi_remove_handle() {
-
+    _curl_multi_remove_handle(multi_handle, easy_handle) {   ;untested   https://curl.se/libcurl/c/curl_multi_remove_handle.html
+        return  DllCall(this.curlDLLpath "\curl_multi_remove_handle"
+            ,   "Ptr", multi_handle
+            ,   "Ptr", easy_handle)
     }
-    _curl_multi_setopt() {
+    _curl_multi_setopt(multi_handle, opt, param) {  ;untested   
 
     }
     _curl_multi_socket_action() {
@@ -816,8 +853,13 @@ class LibQurl {
     _curl_multi_poll() {
 
     }
-    _curl_multi_wait() {
-
+    _curl_multi_wait(multi_handle, extra_fds, extra_nfds, timeout_ms, numfds) {    ;untested   https://curl.se/libcurl/c/curl_multi_wait.html
+        return DllCall("libcurl\curl_multi_wait",
+            ,   "Ptr", multi_handle
+            ,   "Ptr", extra_fds
+            ,   "UInt", extra_nfds
+            ,   "Int", timeout_ms
+            ,   "Ptr", numfds)
     }
     _curl_multi_wakeup() {
 
@@ -846,7 +888,7 @@ class LibQurl {
             , "AStr", strArrayItem
             , "Ptr")
     }
-    _curl_slist_free_all(ptrSList) {
+    _curl_slist_free_all(ptrSList) {    ;untested   https://curl.se/libcurl/c/curl_slist_free_all.html
         return DllCall(Curl.curlDLLpath . "\curl_slist_free_all"
             , "Ptr", ptrSList)
     }
@@ -869,16 +911,16 @@ class LibQurl {
 
     }
     _curl_version() {   ;https://curl.se/libcurl/c/curl_version.html
-        return StrGet(DllCall(this.curlDLLpath "\curl_version", "char", 0, "ptr"), "UTF-8")
+        return StrGet(DllCall(this.curlDLLpath "\curl_version"
+            ,   "char", 0
+            ,   "Ptr")  ;return a ptr from DllCall
+            ,   "UTF-8")
     }
     _curl_version_info() {  ;https://curl.se/libcurl/c/curl_version_info.html
         ;returns run-time libcurl version info
-        
-        verPtr := DllCall(this.curlDLLpath "\curl_version_info", "Int", 0xA, "Ptr")
-
-
-
-        return verPtr
+        return DllCall(this.curlDLLpath "\curl_version_info"
+            ,   "Int", 0xA
+            ,   "Ptr")
     }
     _curl_ws_recv() {
 
