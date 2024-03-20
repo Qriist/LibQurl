@@ -6,6 +6,9 @@ curl := LibQurl()
 
 
 handleA := curl.register(A_ScriptDir "\lib\libcurl-x64.dll")
+
+curl._curl_easy_header()
+exitapp
 ; optionMap := Map("URL","https://httpbin.org/headers","CAINFO",A_ScriptDir "\lib\curl-ca-bundle.crt")
 ; msgbox curl.SetOpts(optionMap,&optErrMap)
 

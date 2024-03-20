@@ -641,8 +641,13 @@ class LibQurl {
             ,   "UInt", info
             ,   "Int", retCode)
     }
-    _curl_easy_header() {
-
+    _curl_easy_header(handle,name,index,origin,request) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
+        return DllCall(this.curlDLLpath "\curl_easy_header"
+            ,   "Ptr", name
+            ,   "Int", index
+            ,   "Int", origin
+            ,   "Int", request
+            ,   "Ptr")
     }
     _curl_easy_init() {
         return DllCall(this.curlDLLpath "\curl_easy_init")
