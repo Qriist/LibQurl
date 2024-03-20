@@ -652,8 +652,12 @@ class LibQurl {
     _curl_easy_init() {
         return DllCall(this.curlDLLpath "\curl_easy_init")
     }
-    _curl_easy_nextheader() {
-
+    _curl_easy_nextheader(handle,origin,request,prev) { ;untested https://curl.se/libcurl/c/curl_easy_nextheader.html
+        return DllCall(this.curlDLLpath "\curl_easy_nextheader"
+            ,   "Int", origin
+            ,   "Int", request
+            ,   "Ptr", prev
+            ,   "Ptr")
     }
     _curl_easy_option_by_id(id) {
         ;returns from the pre-built array
