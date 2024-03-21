@@ -693,15 +693,23 @@ class LibQurl {
             , "Ptr", handle)
         return retCode
     }
-    _curl_easy_recv() { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
-
+    _curl_easy_recv(handle,buffer,buflen,&bytes) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
+        return DllCall(this.curlDLLpath "\curl_easy_recv"
+            ,   "Ptr", handle
+            ,   "Ptr", buffer
+            ,   "Int", buflen
+            ,   "Int", &bytes)
     }
     _curl_easy_reset(handle) {  ;https://curl.se/libcurl/c/curl_easy_reset.html
         DllCall(this.curlDLLpath "\curl_easy_reset"
             , "Ptr", handle)
     }
-    _curl_easy_send() { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
-
+    _curl_easy_send(handle,buffer,buflen,&bytes) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
+        return DllCall(this.curlDLLpath "\curl_easy_send"
+            ,   "Ptr", handle
+            ,   "Ptr", buffer
+            ,   "Int", buflen
+            ,   "Int", &bytes)
     }
     _curl_easy_setopt(handle, option, parameter, debug?) {
         if IsSet(debug)
