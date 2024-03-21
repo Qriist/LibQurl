@@ -681,8 +681,10 @@ class LibQurl {
             ,   "UInt", optPtr
             ,   "Ptr")
     }
-    _curl_easy_pause() {
-
+    _curl_easy_pause(handle,bitmask) {  ;untested   https://curl.se/libcurl/c/curl_easy_pause.html
+        return DllCall(this.curlDLLpath "\curl_easy_pause"
+            ,   "Int", handle
+            ,   "UInt", bitmask)
     }
     _curl_easy_perform(handle?) {
         if !IsSet(handle)
@@ -691,14 +693,14 @@ class LibQurl {
             , "Ptr", handle)
         return retCode
     }
-    _curl_easy_recv() {
+    _curl_easy_recv() { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
 
     }
     _curl_easy_reset(handle) {  ;https://curl.se/libcurl/c/curl_easy_reset.html
         DllCall(this.curlDLLpath "\curl_easy_reset"
             , "Ptr", handle)
     }
-    _curl_easy_send() {
+    _curl_easy_send() { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
 
     }
     _curl_easy_setopt(handle, option, parameter, debug?) {
@@ -718,11 +720,16 @@ class LibQurl {
             , "Int", errornum
             ,"Ptr")
     }
-    _curl_easy_unescape() {
-
+    _curl_easy_unescape(handle,input,inlength,outlength) { ;untested   https://curl.se/libcurl/c/curl_easy_unescape.html
+        return DllCall(this.curlDLLpath "\curl_easy_unescape"
+            ,   "Ptr", handle
+            ,   "AStr", input
+            ,   "Int", inlength
+            ,   "Int", outlength)
     }
-    _curl_easy_upkeep() {
-
+    _curl_easy_upkeep(handle) { ;untested https://curl.se/libcurl/c/curl_easy_upkeep.html
+        return DllCall(this.curlDLLpath "\curl_easy_upkeep"
+            , "Ptr", handle)
     }
     _curl_formadd() {   ;untested   https://curl.se/libcurl/c/curl_formadd.html
         ;This function is deprecated. Use curl_mime_init instead.
