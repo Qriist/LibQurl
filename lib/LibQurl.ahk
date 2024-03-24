@@ -739,44 +739,14 @@ class LibQurl {
         return DllCall(this.curlDLLpath "\curl_easy_upkeep"
             , "Ptr", handle)
     }
-    _curl_formadd() {   ;untested   https://curl.se/libcurl/c/curl_formadd.html
-        ;This function is deprecated. Use curl_mime_init instead.
-        /*
-            curl_formadd(ByRef firstitem, ByRef lastitem, params*) {
-                strA := []
-                For idx, val in params {
-                    if !Mod(idx, 2) && ( curl.type(val) = "string" ) {
-                        curl.strPutVar(val, valA, "UTF-8")
-                        strA[idx] := valA
-                        params[idx] := strA.GetAddress(idx)
-                    }
-                }
-                return DllCall("libcurl\curl_formadd"
-                    , "ptr*", firstitem
-                    , "ptr*", lastitem
-                    , "uint", curl.const(params.1), "ptr", params.2
-                    , "uint", curl.const(params.3), "ptr", params.4
-                    , "uint", curl.const(params.5), "ptr", params.6
-                    , "uint", curl.const(params.7), "ptr", params.8
-                    , "uint", curl.const(params.9)
-                    , "cdecl")
-        */
-    }
-    _curl_formfree() {  ;untested   https://curl.se/libcurl/c/curl_formfree.html
-        ;This function is deprecated. Do not use. See curl_mime_init instead!
-        /*
-        	DllCall("libcurl\curl_formfree", "ptr", form, "cdecl")
-        */
-    }
-    _curl_formget() {   ;untested   https://curl.se/libcurl/c/curl_formget.html
-
-    }
     _curl_free(pStr) {  ;untested   ;https://curl.se/libcurl/c/curl_free.html
         DllCall("libcurl\curl_free"
             ,   "Ptr", pStr)
     }
-    _curl_getdate() {
-
+    _curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate.html
+        return DllCall(this.curlDLLpath "\curl_global_getdate"
+            ,   "AStr", datestring
+            ,   "UInt", "") ;not used, pass a NULL
     }
     _curl_global_cleanup(handle) {  ;untested   https://curl.se/libcurl/c/curl_global_cleanup.html
         DllCall(this.curlDLLpath "\curl_global_cleanup")
@@ -788,47 +758,86 @@ class LibQurl {
         else
             return
     }
-    _curl_global_init_mem() {
+    ; _curl_global_init_mem(flags,curl_malloc_callback,curl_free_callback,curl_realloc_callback,curl_strdup_callback,curl_calloc_callback) {   ;untested   https://curl.se/libcurl/c/curl_global_init_mem.html
 
+    ; }
+    _curl_global_sslset(id,name,&avail?) {  ;untested   https://curl.se/libcurl/c/curl_global_sslset.html
+        return DllCall(this.curlDLLhandle "\curl_global_sslset"
+            ,   "Int", id
+            ,   "AStr", name
+            ,   "Ptr", &avail?)
     }
-    _curl_global_sslset() {
-
+    _curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_trace.html
+        return DllCall(this.curlDLLhandle "\curl_global_trace"
+            ,   "AStr", config)
     }
-    _curl_mime_addpart() {
-
+    _curl_mime_addpart(mime_handle) { ;untested   https://curl.se/libcurl/c/curl_mime_addpart.html
+        return DllCall(this.curlDLLhandle "\curl_mime_addpart"
+            ,   "Int", mime_handle)
     }
-    _curl_mime_data() {
-
+    _curl_mime_data(mime_handle,data,datasize) { ;untested   https://curl.se/libcurl/c/curl_mime_data.html
+        return DllCall(this.curlDLLhandle "\curl_mime_data"
+            ,   "Int", mime_handle
+            ,   "Ptr", data
+            ,   "Int", datasize)
     }
-    _curl_mime_data_cb() {
-
+    _curl_mime_data_cb(mime_handle,datasize,readfunc,seekfunc,freefunc,arg) {  ;untested   https://curl.se/libcurl/c/curl_mime_data_cb.html
+        return DllCall(this.curlDLLhandle "\curl_mime_data_cb"
+            ,   "Int", mime_handle
+            ,   "Int", datasize
+            ,   "Ptr", readfunc
+            ,   "Ptr", seekfunc
+            ,   "Ptr", freefunc
+            ,   "Ptr", arg)
     }
-    _curl_mime_encoder() {
-
+    _curl_mime_encoder(mime_handle,encoding) {  ;untested   https://curl.se/libcurl/c/curl_mime_encoder.html
+        return DllCall(this.curlDLLhandle "\curl_mime_encoder"
+            ,   "Int", mime_handle
+            ,   "AStr", encoding)
     }
-    _curl_mime_filedata() {
-
+    _curl_mime_filedata(mime_handle,filename) {    ;untested   https://curl.se/libcurl/c/curl_mime_filedata.html
+        return DllCall(this.curlDLLhandle "\curl_mime_filedata"
+            ,   "Int", mime_handle
+            ,   "AStr", filename)
     }
-    _curl_mime_filename() {
-
+    _curl_mime_filename(mime_handle,filename) { ;untested   https://curl.se/libcurl/c/curl_mime_filename.html
+        return DllCall(this.curlDLLhandle "\curl_mime_filename"
+            ,   "Int", mime_handle
+            ,   "AStr", filename)
     }
-    _curl_mime_free() {
-
+    _curl_mime_free(mime_handle) {  ;untested   https://curl.se/libcurl/c/curl_mime_free.html
+        return DllCall(this.curlDLLhandle "curl_mime_free"
+            ,   "Int", mime_handle)
     }
-    _curl_mime_headers() {
-
+    _curl_mime_headers(mime_handle,headers,take_ownership) {    ;untested   https://curl.se/libcurl/c/curl_mime_headers.html
+        return DllCall(this.curlDLLhandle "curl_mime_headers"
+            ,   "Int", mime_handle
+            ,   "Int", headers
+            ,   "Int", take_ownership
     }
-    _curl_mime_init() {
-
+    _curl_mime_init(easy_handle) {  ;untested   https://curl.se/libcurl/c/curl_mime_init.html
+        /*  use the mime interface in place of the following depreciated functions:
+            curl_formadd
+            curl_formfree
+            curl_formget
+        */
+        return DllCall(this.curlDLLhandle "\curl_mime_init"
+            ,   "Int", easy_handle)
     }
-    _curl_mime_name() {
-
+    _curl_mime_name(mime_handle,name) { ;untested   https://curl.se/libcurl/c/curl_mime_name.html
+        return DllCall(this.curlDLLhandle "\curl_mime_name"
+            ,   "Int", mime_handle
+            ,   "AStr", name)
     }
-    _curl_mime_subparts() {
-
+    _curl_mime_subparts(mime_handle,mime_part) {  ;untested   https://curl.se/libcurl/c/curl_mime_subparts.html
+        return DllCall(this.curlDLLhandle "\curl_mime_subparts"
+            ,   "Int", mime_handle
+            ,   "Int", mime_part)
     }
-    _curl_mime_type() {
-
+    _curl_mime_type(mime_part,mimetype) {   ;untested   https://curl.se/libcurl/c/curl_mime_type.html
+        return DllCall(this.curlDLLhandle "\curl_mime_type"
+            ,   "Int", mime_part
+            ,   "AStr", mimetype)
     }
     _curl_multi_add_handle(multi_handle, easy_handle) { ;untested   https://curl.se/libcurl/c/curl_multi_add_handle.html
         return  DllCall(this.curlDLLpath "\curl_multi_add_handle"
