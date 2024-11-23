@@ -1,0 +1,22 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "precompile library from src",
+			"type": "shell",
+			"windows": {
+				"command": "'C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe'",
+				"args": [
+					".\\generate.ahk"
+				]
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "new",
+				"revealProblems": "always"
+			},
+			"problemMatcher": []
+		}
+	]
+  }
+  
