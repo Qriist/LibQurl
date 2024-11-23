@@ -94,8 +94,33 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["options"][option] := parameter
         return this._curl_easy_setopt(easy_handle,option,parameter,debug?)
     }
-
-
+    SetOpts(optionMap,&optErrMap?,easy_handle?){  ;for setting multiple options at once
+        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        optErrMap := Map()
+        optErrVal := 0
+        ;TODO - add handling for Opts with scaffolding
+        for k,v in optionMap {
+            Switch k, "OFF" {
+                ; case "URL":{}
+                Default: optErrVal += optErrMap[k] := this.SetOpt(k,v,easy_handle)
+            }
+        }
+        return optErrVal    ;any non-zero value means you should check the optErrMap
+    }
+    ListOpts(easy_handle?){  ;returns human-readable printout of the given easy_handle's set options
+    easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        ret := "These are the options that have been set for this easy_handle:`n"
+        for k,v in this.easyHandleMap[easy_handle]["options"]{
+                if (v!="")
+                    ret .= k ": " (!IsObject(v)?v:"<OBJECT>") "`n"
+                else
+                    ret .= k ": " "<NULL>" "`n"
+        }
+        return ret
+    }
+    GetErrorString(errornum){
+        return StrGet(this._curl_easy_strerror(errornum),"UTF-8")
+    }
 	HeaderToMem(maxCapacity := 0, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
         passedHandleMap := this.easyHandleMap
@@ -146,8 +171,7 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Open()
-        retCode := DllCall("libcurl-x64\curl_easy_perform","Ptr",easy_handle)
-        ; msgbox "perform code: " retCode
+        retcode := this._curl_easy_perform(easy_handle)
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Close()
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Close()
 

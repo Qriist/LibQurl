@@ -36,36 +36,12 @@ class LibQurl {
         return newHandle   
         */     
     ; }
-    GetErrorString(errornum){
-        return StrGet(this._curl_easy_strerror(errornum),"UTF-8")
-    }
-    ListOpts(easy_handle?){  ;returns human-readable printout of the given easy_handle's set options
-    easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-        ret := "These are the options that have been set for this easy_handle:`n"
-        for k,v in this.easyHandleMap[easy_handle]["options"]{
-                if (v!="")
-                    ret .= k ": " (!IsObject(v)?v:"<OBJECT>") "`n"
-                else
-                    ret .= k ": " "<NULL>" "`n"
-        }
-        return ret
-    }
 
 
 
-    SetOpts(optionMap,&optErrMap,easy_handle?){  ;for setting multiple options at once
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-        optErrMap := Map()
-        optErrVal := 0
-        ;TODO - add handling for Opts with scaffolding
-        for k,v in optionMap {
-            Switch k, "OFF" {
-                ; case "URL":{}
-                Default: optErrVal += optErrMap[k] := this.SetOpt(k,v,easy_handle)
-            }
-        }
-        return optErrVal    ;any non-zero value means you should check the optErrMap
-    }
+
+
+
 
 
 
@@ -275,13 +251,7 @@ class LibQurl {
             ,   "Int", easy_handle
             ,   "UInt", bitmask)
     }
-    _curl_easy_perform(easy_handle?) {
-        if !IsSet(easy_handle)
-            easy_handle := this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-        retCode := DllCall(this.curlDLLpath "\curl_easy_perform"
-            , "Ptr", easy_handle)
-        return retCode
-    }
+
     _curl_easy_recv(easy_handle,buffer,buflen,&bytes) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
         return DllCall(this.curlDLLpath "\curl_easy_recv"
             ,   "Ptr", easy_handle
@@ -301,11 +271,7 @@ class LibQurl {
             ,   "Int", &bytes)
     }
 
-    _curl_easy_strerror(errornum) {
-        return DllCall(this.curlDLLpath "\curl_easy_strerror"
-            , "Int", errornum
-            ,"Ptr")
-    }
+
     _curl_easy_unescape(easy_handle,input,inlength,outlength) { ;untested   https://curl.se/libcurl/c/curl_easy_unescape.html
         return DllCall(this.curlDLLpath "\curl_easy_unescape"
             ,   "Ptr", easy_handle
