@@ -220,7 +220,29 @@ class LibQurl {
     EasyCleanup(easy_handle?){   ;alias for Cleanup
         this.Cleanup(easy_handle?)
     }
-
+    ; Sets custom HTTP headers for request.
+	; Pass an array of "Header: value" strings OR a Map of the same.
+	; Use empty value ("Header: ") to disable internally used header.
+	; Use semicolon ("Header;") to add the header with no value.
+	SetHeaders(headersArrayOrMap,easy_handle?) {
+        if (Type(headersArrayOrMap)="Map"){
+            headersArray := []
+            for k,v in headersArrayOrMap{
+                switch v {
+                    case "":    ;diabled
+                        headersArray.Push(k ": ")
+                    case ";":   ;empty
+                        headersArray.Push(k ";")
+                    default:
+                        headersArray.Push(k ": " v)
+                }
+            }
+        } else {
+            headersArray := headersArrayOrMap
+        }
+        headersPtr := this._ArrayToSList(headersArray)
+		Return this.SetOpt("HTTPHEADER", headersPtr,easy_handle?)
+	}
 ;#compile:helper
 ;#compile:_struct
 ;#compile:storage

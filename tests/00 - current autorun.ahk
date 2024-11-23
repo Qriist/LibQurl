@@ -1,8 +1,8 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "05 - set and list multiple options"
+current := "06 - set custom headers"
 
-clean := ["txt","html"]
+clean := ["txt","html","json"]
 for k,v in clean
 	FileDelete(A_ScriptDir "\*." v)
 	

@@ -45,6 +45,21 @@ _curl_easy_setopt(easy_handle, option, parameter, debug?) {
     return retCode
 }
 
+
+_curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
+    return DllCall(this.curlDLLpath "\curl_slist_append"
+        , "Ptr" , ptrSList
+        , "AStr", strArrayItem
+        , "Ptr")
+}
+_curl_slist_free_all(ptrSList) {    ;untested   https://curl.se/libcurl/c/curl_slist_free_all.html
+    return DllCall(Curl.curlDLLpath "\curl_slist_free_all"
+        , "Ptr", ptrSList)
+}
+
+
+
+
 _curl_easy_strerror(errornum) {
     return DllCall(this.curlDLLpath "\curl_easy_strerror"
         , "Int", errornum

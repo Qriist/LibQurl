@@ -216,7 +216,29 @@ class LibQurl {
     EasyCleanup(easy_handle?){   ;alias for Cleanup
         this.Cleanup(easy_handle?)
     }
-
+    ; Sets custom HTTP headers for request.
+	; Pass an array of "Header: value" strings OR a Map of the same.
+	; Use empty value ("Header: ") to disable internally used header.
+	; Use semicolon ("Header;") to add the header with no value.
+	SetHeaders(headersArrayOrMap,easy_handle?) {
+        if (Type(headersArrayOrMap)="Map"){
+            headersArray := []
+            for k,v in headersArrayOrMap{
+                switch v {
+                    case "":    ;diabled
+                        headersArray.Push(k ": ")
+                    case ";":   ;empty
+                        headersArray.Push(k ";")
+                    default:
+                        headersArray.Push(k ": " v)
+                }
+            }
+        } else {
+            headersArray := headersArrayOrMap
+        }
+        headersPtr := this._ArrayToSList(headersArray)
+		Return this.SetOpt("HTTPHEADER", headersPtr,easy_handle?)
+	}
     _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
         this.Opt.CaseSense := "Off"
         optPtr := 0
@@ -340,6 +362,56 @@ class LibQurl {
         ; msgbox type(this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"])
         Return this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
     }
+    
+        ; Linked-list
+    	; ===========
+    	
+    	; Converts an array of strings to linked-list.
+    	; Returns pointer to linked-list, or 0 if something went wrong.
+    	
+    	_ArrayToSList(strArray) {
+    		ptrSList := 0
+    		ptrTemp  := 0
+    		
+    		Loop strArray.Length {
+    			ptrTemp := this._curl_slist_append(ptrSList,strArray[A_Index])
+                
+        		If (ptrTemp == 0) {
+    				Curl._FreeSList(ptrSList)
+    				Return 0
+    			}
+    			ptrSList := ptrTemp
+    		}
+    		
+    		Return ptrSList
+    	}
+    	
+    	
+    	; Converts linked-list to an array of strings.
+    	
+    	_SListToArray(ptrSList) {
+    		result  := []
+    		ptrNext := ptrSList
+    		
+    		Loop {
+    			If (ptrNext == 0)
+    				Break
+    			
+    			ptrData := NumGet(ptrNext, 0, "Ptr")
+    			ptrNext := NumGet(ptrNext, A_PtrSize, "Ptr")
+    			
+    			result.Push(StrGet(ptrData, "CP0"))
+    		}
+    		
+    		Return result
+    	}
+    	
+    	
+    	_FreeSList(ptrSList?) {
+    		If (!IsSet(ptrSList) || (ptrSList == 0))
+    			Return
+    		this._curl_slist_free_all(ptrSList)
+    	}
 
     class _struct {
         walkPtrArray(inPtr) {
@@ -661,6 +733,21 @@ class LibQurl {
             ,   this.opt[option]["type"], parameter)
         return retCode
     }
+    
+    
+    _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
+        return DllCall(this.curlDLLpath "\curl_slist_append"
+            , "Ptr" , ptrSList
+            , "AStr", strArrayItem
+            , "Ptr")
+    }
+    _curl_slist_free_all(ptrSList) {    ;untested   https://curl.se/libcurl/c/curl_slist_free_all.html
+        return DllCall(Curl.curlDLLpath "\curl_slist_free_all"
+            , "Ptr", ptrSList)
+    }
+    
+    
+    
     
     _curl_easy_strerror(errornum) {
         return DllCall(this.curlDLLpath "\curl_easy_strerror"
