@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "03 - download header and file to memory"
+current := "04 - prepare and use multiple easy handles"
 
 clean := ["txt","html"]
 for k,v in clean

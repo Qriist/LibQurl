@@ -1,5 +1,9 @@
 ﻿;This file contains the low level DLL calls to interact with libcurl
 ;***
+_curl_easy_cleanup(easy_handle) {    ;untested https://curl.se/libcurl/c/curl_easy_cleanup.html
+    DllCall(this.curlDLLpath "\curl_easy_cleanup"
+        ,   "Ptr", easy_handle)
+}
 _curl_easy_init() {
     return DllCall(this.curlDLLpath "\curl_easy_init"
         ,   "Ptr")

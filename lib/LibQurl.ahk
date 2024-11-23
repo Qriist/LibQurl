@@ -55,6 +55,14 @@ class LibQurl {
     EasyInit(){ ;just a clarifying alias for Init()
         return this.Init()
     }
+    ListHandles(){
+        ;returns a plaintext listing of all handles
+        ret := ""
+        for k,v in this.easyHandleMap {
+            ret .= k "`n"
+        }
+        return Trim(ret,"`n")
+    }
     ShowOB(ob, strOB := "") {  ; returns `n list.  pass object, returns list of elements. nice chart format with `n.  strOB for internal use only.
         (Type(Ob) ~= 'Object|Gui') ? Ob := Ob.OwnProps() : 1
         for i, v in ob
@@ -82,23 +90,6 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["options"][option] := parameter
         return this._curl_easy_setopt(easy_handle,option,parameter,debug?)
     }
-
-
-    /*
-        ;orig
-        HeaderToMem(maxCapacity := 0, handle?) {
-            handle ??= this.handleMap[0]["handle"]   ;defaults to the last created handle
-            passedHandleMap := this.handleMap
-            this.handleMap[handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "header", handle)
-            this.SetOpt("HEADERDATA",this.handleMap[handle]["callbacks"]["header"]["storageHandle"],handle)
-            this.SetOpt("HEADERFUNCTION",this.handleMap[handle]["callbacks"]["header"]["CBF"],handle)
-            Return
-        }
-    */
-
-
-
-
 
 
 	HeaderToMem(maxCapacity := 0, easy_handle?) {
@@ -190,7 +181,17 @@ class LibQurl {
             :StrGet(lastBody,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
     }
 
-
+    Cleanup(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        for k,v in this.easyHandleMap[easy_handle]["callbacks"]
+            if IsInteger(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
+                CallbackFree(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
+        this.easyHandleMap.Delete(easy_handle)
+        this._curl_easy_cleanup(easy_handle)
+    }
+    EasyCleanup(easy_handle?){   ;alias for Cleanup
+        this.Cleanup(easy_handle?)
+    }
 
     _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
         this.Opt.CaseSense := "Off"
@@ -592,6 +593,10 @@ class LibQurl {
         }
     }
 
+    _curl_easy_cleanup(easy_handle) {    ;untested https://curl.se/libcurl/c/curl_easy_cleanup.html
+        DllCall(this.curlDLLpath "\curl_easy_cleanup"
+            ,   "Ptr", easy_handle)
+    }
     _curl_easy_init() {
         return DllCall(this.curlDLLpath "\curl_easy_init"
             ,   "Ptr")

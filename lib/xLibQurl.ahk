@@ -2,14 +2,7 @@
 class LibQurl {
 
 
-    ListHandles(){
-        ;returns a plaintext listing of all handles
-        ret := ""
-        for k,v in this.easyHandleMap {
-            ret .= k "`n"
-        }
-        return Trim(ret,"`n")
-    }
+
 
 
     ; DupeInit(easy_handle?){
@@ -103,17 +96,7 @@ class LibQurl {
 
 
 
-    Cleanup(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-        for k,v in this.easyHandleMap[easy_handle]["callbacks"]
-            if IsInteger(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
-                CallbackFree(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
-        this.easyHandleMap.Delete(easy_handle)
-        this._curl_easy_cleanup(easy_handle)
-    }
-    EasyCleanup(easy_handle?){   ;alias for Cleanup
-        this.Cleanup(easy_handle?)
-    }
+
 
  
     
@@ -230,10 +213,7 @@ class LibQurl {
 
     
     ;internal libcurl functions called by this class
-    _curl_easy_cleanup(easy_handle) {    ;untested https://curl.se/libcurl/c/curl_easy_cleanup.html
-        DllCall(this.curlDLLpath "\curl_easy_cleanup"
-            ,   "Ptr", easy_handle)
-    }
+
     _curl_easy_duphandle(easy_handle) {  ;untested   https://curl.se/libcurl/c/curl_easy_duphandle.html
         ret := DllCall(this.curlDLLpath "\curl_easy_duphandle"
             , "Int", easy_handle)
