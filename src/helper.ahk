@@ -125,53 +125,91 @@ _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     Return this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
 }
 
-    ; Linked-list
-	; ===========
-	
-	; Converts an array of strings to linked-list.
-	; Returns pointer to linked-list, or 0 if something went wrong.
-	
-	_ArrayToSList(strArray) {
-		ptrSList := 0
-		ptrTemp  := 0
-		
-		Loop strArray.Length {
-			ptrTemp := this._curl_slist_append(ptrSList,strArray[A_Index])
-            
-    		If (ptrTemp == 0) {
-				Curl._FreeSList(ptrSList)
-				Return 0
-			}
-			ptrSList := ptrTemp
-		}
-		
-		Return ptrSList
-	}
-	
-	
-	; Converts linked-list to an array of strings.
-	
-	_SListToArray(ptrSList) {
-		result  := []
-		ptrNext := ptrSList
-		
-		Loop {
-			If (ptrNext == 0)
-				Break
-			
-			ptrData := NumGet(ptrNext, 0, "Ptr")
-			ptrNext := NumGet(ptrNext, A_PtrSize, "Ptr")
-			
-			result.Push(StrGet(ptrData, "CP0"))
-		}
-		
-		Return result
-	}
-	
-	
-	_FreeSList(ptrSList?) {
-		If (!IsSet(ptrSList) || (ptrSList == 0))
-			Return
-		this._curl_slist_free_all(ptrSList)
-	}
+; Linked-list
+; ===========
 
+; Converts an array of strings to linked-list.
+; Returns pointer to linked-list, or 0 if something went wrong.
+
+_ArrayToSList(strArray) {
+    ptrSList := 0
+    ptrTemp  := 0
+    
+    Loop strArray.Length {
+        ptrTemp := this._curl_slist_append(ptrSList,strArray[A_Index])
+        
+        If (ptrTemp == 0) {
+            Curl._FreeSList(ptrSList)
+            Return 0
+        }
+        ptrSList := ptrTemp
+    }
+    
+    Return ptrSList
+}
+
+
+; Converts linked-list to an array of strings.
+
+_SListToArray(ptrSList) {
+    result  := []
+    ptrNext := ptrSList
+    
+    Loop {
+        If (ptrNext == 0)
+            Break
+        
+        ptrData := NumGet(ptrNext, 0, "Ptr")
+        ptrNext := NumGet(ptrNext, A_PtrSize, "Ptr")
+        
+        result.Push(StrGet(ptrData, "CP0"))
+    }
+    
+    Return result
+}
+
+
+_FreeSList(ptrSList?) {
+    If (!IsSet(ptrSList) || (ptrSList == 0))
+        Return
+    this._curl_slist_free_all(ptrSList)
+}
+
+_DeepClone(obj) {    ;https://github.com/thqby/ahk2_lib/blob/master/deepclone.ahk
+    ;fully copies an object without any shared references.
+    objs := Map(), objs.Default := ''
+    return clone(obj)
+
+    clone(obj) {
+        switch Type(obj) {
+            case 'Array', 'Map':
+                o := obj.Clone()
+                for k, v in o
+                    if IsObject(v)
+                        o[k] := objs[p := ObjPtr(v)] || (objs[p] := clone(v))
+                return o
+            case 'Object':
+                o := obj.Clone()
+                for k, v in o.OwnProps()
+                    if IsObject(v)
+                        o.%k% := objs[p := ObjPtr(v)] || (objs[p] := clone(v))
+                return o
+            default:
+                return obj
+        }
+    }
+}
+
+_ErrorHandler(callingMethod,invokedCurlFunction,curlErrorCodeType,incomingValue?){
+    If (curlErrorCodeType = "Curlcode") {
+
+    } else if (curlErrorCodeType = "Curlmcode") {
+
+    } else if (curlErrorCodeType = "Curlshcode") {
+
+    } else if (curlErrorCodeType = "Curlucode") {
+
+    } else if (curlErrorCodeType = "Curlhcode") {
+
+    }
+}
