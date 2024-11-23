@@ -243,6 +243,85 @@ class LibQurl {
         headersPtr := this._ArrayToSList(headersArray)
 		Return this.SetOpt("HTTPHEADER", headersPtr,easy_handle?)
 	}
+
+
+
+
+    ;Base64 operations
+    StringToBase64(String, Encoding := "UTF-8")
+    {
+        static CRYPT_STRING_BASE64 := 0x00000001
+        static CRYPT_STRING_NOCRLF := 0x40000000
+
+        Binary := Buffer(StrPut(String, Encoding))
+        StrPut(String, Binary, Encoding)
+        if !(DllCall("crypt32\CryptBinaryToStringW", "Ptr", Binary, "UInt", Binary.Size - 1, "UInt", (CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF), "Ptr", 0, "UInt*", &Size := 0))
+            throw OSError()
+
+        Base64 := Buffer(Size << 1, 0)
+        if !(DllCall("crypt32\CryptBinaryToStringW", "Ptr", Binary, "UInt", Binary.Size - 1, "UInt", (CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF), "Ptr", Base64, "UInt*", Size))
+            throw OSError()
+
+        return StrGet(Base64)
+    }
+
+
+
+
+
+    ;dummied code that doesn't work right yet
+
+
+    ; DupeInit(easy_handle?){
+        ; newHandle := this._curl_easy_duphandle(easy_handle)
+        ; this.easyHandleMap[newHandle] := this.easyHandleMap[0] := this.DeepClone(this.easyHandleMap[easy_handle])
+        ; If !this.easyHandleMap[newHandle]
+        ;     throw ValueError("Problem in 'curl_easy_duphandle'! Unable to init easy interface!", -1, this.curlDLLpath)
+        ; this.easyHandleMap[newHandle] := this.easyHandleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created easy_handle
+        ; ,this.easyHandleMap[newHandle]["options"] := Map()  ;prepares option storage
+        ; for k,v in this.easyHandleMap[easy_handle]["options"]
+        ;     this.SetOpt(k,v,newHandle)
+        ; this.easyHandleMap[newHandle]["easy_handle"] := newHandle
+        ; return newHandle 
+        /*
+        if !IsSet(easy_handle)
+            easy_handle := this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        newHandle := this._curl_easy_duphandle(easy_handle)
+        If !this.easyHandleMap[easy_handle]
+            throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
+        ; msgbox easy_handle "`n" newHandle "`n`n" this.easyHandleMap[0]["easy_handle"]
+        this.easyHandleMap[newHandle] := this.DeepClone(this.easyHandleMap[easy_handle])
+        msgbox this.ShowOB(this.easyHandleMap[newHandle])
+        this.easyHandleMap[0]["easy_handle"] := this.easyHandleMap[newHandle]["easy_handle"]
+        ; msgbox this.easyHandleMap[newHandle]["easy_handle"] "`n" this.easyHandleMap[easy_handle]["easy_handle"] "`n`n" this.easyHandleMap[0]["easy_handle"]
+        ; this.easyHandleMap[newHandle] := this.easyHandleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created easy_handle
+        ; ,this.easyHandleMap[newHandle]["options"] := Map()  ;prepares option storage
+
+
+        ; for k,v in this.easyHandleMap[easy_handle]["options"]
+        ;     this.SetOpt(k,v,newHandle)
+        return newHandle   
+    */     
+    ; }
+
+    ; WriteToNone() {
+    ; 	Return (this._writeTo := "")
+    ; }
+
+    ; WriteToMagic(easy_handle?) {
+    ;     if !IsSet(easy_handle)
+    ;         easy_handle := this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+    ;     ;instanstiate Storage.File
+    ;     passedHandleMap := this.easyHandleMap
+    ;     this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := class_libcurl.Storage.File(filename, &passedHandleMap, "body", "w", easy_handle)
+    ;     this.SetOpt("WRITEDATA",this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"],easy_handle)
+    ;     this.SetOpt("WRITEFUNCTION",this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"],easy_handle) 
+    ;     Return
+    ; }
+
+    ; HeaderToNone() {
+    ; 	Return (this._headerTo := "")
+    ; }
 ;#compile:helper
 ;#compile:_struct
 ;#compile:storage
