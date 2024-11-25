@@ -815,7 +815,26 @@ class LibQurl {
         return DllCall(this.curlDLLpath "\curl_easy_init"
             ,   "Ptr")
     }
-    
+    _curl_easy_option_by_id(id) {
+        ;returns from the pre-built array because it was already parsed
+        If this.OptById.Has(id)
+            return this.Opt[this.OptById[id]]
+        return 0
+        ; retCode := DllCall(this.curlDLLpath "\curl_easy_option_by_id"
+        ;     ,"Int",id
+        ;     ,"Ptr")
+        ; return retCode
+    }
+    _curl_easy_option_by_name(name) {
+        ;returns from the pre-built array because it was already parsed
+        If this.Opt.Has(name)
+            return this.Opt[name]
+        return 0
+        ; retCode := DllCall(this.curlDLLpath "\curl_easy_option_by_name"
+        ;     ,"AStr",name
+        ;     ,"Ptr")
+        ; return retCode
+    }
     _curl_easy_option_next(optPtr) {    ;https://curl.se/libcurl/c/curl_easy_option_next.html
         return DllCall("libcurl-x64\curl_easy_option_next"
             ,   "UInt", optPtr
@@ -835,7 +854,10 @@ class LibQurl {
         else
             return
     }
-    
+    _curl_easy_reset(easy_handle) {  ;https://curl.se/libcurl/c/curl_easy_reset.html
+        DllCall(this.curlDLLpath "\curl_easy_reset"
+            , "Ptr", easy_handle)
+    }
     _curl_easy_setopt(easy_handle, option, parameter, debug?) {
         if IsSet(debug)
             msgbox this.showob(this.opt[option]) "`n`n`n"
@@ -925,23 +947,9 @@ class LibQurl {
     ;         ,   "Ptr", prev
     ;         ,   "Ptr")
     ; }
-    ; _curl_easy_option_by_id(id) {
-    ;     ;returns from the pre-built array
-    ;     If this.optMap.Has(id)
-    ;         return this.optMap[id]
-    ;     return 0
-    ; }
-    ; _curl_easy_option_by_name(name) {
-    ;     ;returns from the pre-built array
-    ;     If this.optMap.Has(name)
-    ;         return this.optMap[name]
-    ;     return 0
     
-    ;     ; retCode := DllCall(this.curlDLLpath "\curl_easy_option_by_name"
-    ;     ;     ,"AStr",name
-    ;     ;     ,"Ptr")
-    ;     ; return retCode
-    ; }
+    
+    
     
     ; _curl_easy_pause(easy_handle,bitmask) {  ;untested   https://curl.se/libcurl/c/curl_easy_pause.html
     ;     return DllCall(this.curlDLLpath "\curl_easy_pause"
@@ -956,10 +964,7 @@ class LibQurl {
     ;         ,   "Int", buflen
     ;         ,   "Int", &bytes)
     ; }
-    ; _curl_easy_reset(easy_handle) {  ;https://curl.se/libcurl/c/curl_easy_reset.html
-    ;     DllCall(this.curlDLLpath "\curl_easy_reset"
-    ;         , "Ptr", easy_handle)
-    ; }
+    
     ; _curl_easy_send(easy_handle,buffer,buflen,&bytes) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
     ;     return DllCall(this.curlDLLpath "\curl_easy_send"
     ;         ,   "Ptr", easy_handle
