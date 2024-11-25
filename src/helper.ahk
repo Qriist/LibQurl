@@ -130,7 +130,6 @@ _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
 
 ; Converts an array of strings to linked-list.
 ; Returns pointer to linked-list, or 0 if something went wrong.
-
 _ArrayToSList(strArray) {
     ptrSList := 0
     ptrTemp  := 0
@@ -150,7 +149,6 @@ _ArrayToSList(strArray) {
 
 
 ; Converts linked-list to an array of strings.
-
 _SListToArray(ptrSList) {
     result  := []
     ptrNext := ptrSList
