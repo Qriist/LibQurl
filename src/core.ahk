@@ -264,15 +264,26 @@ class LibQurl {
         switch Type(sourceData) {
             case "String","Integer":
                 this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(sourceData)
+            case "Object","Array","Map":
+                this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(json.dump(sourceData))
             case "File":
                 this.easyHandleMap[easy_handle]["postData"] := Buffer(sourceData.length)  ;create the buffer with the right size
                 sourceData.RawRead(this.easyHandleMap[easy_handle]["postData"]) ;read the file into the buffer
-            case "Object","Array","Map":
-                this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(json.dump(sourceData))
+                this.SetOpt("POSTFIELDSIZE_LARGE",sourceData.length)
             Default:
                 throw ValueError("Unknown object type passed as POST data: " Type(sourceData))
         }
         this.SetOpt("POSTFIELDS",this.easyHandleMap[easy_handle]["postData"])
+
+        /*
+            "File" currently uses this method:
+            curl -X POST "https://httpbin.org/post" -H "accept: application/json" --data-binary "@07.binary.upload.zip"
+
+            and currently does not use:
+            curl -X POST "https://httpbin.org/post" -H "accept: application/json" -F "file=@07.binary.upload.zip"
+
+            todo - investigate if there's a need to differentiate between them.
+        */
     }
 
 

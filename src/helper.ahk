@@ -211,3 +211,13 @@ _ErrorHandler(callingMethod,invokedCurlFunction,curlErrorCodeType,incomingValue?
 
     }
 }
+
+; Returns a Buffer object containing the string.
+_StrBuf(str, encoding := "cp0")
+{
+    ; Calculate required size and allocate a buffer.
+    buf := Buffer(StrPut(str, encoding))
+    ; Copy or convert the string.
+    StrPut(str, buf, encoding)
+    return buf
+}

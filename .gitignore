@@ -422,6 +422,6 @@ download/b-head.txt
 download/httpbin-head.txt
 download/b-body.json
 .vscode
-tests/*.json
-tests/*.txt
-tests/*.html
+*.json
+*.txt
+*.html

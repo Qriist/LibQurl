@@ -13,5 +13,8 @@ newOpts := Map("ACCEPT_ENCODING","br"
 curl.SetOpts(newOpts)
 
 options .= "MODIFIED OPTIONS:`n" curl.ListOpts() "`n`n`n"
+
+
+options .= "ALL KNOWN OPTIONS:`n" curl.showob(curl.OptById)
 FileOpen(A_ScriptDir "\05.options.txt","w").Write(options)
 

@@ -1,4 +1,5 @@
-#requires Autohotkey v2.1-alpha.2
+#requires Autohotkey v2.1-alpha.9
+; #Include <v2\cjson>
 class LibQurl {
     ;core functionality
     __New() {
@@ -216,11 +217,16 @@ class LibQurl {
     EasyCleanup(easy_handle?){   ;alias for Cleanup
         this.Cleanup(easy_handle?)
     }
-    ; Sets custom HTTP headers for request.
-	; Pass an array of "Header: value" strings OR a Map of the same.
-	; Use empty value ("Header: ") to disable internally used header.
-	; Use semicolon ("Header;") to add the header with no value.
-	SetHeaders(headersArrayOrMap,easy_handle?) {
+
+
+    
+
+	SetHeaders(headersArrayOrMap,easy_handle?) {    ;Sets custom HTTP headers for request.
+        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+
+        ; Pass an array of "Header: value" strings OR a Map of the same.
+        ; Use empty value ("Header: ") to disable internally used header.
+        ; Use semicolon ("Header;") to add the header with no value.
         if (Type(headersArrayOrMap)="Map"){
             headersArray := []
             for k,v in headersArrayOrMap{
@@ -240,7 +246,41 @@ class LibQurl {
 		Return this.SetOpt("HTTPHEADER", headersPtr,easy_handle?)
 	}
 
+    SetPost(sourceData,handle?){    ;properly encapsulates data to be POSTed
+        ;you can pass:
+        ;   -normal text/numbers
+        ;   -a File object to upload as binary
+        ;   -an Object/Array/Map to dump as JSON
 
+        ;NOTE: the file is currently read completely into memory before being sent
+
+        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
+
+        switch Type(sourceData) {
+            case "String","Integer":
+                this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(sourceData)
+            case "Object","Array","Map":
+                this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(json.dump(sourceData))
+            case "File":
+                this.easyHandleMap[easy_handle]["postData"] := Buffer(sourceData.length)  ;create the buffer with the right size
+                sourceData.RawRead(this.easyHandleMap[easy_handle]["postData"]) ;read the file into the buffer
+                this.SetOpt("POSTFIELDSIZE_LARGE",sourceData.length)
+            Default:
+                throw ValueError("Unknown object type passed as POST data: " Type(sourceData))
+        }
+        this.SetOpt("POSTFIELDS",this.easyHandleMap[easy_handle]["postData"])
+
+        /*
+            "File" currently uses this method:
+            curl -X POST "https://httpbin.org/post" -H "accept: application/json" --data-binary "@07.binary.upload.zip"
+
+            and currently does not use:
+            curl -X POST "https://httpbin.org/post" -H "accept: application/json" -F "file=@07.binary.upload.zip"
+
+            todo - investigate if there's a need to differentiate between them.
+        */
+    }
 
 
     ;Base64 operations
@@ -527,6 +567,16 @@ class LibQurl {
         } else if (curlErrorCodeType = "Curlhcode") {
     
         }
+    }
+    
+    ; Returns a Buffer object containing the string.
+    _StrBuf(str, encoding := "cp0")
+    {
+        ; Calculate required size and allocate a buffer.
+        buf := Buffer(StrPut(str, encoding))
+        ; Copy or convert the string.
+        StrPut(str, buf, encoding)
+        return buf
     }
 
     class _struct {

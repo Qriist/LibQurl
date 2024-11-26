@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "06 - set custom headers"
+current := "07 - POST from memory"
 
 clean := ["txt","html","json"]
 for k,v in clean
