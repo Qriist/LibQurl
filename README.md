@@ -33,7 +33,7 @@ Full libcurl wrap for AHKv2.
 - [ ] curl_formadd
 - [ ] curl_formfree
 - [ ] curl_formget
-- [ ] curl_free
+- [X] curl_free
 - [ ] curl_getdate
 - [ ] curl_global_cleanup
 - [x] curl_global_init  --only default mode for now
@@ -74,12 +74,12 @@ Full libcurl wrap for AHKv2.
 - [ ] curl_share_strerror
 - [X] curl_slist_append
 - [X] curl_slist_free_all
-- [ ] curl_url
-- [ ] curl_url_cleanup
-- [ ] curl_url_dup
-- [ ] curl_url_get
-- [ ] curl_url_set
-- [ ] curl_url_strerror
+- [X] curl_url
+- [X] curl_url_cleanup
+- [X] curl_url_dup
+- [X] curl_url_get
+- [X] curl_url_set
+- [X] curl_url_strerror
 - [x] curl_version
 - [x] curl_version_info
 - [ ] curl_ws_recv
