@@ -16,7 +16,7 @@ ret := curl.UrlSet("url",url)
 out .= "Return code for setting url: " ret "`n`n`n"
 
 ret := curl.UrlGet("url")
-out .= "Returned 'get' url: " ret "`n`n`n"
+out .= "Returned 'get' url: " ret   "`n`n`n"
 
 ret := curl._curl_url_strerror(0)   ;"raw" for now, will be added to error handler eventually
 out .= "Error string test: " StrGet(ret,"UTF-8")

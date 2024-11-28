@@ -4,6 +4,7 @@ class LibQurl {
     ;core functionality
     __New() {
         this.easyHandleMap := Map()
+        this.easyHandleMap[0] := []
         this.urlHandleMap := Map()
         this.urlHandleMap[0] := []
         static curlDLLhandle := ""
@@ -29,8 +30,9 @@ class LibQurl {
     }
     Init(){
         easy_handle := this._curl_easy_init()
-        
-        this.easyHandleMap[easy_handle] := this.easyHandleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created easy_handle
+        this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][-1] is a dynamic reference to the last created easy_handle
+        this.easyHandleMap[easy_handle] := Map() 
+
         If !this.easyHandleMap[easy_handle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
         this.easyHandleMap[easy_handle]["easy_handle"] := easy_handle
@@ -81,7 +83,7 @@ class LibQurl {
         return retObj
     }
     SetOpt(option,parameter,easy_handle?,debug?){
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
         If this.Opt.Has(option){    ;determine if the option is known
             ;nothing to be done
@@ -97,7 +99,7 @@ class LibQurl {
         return this._curl_easy_setopt(easy_handle,option,parameter,debug?)
     }
     SetOpts(optionMap,&optErrMap?,easy_handle?){  ;for setting multiple options at once
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         optErrMap := Map()
         optErrVal := 0
         ;TODO - add handling for Opts with scaffolding
@@ -110,7 +112,7 @@ class LibQurl {
         return optErrVal    ;any non-zero value means you should check the optErrMap
     }
     ListOpts(easy_handle?){  ;returns human-readable printout of the given easy_handle's set options
-    easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+    easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         ret := "These are the options that have been set for this easy_handle:`n"
         for k,v in this.easyHandleMap[easy_handle]["options"]{
                 if (v!="")
@@ -124,7 +126,7 @@ class LibQurl {
         return StrGet(this._curl_easy_strerror(errornum),"UTF-8")
     }
 	HeaderToMem(maxCapacity := 0, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         passedHandleMap := this.easyHandleMap
 		this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "header", easy_handle)
         
@@ -136,7 +138,7 @@ class LibQurl {
 
 
     WriteToMem(maxCapacity := 0, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         passedHandleMap := this.easyHandleMap
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "body", easy_handle)
         ; this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Ptr := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
@@ -148,7 +150,7 @@ class LibQurl {
 	}
 
 	HeaderToFile(filename, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         passedHandleMap := this.easyHandleMap
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "header", "w", easy_handle)
 
@@ -159,7 +161,7 @@ class LibQurl {
 	}
 
     WriteToFile(filename, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         passedHandleMap := this.easyHandleMap
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "body", "w", easy_handle)
 
@@ -170,7 +172,7 @@ class LibQurl {
     }
 
     Perform(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Open()
         retcode := this._curl_easy_perform(easy_handle)
@@ -189,7 +191,7 @@ class LibQurl {
         return retCode
     }
     GetLastHeaders(returnAsEncoding := "UTF-8",easy_handle?){
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         lastHeaders := this.easyHandleMap[easy_handle]["lastHeaders"]
         if ((returnAsEncoding = "Object") && IsObject(lastHeaders))
         || ((returnAsEncoding = "File") && (Type(lastHeaders) = "File"))
@@ -200,7 +202,7 @@ class LibQurl {
             :StrGet(lastHeaders,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
     }
     GetLastBody(returnAsEncoding := "UTF-8",easy_handle?){
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         lastBody := this.easyHandleMap[easy_handle]["lastBody"]
         if ((returnAsEncoding = "Object") && IsObject(lastBody))
         || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
@@ -212,7 +214,7 @@ class LibQurl {
     }
 
     Cleanup(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         for k,v in this.easyHandleMap[easy_handle]["callbacks"]
             if IsInteger(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
                 CallbackFree(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
@@ -227,7 +229,7 @@ class LibQurl {
     
 
 	SetHeaders(headersArrayOrMap,easy_handle?) {    ;Sets custom HTTP headers for request.
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
         ; Pass an array of "Header: value" strings OR a Map of the same.
         ; Use empty value ("Header: ") to disable internally used header.
@@ -259,7 +261,7 @@ class LibQurl {
 
         ;NOTE: the file is currently read completely into memory before being sent
 
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
 
         switch Type(sourceData) {
@@ -461,7 +463,7 @@ class LibQurl {
     }
     
     _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
-        easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
     
         ;todo - read/progress/debug callbacks
     

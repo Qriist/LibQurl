@@ -50,7 +50,7 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
 }
 
 _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
-    easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+    easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
     ;todo - read/progress/debug callbacks
 
