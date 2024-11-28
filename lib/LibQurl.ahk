@@ -4,12 +4,15 @@ class LibQurl {
     ;core functionality
     __New() {
         this.easyHandleMap := Map()
+        this.urlHandleMap := Map()
+        this.urlHandleMap[0] := []
         static curlDLLhandle := ""
         static curlDLLpath := ""
         this.Opt := Map()
         this.OptById := Map()
         this.struct := LibQurl._struct()  ;holds the various structs
         this.writeRefs := Map()    ;holds the various write handles
+        this.constants := Map()
         this.CURL_ERROR_SIZE := 256
     }
     register(dllPath) {
@@ -18,8 +21,10 @@ class LibQurl {
         this.curlDLLpath := dllpath
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
         this._curl_global_init()
+        this._declareConstants()
         this._buildOptMap()
         this.VersionInfo := this.GetVersionInfo()
+        this.UrlInit()
         return this.Init()
     }
     Init(){
@@ -301,9 +306,58 @@ class LibQurl {
         return StrGet(Base64)
     }
 
+    UrlInit(){
+        url_handle := this._curl_url()
+        this.urlHandleMap[0].push(url_handle) ;urlHandleMap[0][-1] is a dynamic reference to the last created url_handle
+        this.urlHandleMap[url_handle] := Map() 
+        this.urlHandleMap[url_handle]["url_handle"] := url_handle
+        this.urlHandleMap[url_handle]["timestamp"] := A_NowUTC
+        return url_handle
+    }
+    UrlCleanup(url_handle?){
+        url_handle ??= (this.urlHandleMap[0][-1])   ;defaults to the last created url_handle
+        this._curl_url_cleanup(url_handle)
+        this.urlHandleMap.Delete(url_handle)
+        for k,v in this.urlHandleMap[0] {
+            if (v = url_handle){
+                this.urlHandleMap[0].RemoveAt(k)
+                break
+            }
+        }
+        if (this.urlHandleMap[0].length = 0)    ;ensures there's always a handle available
+            this.UrlInit()
+    }
+    DupeUrl(url_handle?){
+        url_handle ??= this.urlHandleMap[0][-1]   ;defaults to the last created url_handle
+        newUrl := this._curl_url_dup(url_handle)
+        this.urlHandleMap[0].push(newUrl)
+        this.urlHandleMap[newUrl] := this._DeepClone(this.urlHandleMap[url_handle])
+        this.urlHandleMap[newUrl]["timestamp"] := A_NowUTC
+    }
 
+    UrlSet(part,content,flags := [],url_handle?){
+        url_handle ??= this.urlHandleMap[0][-1]   ;defaults to the last created url_handle
 
+        flagBitmask := 0
+        for k,v in flags
+            flagBitmask += this.constants["CURLUflags"][v]
 
+        partConstant := this.constants["CURLUPart"][part]
+        return this._curl_url_set(url_handle,partConstant,content,flagBitmask)
+    }
+    UrlGet(part,flags := [], url_handle?){
+        url_handle ??= this.urlHandleMap[0][-1]   ;defaults to the last created url_handle
+
+        flagBitmask := 0
+        for k,v in flags
+            flagBitmask += this.constants["CURLUflags"][v]
+
+        partConstant := this.constants["CURLUPart"][part]
+        retCode := this._curl_url_get(url_handle,partConstant,&content := 0,flagBitmask)
+        ret := StrGet(content,"UTF-8")
+        this._curl_free(content)
+        return ret
+    }
 
     ;dummied code that doesn't work right yet
 
@@ -577,6 +631,39 @@ class LibQurl {
         ; Copy or convert the string.
         StrPut(str, buf, encoding)
         return buf
+    }
+    
+    _declareConstants(){
+        this.constants["CURLUPart"] := c := Map() 
+        c.CaseSense := 0
+        c["URL"] := 0
+        c["SCHEME"] := 1
+        c["USER"] := 2
+        c["PASSWORD"] := 3
+        c["OPTIONS"] := 4
+        c["HOST"] := 5
+        c["PORT"] := 6
+        c["PATH"] := 7
+        c["QUERY"] := 8
+        c["FRAGMENT"] := 9
+        c["ZONEID"]
+    
+        this.constants["CURLUflags"] := c := Map()
+        c.CaseSense := 0
+        c["DEFAULT_PORT"] := 1 << 0
+        c["NO_DEFAULT_PORT"] := 1 << 1
+        c["DEFAULT_SCHEME"] := 1 << 2
+        c["NON_SUPPORT_SCHEME"] := 1 << 3
+        c["PATH_AS_IS"] := 1 << 4
+        c["DISALLOW_USER"] := 1 << 5
+        c["URLDECODE"] := 1 << 6
+        c["URLENCODE"] := 1 << 7
+        c["APPENDQUERY"] := 1 << 8
+        c["GUESS_SCHEME"] := 1 << 9
+        c["NO_AUTHORITY"] := 1 << 10
+        c["ALLOW_SPACE"] := 1 << 11
+        c["PUNYCODE"] := 1 << 12
+        c["PUNY2IDN"] := 1 << 13
     }
 
     class _struct {
@@ -922,7 +1009,10 @@ class LibQurl {
         return retCode
     }
     
-    
+    _curl_free(pointer) {   ;https://curl.se/libcurl/c/curl_free.html
+        DllCall(this.curlDLLpath "\curl_free"
+            ,   "Ptr", pointer)
+    }
     _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
         return DllCall(this.curlDLLpath "\curl_slist_append"
             , "Ptr" , ptrSList
@@ -941,6 +1031,36 @@ class LibQurl {
         return DllCall(this.curlDLLpath "\curl_easy_strerror"
             , "Int", errornum
             ,"Ptr")
+    }
+    _curl_url() {   ;https://curl.se/libcurl/c/curl_url.html
+        return DllCall(this.curlDLLpath "\curl_url")
+    }
+    _curl_url_cleanup(url_handle) {   ;https://curl.se/libcurl/c/curl_url_cleanup.html
+        return DllCall(this.curlDLLpath "\curl_url_cleanup"
+            ,   "Int", url_handle)
+    }
+    _curl_url_dup(url_handle) { ;https://curl.se/libcurl/c/curl_url_dup.html
+        return DllCall(this.curlDLLpath "\curl_url_dup"
+            ,   "Int", url_handle)
+    }
+    _curl_url_get(url_handle,part,content,flags) { ;https://curl.se/libcurl/c/curl_url_get.html
+        return DllCall(this.curlDLLpath "\curl_url_get"
+            ,   "Ptr", url_handle
+            ,   "Int", part
+            ,   "Ptr*", content
+            ,   "UInt", flags)
+    }
+    _curl_url_set(url_handle,part,content,flags) {   ;https://curl.se/libcurl/c/curl_url_set.html
+        return DllCall(this.curlDLLpath "\curl_url_set"
+            ,   "Int", url_handle
+            ,   "Int", part
+            ,   "AStr", content
+            ,   "UInt", flags)
+    }
+    _curl_url_strerror(errornum) {  ;https://curl.se/libcurl/c/curl_url_strerror.html
+        return DllCall(this.curlDLLpath "\curl_url_strerror"
+            ,   "Int", errornum
+            ,   "Ptr")
     }
     _curl_version() {   ;https://curl.se/libcurl/c/curl_version.html
         return StrGet(DllCall(this.curlDLLpath "\curl_version"
@@ -1033,10 +1153,7 @@ class LibQurl {
         return DllCall(this.curlDLLpath "\curl_easy_upkeep"
             , "Ptr", easy_handle)
     }
-    _curl_free(pStr) {  ;untested   ;https://curl.se/libcurl/c/curl_free.html
-        DllCall("libcurl\curl_free"
-            ,   "Ptr", pStr)
-    }
+    
     _curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate.html
         return DllCall(this.curlDLLpath "\curl_global_getdate"
             ,   "AStr", datestring
@@ -1250,35 +1367,7 @@ class LibQurl {
             ,   "Int", errornum
             ,   "Ptr")
     }
-    _curl_url() {   ;untested   https://curl.se/libcurl/c/curl_url.html
-        return DllCall(this.curlDLLpath "\curl_url")
-    }
-    _curl_url_cleanup(url_handle) {   ;untested   https://curl.se/libcurl/c/curl_url_cleanup.html
-        return DllCall(this.curlDLLpath "\curl_url_cleanup"
-            ,   "Int", url_handle)
-    }
-    _curl_url_dup(url_handle) { ;untested   https://curl.se/libcurl/c/curl_url_dup.html
-        return DllCall(this.curlDLLpath "\curl_url_dup"
-            ,   "Int", url_handle)
-    }
-    _curl_url_get(url_handle,part,content,flags) { ;untested   https://curl.se/libcurl/c/curl_url_get.html
-        return DllCall(this.curlDLLpath "\curl_url_get"
-            ,   "Int", url_handle
-            ,   "Int", part
-            ,   "AStr", content
-            ,   "UInt", flags)
-    }
-    _curl_url_set(url_handle,part,content,flags) {   ;untested   https://curl.se/libcurl/c/curl_url_set.html
-        return DllCall(this.curlDLLpath "\curl_url_set"
-            ,   "Int", url_handle
-            ,   "Int", part
-            ,   "AStr", content
-            ,   "UInt", flags)
-    }
-    _curl_url_strerror(errornum) {  ;untested   https://curl.se/libcurl/c/curl_url_strerror.html
-        return DllCall(this.curlDLLpath "\curl_url_strerror"
-            ,   "Int", errornum)
-    }
+    
     
     _curl_ws_recv(easy_handle,buffer,buflen,&recv,&meta) {   ;untested   https://curl.se/libcurl/c/curl_ws_recv.html
         return DllCall(this.curlDLLpath "\curl_ws_recv"

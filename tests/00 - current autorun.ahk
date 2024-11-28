@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "07 - POST from memory"
+current := "08 - setting and geting url handles"
 
 clean := ["txt","html","json"]
 for k,v in clean

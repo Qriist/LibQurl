@@ -221,3 +221,36 @@ _StrBuf(str, encoding := "cp0")
     StrPut(str, buf, encoding)
     return buf
 }
+
+_declareConstants(){
+    this.constants["CURLUPart"] := c := Map() 
+    c.CaseSense := 0
+    c["URL"] := 0
+    c["SCHEME"] := 1
+    c["USER"] := 2
+    c["PASSWORD"] := 3
+    c["OPTIONS"] := 4
+    c["HOST"] := 5
+    c["PORT"] := 6
+    c["PATH"] := 7
+    c["QUERY"] := 8
+    c["FRAGMENT"] := 9
+    c["ZONEID"]
+
+    this.constants["CURLUflags"] := c := Map()
+    c.CaseSense := 0
+    c["DEFAULT_PORT"] := 1 << 0
+    c["NO_DEFAULT_PORT"] := 1 << 1
+    c["DEFAULT_SCHEME"] := 1 << 2
+    c["NON_SUPPORT_SCHEME"] := 1 << 3
+    c["PATH_AS_IS"] := 1 << 4
+    c["DISALLOW_USER"] := 1 << 5
+    c["URLDECODE"] := 1 << 6
+    c["URLENCODE"] := 1 << 7
+    c["APPENDQUERY"] := 1 << 8
+    c["GUESS_SCHEME"] := 1 << 9
+    c["NO_AUTHORITY"] := 1 << 10
+    c["ALLOW_SPACE"] := 1 << 11
+    c["PUNYCODE"] := 1 << 12
+    c["PUNY2IDN"] := 1 << 13
+}

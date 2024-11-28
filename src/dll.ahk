@@ -67,7 +67,10 @@ _curl_easy_setopt(easy_handle, option, parameter, debug?) {
     return retCode
 }
 
-
+_curl_free(pointer) {   ;https://curl.se/libcurl/c/curl_free.html
+    DllCall(this.curlDLLpath "\curl_free"
+        ,   "Ptr", pointer)
+}
 _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
     return DllCall(this.curlDLLpath "\curl_slist_append"
         , "Ptr" , ptrSList
@@ -86,6 +89,36 @@ _curl_easy_strerror(errornum) {
     return DllCall(this.curlDLLpath "\curl_easy_strerror"
         , "Int", errornum
         ,"Ptr")
+}
+_curl_url() {   ;https://curl.se/libcurl/c/curl_url.html
+    return DllCall(this.curlDLLpath "\curl_url")
+}
+_curl_url_cleanup(url_handle) {   ;https://curl.se/libcurl/c/curl_url_cleanup.html
+    return DllCall(this.curlDLLpath "\curl_url_cleanup"
+        ,   "Int", url_handle)
+}
+_curl_url_dup(url_handle) { ;https://curl.se/libcurl/c/curl_url_dup.html
+    return DllCall(this.curlDLLpath "\curl_url_dup"
+        ,   "Int", url_handle)
+}
+_curl_url_get(url_handle,part,content,flags) { ;https://curl.se/libcurl/c/curl_url_get.html
+    return DllCall(this.curlDLLpath "\curl_url_get"
+        ,   "Ptr", url_handle
+        ,   "Int", part
+        ,   "Ptr*", content
+        ,   "UInt", flags)
+}
+_curl_url_set(url_handle,part,content,flags) {   ;https://curl.se/libcurl/c/curl_url_set.html
+    return DllCall(this.curlDLLpath "\curl_url_set"
+        ,   "Int", url_handle
+        ,   "Int", part
+        ,   "AStr", content
+        ,   "UInt", flags)
+}
+_curl_url_strerror(errornum) {  ;https://curl.se/libcurl/c/curl_url_strerror.html
+    return DllCall(this.curlDLLpath "\curl_url_strerror"
+        ,   "Int", errornum
+        ,   "Ptr")
 }
 _curl_version() {   ;https://curl.se/libcurl/c/curl_version.html
     return StrGet(DllCall(this.curlDLLpath "\curl_version"
@@ -178,10 +211,7 @@ _curl_easy_upkeep(easy_handle) { ;untested https://curl.se/libcurl/c/curl_easy_u
     return DllCall(this.curlDLLpath "\curl_easy_upkeep"
         , "Ptr", easy_handle)
 }
-_curl_free(pStr) {  ;untested   ;https://curl.se/libcurl/c/curl_free.html
-    DllCall("libcurl\curl_free"
-        ,   "Ptr", pStr)
-}
+
 _curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate.html
     return DllCall(this.curlDLLpath "\curl_global_getdate"
         ,   "AStr", datestring
@@ -395,35 +425,7 @@ _curl_share_strerror(errornum) {    ;untested   https://curl.se/libcurl/c/curl_s
         ,   "Int", errornum
         ,   "Ptr")
 }
-_curl_url() {   ;untested   https://curl.se/libcurl/c/curl_url.html
-    return DllCall(this.curlDLLpath "\curl_url")
-}
-_curl_url_cleanup(url_handle) {   ;untested   https://curl.se/libcurl/c/curl_url_cleanup.html
-    return DllCall(this.curlDLLpath "\curl_url_cleanup"
-        ,   "Int", url_handle)
-}
-_curl_url_dup(url_handle) { ;untested   https://curl.se/libcurl/c/curl_url_dup.html
-    return DllCall(this.curlDLLpath "\curl_url_dup"
-        ,   "Int", url_handle)
-}
-_curl_url_get(url_handle,part,content,flags) { ;untested   https://curl.se/libcurl/c/curl_url_get.html
-    return DllCall(this.curlDLLpath "\curl_url_get"
-        ,   "Int", url_handle
-        ,   "Int", part
-        ,   "AStr", content
-        ,   "UInt", flags)
-}
-_curl_url_set(url_handle,part,content,flags) {   ;untested   https://curl.se/libcurl/c/curl_url_set.html
-    return DllCall(this.curlDLLpath "\curl_url_set"
-        ,   "Int", url_handle
-        ,   "Int", part
-        ,   "AStr", content
-        ,   "UInt", flags)
-}
-_curl_url_strerror(errornum) {  ;untested   https://curl.se/libcurl/c/curl_url_strerror.html
-    return DllCall(this.curlDLLpath "\curl_url_strerror"
-        ,   "Int", errornum)
-}
+
 
 _curl_ws_recv(easy_handle,buffer,buflen,&recv,&meta) {   ;untested   https://curl.se/libcurl/c/curl_ws_recv.html
     return DllCall(this.curlDLLpath "\curl_ws_recv"

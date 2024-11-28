@@ -8,12 +8,15 @@ class LibQurl {
     ;core functionality
     __New() {
         this.easyHandleMap := Map()
+        this.urlHandleMap := Map()
+        this.urlHandleMap[0] := []
         static curlDLLhandle := ""
         static curlDLLpath := ""
         this.Opt := Map()
         this.OptById := Map()
         this.struct := LibQurl._struct()  ;holds the various structs
         this.writeRefs := Map()    ;holds the various write handles
+        this.constants := Map()
         this.CURL_ERROR_SIZE := 256
     }
     register(dllPath) {
@@ -22,8 +25,10 @@ class LibQurl {
         this.curlDLLpath := dllpath
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
         this._curl_global_init()
+        this._declareConstants()
         this._buildOptMap()
         this.VersionInfo := this.GetVersionInfo()
+        this.UrlInit()
         return this.Init()
     }
     Init(){
@@ -305,9 +310,58 @@ class LibQurl {
         return StrGet(Base64)
     }
 
+    UrlInit(){
+        url_handle := this._curl_url()
+        this.urlHandleMap[0].push(url_handle) ;urlHandleMap[0][-1] is a dynamic reference to the last created url_handle
+        this.urlHandleMap[url_handle] := Map() 
+        this.urlHandleMap[url_handle]["url_handle"] := url_handle
+        this.urlHandleMap[url_handle]["timestamp"] := A_NowUTC
+        return url_handle
+    }
+    UrlCleanup(url_handle?){
+        url_handle ??= (this.urlHandleMap[0][-1])   ;defaults to the last created url_handle
+        this._curl_url_cleanup(url_handle)
+        this.urlHandleMap.Delete(url_handle)
+        for k,v in this.urlHandleMap[0] {
+            if (v = url_handle){
+                this.urlHandleMap[0].RemoveAt(k)
+                break
+            }
+        }
+        if (this.urlHandleMap[0].length = 0)    ;ensures there's always a handle available
+            this.UrlInit()
+    }
+    DupeUrl(url_handle?){
+        url_handle ??= this.urlHandleMap[0][-1]   ;defaults to the last created url_handle
+        newUrl := this._curl_url_dup(url_handle)
+        this.urlHandleMap[0].push(newUrl)
+        this.urlHandleMap[newUrl] := this._DeepClone(this.urlHandleMap[url_handle])
+        this.urlHandleMap[newUrl]["timestamp"] := A_NowUTC
+    }
 
+    UrlSet(part,content,flags := [],url_handle?){
+        url_handle ??= this.urlHandleMap[0][-1]   ;defaults to the last created url_handle
 
+        flagBitmask := 0
+        for k,v in flags
+            flagBitmask += this.constants["CURLUflags"][v]
 
+        partConstant := this.constants["CURLUPart"][part]
+        return this._curl_url_set(url_handle,partConstant,content,flagBitmask)
+    }
+    UrlGet(part,flags := [], url_handle?){
+        url_handle ??= this.urlHandleMap[0][-1]   ;defaults to the last created url_handle
+
+        flagBitmask := 0
+        for k,v in flags
+            flagBitmask += this.constants["CURLUflags"][v]
+
+        partConstant := this.constants["CURLUPart"][part]
+        retCode := this._curl_url_get(url_handle,partConstant,&content := 0,flagBitmask)
+        ret := StrGet(content,"UTF-8")
+        this._curl_free(content)
+        return ret
+    }
 
     ;dummied code that doesn't work right yet
 
