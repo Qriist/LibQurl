@@ -235,7 +235,7 @@ _declareConstants(){
     c["PATH"] := 7
     c["QUERY"] := 8
     c["FRAGMENT"] := 9
-    c["ZONEID"]
+    c["ZONEID"] := 10
 
     this.constants["CURLUflags"] := c := Map()
     c.CaseSense := 0

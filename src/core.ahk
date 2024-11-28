@@ -223,7 +223,15 @@ class LibQurl {
             if IsInteger(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
                 CallbackFree(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
         this.easyHandleMap.Delete(easy_handle)
+        for k,v in this.easyHandleMap[0] {
+            if (v = easy_handle){
+                this.easyHandleMap[0].RemoveAt(k)
+                break
+            }
+        }
         this._curl_easy_cleanup(easy_handle)
+        if (this.easyHandleMap[0].length = 0)   ;ensures there's always 
+            this.EasyInit()
     }
     EasyCleanup(easy_handle?){   ;alias for Cleanup
         this.Cleanup(easy_handle?)
