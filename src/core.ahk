@@ -13,6 +13,8 @@ class LibQurl {
         this.urlHandleMap[0] := []
         this.multiHandleMap := Map()
         this.multiHandleMap[0] := []
+        this.multiHandleMap["pending_callbacks"] := []
+        this.multiHandleMap["running_callbacks"] := []
         static curlDLLhandle := ""
         static curlDLLpath := ""
         this.Opt := Map()
@@ -186,24 +188,31 @@ class LibQurl {
     }
 
     Async(multi_handle?){
-
+        return this.MultiPerform(multi_handle?)
     }
     MultiPerform(multi_handle?){
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
-        ; ;PLACEHOLDER SO THINGS DON'T BREAK WHILE BUILDING
-        ; this.SyncPerform(easy_handle)
+        ; for k,v in this.multiHandleMap["pending_callbacks"] {
+        ;     ;v = easy_handle
+        ;     msgbox v
+        ;     this.easyHandleMap[v]["callbacks"]["body"]["storageHandle"].Open()
+        ;     this.easyHandleMap[v]["callbacks"]["header"]["storageHandle"].Open()
+        ; }
+        ; this.multiHandleMap["pending_callbacks"] := []
+        ; still_running := 0
+        this._curl_multi_perform(multi_handle,&still_running)
+        ; msgbox StrGet(still_running,500,"UTF-8")
+        return still_running
     }
     Sync(easy_handle?){
-        return this.Perform(easy_handle?)    
-    }
-    Perform(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        
         multi_handle ??= this.easyHandleMap[easy_handle]["associated_multi_handle"] ;Intentionally does NOT default
         If IsSet(multi_handle) {
             this.RemoveEasyFromMulti(easy_handle,multi_handle)
         }
-
+        return this.Perform(easy_handle?)    
+    }
+    Perform(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Open()
         retcode := this._curl_easy_perform(easy_handle)
@@ -412,6 +421,7 @@ class LibQurl {
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
         ret := this._curl_multi_add_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
+        this.multiHandleMap["pending_callbacks"].push(easy_handle)
         return ret
     }
     RemoveEasyFromMulti(easy_handle?,multi_handle?) {

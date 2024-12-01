@@ -341,10 +341,15 @@ _curl_multi_init() {    ;https://curl.se/libcurl/c/curl_multi_init.html
     return DllCall(this.curlDLLpath "\curl_multi_init"
         ,   "Ptr")
 }
-_curl_multi_perform(multi_handle, running_handles) {    ;untested   https://curl.se/libcurl/c/curl_multi_perform.html
-    return DllCall(this.curlDLLpath "\curl_multi_add_handle"
-        ,   "Int", multi_handle
-        ,   "Ptr", running_handles)
+_curl_multi_perform(multi_handle, &running_handles) {    ;untested   https://curl.se/libcurl/c/curl_multi_perform.html
+    running_handles := 0
+    ret := DllCall(this.curlDLLpath "\curl_multi_perform"
+        ,   "Ptr", multi_handle
+        ,   "Ptr*", &running_handles)
+    ; msgbox "multi_handle: " multi_handle "`n"
+    ;     .   "running_handles: " running_handles "`n"
+    ;     .   "retcode: " ret
+    return ret
 }
 _curl_multi_remove_handle(multi_handle, easy_handle) {   ;untested   https://curl.se/libcurl/c/curl_multi_remove_handle.html
     return DllCall(this.curlDLLpath "\curl_multi_remove_handle"
