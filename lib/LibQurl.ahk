@@ -7,6 +7,8 @@ class LibQurl {
         this.easyHandleMap[0] := []
         this.urlHandleMap := Map()
         this.urlHandleMap[0] := []
+        this.multiHandleMap := Map()
+        this.multiHandleMap[0] := []
         static curlDLLhandle := ""
         static curlDLLpath := ""
         this.Opt := Map()
@@ -16,30 +18,38 @@ class LibQurl {
         this.constants := Map()
         this.CURL_ERROR_SIZE := 256
     }
-    register(dllPath) {
+    register(dllPath,preconfigureSSL?) {
         if !FileExist(dllPath)
             throw ValueError("libcurl DLL not found!", -1, dllPath)
         this.curlDLLpath := dllpath
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
+        ;this._curl_global_sslset   -todo
         this._curl_global_init()
         this._declareConstants()
         this._buildOptMap()
         this.VersionInfo := this.GetVersionInfo()
         this.UrlInit()
+        this.MultiInit()
         return this.Init()
     }
-    Init(){
+    Init(multi_handle?){
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
         easy_handle := this._curl_easy_init()
         this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][-1] is a dynamic reference to the last created easy_handle
         this.easyHandleMap[easy_handle] := Map() 
 
         If !this.easyHandleMap[easy_handle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
+
         this.easyHandleMap[easy_handle]["easy_handle"] := easy_handle
         this.easyHandleMap[easy_handle]["options"] := Map()  ;prepares option storage
         this.SetOpt("ACCEPT_ENCODING","",easy_handle)    ;enables compressed transfers without affecting input headers
         this.SetOpt("FOLLOWLOCATION",1,easy_handle)    ;allows curl to follow redirects
         this.SetOpt("MAXREDIRS",30,easy_handle)    ;limits redirects to 30 (matches recent curl default)
+
+        this.AddEasyToMulti(easy_handle,multi_handle)
+        ; this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
+        ; msgbox this.easyHandleMap[easy_handle]["associated_multi_handle"]
 
         ;try to auto-load curl's cert bundle
         ;can still be set per easy_handle
@@ -60,8 +70,8 @@ class LibQurl {
         this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
         return easy_handle
     }
-    EasyInit(){ ;just a clarifying alias for Init()
-        return this.Init()
+    EasyInit(multi_handle?){ ;just a clarifying alias for Init()
+        return this.Init(multi_handle?)
     }
     ListHandles(){
         ;returns a plaintext listing of all handles
@@ -171,8 +181,25 @@ class LibQurl {
         Return
     }
 
+    Async(multi_handle?){
+
+    }
+    AsyncPerform(multi_handle?){
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        ; ;PLACEHOLDER SO THINGS DON'T BREAK WHILE BUILDING
+        ; this.SyncPerform(easy_handle)
+    }
+    Sync(easy_handle?){
+        return this.Perform(easy_handle?)    
+    }
     Perform(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        
+        multi_handle ??= this.easyHandleMap[easy_handle]["associated_multi_handle"] ;Intentionally does NOT default
+        If IsSet(multi_handle) {
+            this.RemoveEasyFromMulti(easy_handle,multi_handle)
+        }
+
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Open()
         retcode := this._curl_easy_perform(easy_handle)
@@ -367,6 +394,34 @@ class LibQurl {
         ret := StrGet(content,"UTF-8")
         this._curl_free(content)
         return ret
+    }
+
+    MultiInit(){    ;auto-invoked during register()
+        multi_handle := this._curl_multi_init()
+        this.multiHandleMap[0].push(multi_handle) ;multiHandleMap[0][-1] is a dynamic reference to the last created multi_handle
+        this.multiHandleMap[multi_handle] := Map()
+        this.multiHandleMap[multi_handle]["associatedEasyHandles"] := []
+        return multi_handle
+    }
+    AddEasyToMulti(easy_handle?,multi_handle?){ ;auto-invoked during EasyInit()
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        ret := this._curl_multi_add_handle(multi_handle,easy_handle)
+        this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
+        return ret
+    }
+    RemoveEasyFromMulti(easy_handle?,multi_handle?) {
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        ret := this._curl_multi_remove_handle(multi_handle,easy_handle)
+        this.easyHandleMap[easy_handle]["associated_multi_handle"] := unset
+        return ret
+    }
+    SwapMultiPools(easyHandleArr,oldMultiHandle,newMultiHandle){   ;used to transfer easy_handles between multi_handles
+        for k,v in easyHandleArr{   ;array of easy_handles
+            this.RemoveEasyFromMulti(v,oldMultiHandle)
+            this.AddEasyToMulti(v,newMultiHandle)
+        }
     }
 
     ;dummied code that doesn't work right yet
@@ -674,6 +729,14 @@ class LibQurl {
         c["ALLOW_SPACE"] := 1 << 11
         c["PUNYCODE"] := 1 << 12
         c["PUNY2IDN"] := 1 << 13
+    }
+    
+    _HasVal(inObj,needle){  ;return the first key with a matching input value
+        for k,v in (Type(inObj)!="Object"?inObj:inObj.OwnProps()) { ;itemize Objects if required
+            If (v = needle)
+                return k
+        }
+        return unset
     }
 
     class _struct {
@@ -1279,18 +1342,18 @@ class LibQurl {
             ,   "Int", max_fd)
     }
     _curl_multi_get_handles(multi_handle) { ;untested   https://curl.se/libcurl/c/curl_multi_get_handles.html
-        return DllCall(this.curlDLLpath "curl_multi_get_handles"
+        return DllCall(this.curlDLLpath "\curl_multi_get_handles"
             ,   "Int", multi_handle
             ,   "Ptr")
     }
     _curl_multi_info_read(multi_handle, msgs_in_queue) {    ;untested   https://curl.se/libcurl/c/curl_multi_info_read.html
-        return DllCall(this.curlDLLpath "curl_multi_info_read"
+        return DllCall(this.curlDLLpath "\curl_multi_info_read"
             ,   "Int", multi_handle
             ,   "Int", msgs_in_queue
             ,   "Ptr")
     }
-    _curl_multi_init() {    ;untested   https://curl.se/libcurl/c/curl_multi_init.html
-        return DllCall(this.curlDLLpath "curl_multi_init"
+    _curl_multi_init() {    ;https://curl.se/libcurl/c/curl_multi_init.html
+        return DllCall(this.curlDLLpath "\curl_multi_init"
             ,   "Ptr")
     }
     _curl_multi_perform(multi_handle, running_handles) {    ;untested   https://curl.se/libcurl/c/curl_multi_perform.html

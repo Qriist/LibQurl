@@ -254,3 +254,11 @@ _declareConstants(){
     c["PUNYCODE"] := 1 << 12
     c["PUNY2IDN"] := 1 << 13
 }
+
+_HasVal(inObj,needle){  ;return the first key with a matching input value
+    for k,v in (Type(inObj)!="Object"?inObj:inObj.OwnProps()) { ;itemize Objects if required
+        If (v = needle)
+            return k
+    }
+    return unset
+}

@@ -22,4 +22,3 @@ ret := curl._curl_url_strerror(0)   ;"raw" for now, will be added to error handl
 out .= "Error string test: " StrGet(ret,"UTF-8")
 
 FileOpen(A_ScriptDir "\08.results.txt","w").Write(out)
-

@@ -327,18 +327,18 @@ _curl_multi_fdset(multi_handle,read_fd_set,write_fd_set,exc_fd_set,max_fd) {    
         ,   "Int", max_fd)
 }
 _curl_multi_get_handles(multi_handle) { ;untested   https://curl.se/libcurl/c/curl_multi_get_handles.html
-    return DllCall(this.curlDLLpath "curl_multi_get_handles"
+    return DllCall(this.curlDLLpath "\curl_multi_get_handles"
         ,   "Int", multi_handle
         ,   "Ptr")
 }
 _curl_multi_info_read(multi_handle, msgs_in_queue) {    ;untested   https://curl.se/libcurl/c/curl_multi_info_read.html
-    return DllCall(this.curlDLLpath "curl_multi_info_read"
+    return DllCall(this.curlDLLpath "\curl_multi_info_read"
         ,   "Int", multi_handle
         ,   "Int", msgs_in_queue
         ,   "Ptr")
 }
-_curl_multi_init() {    ;untested   https://curl.se/libcurl/c/curl_multi_init.html
-    return DllCall(this.curlDLLpath "curl_multi_init"
+_curl_multi_init() {    ;https://curl.se/libcurl/c/curl_multi_init.html
+    return DllCall(this.curlDLLpath "\curl_multi_init"
         ,   "Ptr")
 }
 _curl_multi_perform(multi_handle, running_handles) {    ;untested   https://curl.se/libcurl/c/curl_multi_perform.html
