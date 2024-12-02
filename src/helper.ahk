@@ -262,3 +262,50 @@ _HasVal(inObj,needle){  ;return the first key with a matching input value
     }
     return unset
 }
+_Perform(easy_handle?){
+    easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+
+    ; this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
+    ; this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Open()
+    retcode := this._curl_easy_perform(easy_handle)
+
+    /*
+    this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Close()
+    this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Close()
+    ;accessibly attach body to easy_handle output
+    bodyObj := this.easyHandleMap[easy_handle]["callbacks"]["body"]
+    lastBody := (bodyObj["writeType"]="memory"?bodyObj["writeTo"]:FileOpen(bodyObj["filename"],"rw"))
+    this.easyHandleMap[easy_handle]["lastBody"] := lastBody
+
+    ;accessibly attach headers to easy_handle output
+    headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
+    lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
+    this.easyHandleMap[easy_handle]["lastHeaders"] := lastHeaders
+    */
+   
+    this._performCleanup(easy_handle)
+    this.HeaderToMem(0,easy_handle) ;resets the header buffer
+    this.WriteToMem(0,easy_handle) ;resets the header buffer
+    ;todo - write an "output to null" callback function for more safely reseting file writes
+    return retCode
+}
+
+_performCleanup(easy_handle){
+    this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Close()
+    this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Close()
+    ;accessibly attach body to easy_handle output
+    bodyObj := this.easyHandleMap[easy_handle]["callbacks"]["body"]
+    lastBody := (bodyObj["writeType"]="memory"?bodyObj["writeTo"]:FileOpen(bodyObj["filename"],"rw"))
+    this.easyHandleMap[easy_handle]["lastBody"] := lastBody
+
+    ;accessibly attach headers to easy_handle output
+    headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
+    lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
+    this.easyHandleMap[easy_handle]["lastHeaders"] := lastHeaders
+}
+; _QueryPerformanceCounter(){
+;     ; https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
+;     liPerformanceCount := Buffer(8)
+;     DllCall("QueryPerformanceCounter", "Ptr", liPerformanceCount)
+;     return NumGet(liPerformanceCount, 0, "Int64")
+; }

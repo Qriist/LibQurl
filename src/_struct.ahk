@@ -74,5 +74,15 @@ class _struct {
             return (NumGet(ptr,offset,"Ptr")=0?0:StrGet(NumGet(ptr,offset,"Ptr"),encoding))
         }
     }
-
+    curl_CURLMsg(ptr){
+        retObj := Map()
+        retObj["msg"] := NumGet(ptr,0,"UInt")
+        retObj["easy_handle"] := NumGet(ptr,8,"Ptr")
+        retObj["result"] := NumGet(ptr,12,"Int")
+        ; msgbox ""
+        ;     .   "msg: " retObj["msg"] "`n"
+        ;     .   "easy_handle: " retObj["easy_handle"] "`n"
+        ;     .   "result: " retObj["result"] "`n"
+            return retObj
+    }
 }

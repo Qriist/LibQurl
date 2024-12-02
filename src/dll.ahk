@@ -71,6 +71,35 @@ _curl_free(pointer) {   ;https://curl.se/libcurl/c/curl_free.html
     DllCall(this.curlDLLpath "\curl_free"
         ,   "Ptr", pointer)
 }
+_curl_multi_add_handle(multi_handle, easy_handle) { ;https://curl.se/libcurl/c/curl_multi_add_handle.html
+    return DllCall(this.curlDLLpath "\curl_multi_add_handle"
+        ,   "Ptr", multi_handle
+        ,   "Ptr", easy_handle)
+}
+_curl_multi_init() {    ;https://curl.se/libcurl/c/curl_multi_init.html
+    return DllCall(this.curlDLLpath "\curl_multi_init"
+        ,   "Ptr")
+}
+_curl_multi_perform(multi_handle, &running_handles) {    ;https://curl.se/libcurl/c/curl_multi_perform.html
+    running_handles := 0    ;required allocation
+    ret := DllCall(this.curlDLLpath "\curl_multi_perform"
+        ,   "Ptr", multi_handle
+        ,   "Ptr*", &running_handles)
+    return ret
+}
+_curl_multi_info_read(multi_handle, &msgs_in_queue) {    ;https://curl.se/libcurl/c/curl_multi_info_read.html
+    msgs_in_queue := 0
+    return DllCall(this.curlDLLpath "\curl_multi_info_read"
+        ,   "Int", multi_handle
+        ; ,   "Int", msgs_in_queue
+        ,   "Ptr*", &msgs_in_queue
+        ,   "Ptr")
+}
+_curl_multi_remove_handle(multi_handle, easy_handle) {   ;https://curl.se/libcurl/c/curl_multi_remove_handle.html
+    return DllCall(this.curlDLLpath "\curl_multi_remove_handle"
+        ,   "Int", multi_handle
+        ,   "Int", easy_handle)
+}
 _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
     return DllCall(this.curlDLLpath "\curl_slist_append"
         , "Ptr" , ptrSList
@@ -304,11 +333,7 @@ _curl_mime_type(mime_part,mimetype) {   ;untested   https://curl.se/libcurl/c/cu
         ,   "Int", mime_part
         ,   "AStr", mimetype)
 }
-_curl_multi_add_handle(multi_handle, easy_handle) { ;untested   https://curl.se/libcurl/c/curl_multi_add_handle.html
-    return DllCall(this.curlDLLpath "\curl_multi_add_handle"
-        ,   "Ptr", multi_handle
-        ,   "Ptr", easy_handle)
-}
+
 _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html
     return DllCall(this.curlDLLpath "\curl_multi_assign"
         ,   "Int", multi_handle
@@ -331,31 +356,7 @@ _curl_multi_get_handles(multi_handle) { ;untested   https://curl.se/libcurl/c/cu
         ,   "Int", multi_handle
         ,   "Ptr")
 }
-_curl_multi_info_read(multi_handle, msgs_in_queue) {    ;untested   https://curl.se/libcurl/c/curl_multi_info_read.html
-    return DllCall(this.curlDLLpath "\curl_multi_info_read"
-        ,   "Int", multi_handle
-        ,   "Int", msgs_in_queue
-        ,   "Ptr")
-}
-_curl_multi_init() {    ;https://curl.se/libcurl/c/curl_multi_init.html
-    return DllCall(this.curlDLLpath "\curl_multi_init"
-        ,   "Ptr")
-}
-_curl_multi_perform(multi_handle, &running_handles) {    ;untested   https://curl.se/libcurl/c/curl_multi_perform.html
-    running_handles := 0
-    ret := DllCall(this.curlDLLpath "\curl_multi_perform"
-        ,   "Ptr", multi_handle
-        ,   "Ptr*", &running_handles)
-    ; msgbox "multi_handle: " multi_handle "`n"
-    ;     .   "running_handles: " running_handles "`n"
-    ;     .   "retcode: " ret
-    return ret
-}
-_curl_multi_remove_handle(multi_handle, easy_handle) {   ;untested   https://curl.se/libcurl/c/curl_multi_remove_handle.html
-    return DllCall(this.curlDLLpath "\curl_multi_remove_handle"
-        ,   "Int", multi_handle
-        ,   "Int", easy_handle)
-}
+
 _curl_multi_setopt(multi_handle, option, parameter) {  ;untested   https://curl.se/libcurl/c/curl_multi_setopt.html
     return DllCall(this.curlDLLpath "\_curl_multi_setopt"
         ,   "Int", multi_handle

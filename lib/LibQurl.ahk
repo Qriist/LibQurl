@@ -11,6 +11,7 @@ class LibQurl {
         this.multiHandleMap[0] := []
         this.multiHandleMap["pending_callbacks"] := []
         this.multiHandleMap["running_callbacks"] := []
+        this.unassociatedEasyHandles := Map()
         static curlDLLhandle := ""
         static curlDLLpath := ""
         this.Opt := Map()
@@ -35,7 +36,7 @@ class LibQurl {
         return this.Init()
     }
     Init(multi_handle?){
-        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        ; multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
         easy_handle := this._curl_easy_init()
         this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][-1] is a dynamic reference to the last created easy_handle
         this.easyHandleMap[easy_handle] := Map() 
@@ -49,7 +50,7 @@ class LibQurl {
         this.SetOpt("FOLLOWLOCATION",1,easy_handle)    ;allows curl to follow redirects
         this.SetOpt("MAXREDIRS",30,easy_handle)    ;limits redirects to 30 (matches recent curl default)
 
-        this.AddEasyToMulti(easy_handle,multi_handle)
+        ; this.AddEasyToMulti(easy_handle,multi_handle)
         ; this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
         ; msgbox this.easyHandleMap[easy_handle]["associated_multi_handle"]
 
@@ -60,7 +61,6 @@ class LibQurl {
             this.SetOpt("CAINFO",dlldir "\curl-ca-bundle.crt",easy_handle)
 
         ;todo - autoupdate the cert bundle
-
         this.easyHandleMap[easy_handle]["callbacks"] := Map()  ;prepares write callbacks
         for k,v in ["body","header","read","progress","debug"]{
             this.easyHandleMap[easy_handle]["callbacks"][v] := Map()
@@ -94,6 +94,9 @@ class LibQurl {
         retObj := this.struct.curl_version_info_data(verPtr)
         return retObj
     }
+    QueueOpt(option,parameter){
+
+    }
     SetOpt(option,parameter,easy_handle?,debug?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
@@ -124,7 +127,7 @@ class LibQurl {
         return optErrVal    ;any non-zero value means you should check the optErrMap
     }
     ListOpts(easy_handle?){  ;returns human-readable printout of the given easy_handle's set options
-    easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         ret := "These are the options that have been set for this easy_handle:`n"
         for k,v in this.easyHandleMap[easy_handle]["options"]{
                 if (v!="")
@@ -182,52 +185,52 @@ class LibQurl {
         this.SetOpt("WRITEFUNCTION",this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"],easy_handle) 
         Return
     }
-
-    Async(multi_handle?){
-        return this.MultiPerform(multi_handle?)
+    _RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle without breaking the connection
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        ; this._prepareInitCallbacks(easy_handle)
+        ; this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
+        this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
+        
+        ;todo - gather and clean the SetOpts
     }
-    MultiPerform(multi_handle?){
+    ReadyAsync(inEasyHandles,multi_handle?){    ;Add any number of easy_handles to the multi pool. Accepts integers or object.
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
-        ; for k,v in this.multiHandleMap["pending_callbacks"] {
-        ;     ;v = easy_handle
-        ;     msgbox v
-        ;     this.easyHandleMap[v]["callbacks"]["body"]["storageHandle"].Open()
-        ;     this.easyHandleMap[v]["callbacks"]["header"]["storageHandle"].Open()
-        ; }
-        ; this.multiHandleMap["pending_callbacks"] := []
-        ; still_running := 0
-        this._curl_multi_perform(multi_handle,&still_running)
-        ; msgbox StrGet(still_running,500,"UTF-8")
+        If (Type(inEasyHandles) = "Integer")
+            inEasyHandles := [inEasyHandles]
+        for k,v in (Type(inEasyHandles)!="Object"?inEasyHandles:inEasyHandles.OwnProps()) { ;itemize Objects if required
+            this.AddEasyToMulti(v,multi_handle)
+        }
+        
+    }
+    Async(multi_handle?){
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+
+        ;tell curl to process the downloads
+        retCode := this._curl_multi_perform(multi_handle,&still_running)
+
+        ;check if any downloads require cleanup
+        infoObj := this.MultiInfoRead(multi_handle)
+
+        ;process the messages in the infoObj
+        for k,v in infoObj {
+            if (v["result"] = 0) {
+                this._performCleanup(v["easy_handle"])
+                this.RemoveEasyFromMulti(v["easy_handle"],multi_handle)
+                this._RefreshEasyHandleForAsync(v["easy_handle"])
+            }
+        }
         return still_running
     }
     Sync(easy_handle?){
-        return this.Perform(easy_handle?)    
-    }
-    Perform(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        
-        ; multi_handle ??= this.easyHandleMap[easy_handle]["associated_multi_handle"] ;Intentionally does NOT default
-        ; If IsSet(multi_handle) {
-        ;     this.RemoveEasyFromMulti(easy_handle,multi_handle)
-        ; }
-
-        this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
-        this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Open()
-        retcode := this._curl_easy_perform(easy_handle)
-        this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Close()
-        this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Close()
-
-        ;accessibly attach body to easy_handle output
-        bodyObj := this.easyHandleMap[easy_handle]["callbacks"]["body"]
-        lastBody := (bodyObj["writeType"]="memory"?bodyObj["writeTo"]:FileOpen(bodyObj["filename"],"rw"))
-        this.easyHandleMap[easy_handle]["lastBody"] := lastBody
-
-        ;accessibly attach headers to easy_handle output
-        headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
-        lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
-        this.easyHandleMap[easy_handle]["lastHeaders"] := lastHeaders
-        return retCode
+        multi_handle := this.easyHandleMap[easy_handle]["associated_multi_handle"]? ;Intentionally does NOT default
+        If IsSet(multi_handle) {
+            this.RemoveEasyFromMulti(easy_handle,multi_handle)
+        }
+        return this._Perform(easy_handle?)    
     }
+
+
     GetLastHeaders(returnAsEncoding := "UTF-8",easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         lastHeaders := this.easyHandleMap[easy_handle]["lastHeaders"]
@@ -264,7 +267,7 @@ class LibQurl {
             }
         }
         this._curl_easy_cleanup(easy_handle)
-        if (this.easyHandleMap[0].length = 0)   ;ensures there's always 
+        if (this.easyHandleMap[0].length = 0)   ;ensures there's always a usable easy_handle
             this.EasyInit()
     }
     EasyCleanup(easy_handle?){   ;alias for Cleanup
@@ -407,6 +410,18 @@ class LibQurl {
         return ret
     }
 
+    MultiInfoRead(multi_handle?){
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        retObj := []
+        while (retCode := this._curl_multi_info_read(multi_handle,&msgsInQueue)) {
+            retObj.push(this.struct.curl_CURLMsg(retCode))
+        }
+        
+        return retObj
+        ; msgbox this.ShowOB(retObj)
+        ; msgbox retCode "`n" msgsInQueue
+    }
+
     MultiInit(){    ;auto-invoked during register()
         multi_handle := this._curl_multi_init()
         this.multiHandleMap[0].push(multi_handle) ;multiHandleMap[0][-1] is a dynamic reference to the last created multi_handle
@@ -419,7 +434,7 @@ class LibQurl {
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
         ret := this._curl_multi_add_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
-        this.multiHandleMap["pending_callbacks"].push(easy_handle)
+        ; this.multiHandleMap["pending_callbacks"].push(easy_handle)
         return ret
     }
     RemoveEasyFromMulti(easy_handle?,multi_handle?) {
@@ -750,6 +765,53 @@ class LibQurl {
         }
         return unset
     }
+    _Perform(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+    
+        ; this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
+        ; this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Open()
+        retcode := this._curl_easy_perform(easy_handle)
+    
+        /*
+        this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Close()
+        this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Close()
+        ;accessibly attach body to easy_handle output
+        bodyObj := this.easyHandleMap[easy_handle]["callbacks"]["body"]
+        lastBody := (bodyObj["writeType"]="memory"?bodyObj["writeTo"]:FileOpen(bodyObj["filename"],"rw"))
+        this.easyHandleMap[easy_handle]["lastBody"] := lastBody
+    
+        ;accessibly attach headers to easy_handle output
+        headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
+        lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
+        this.easyHandleMap[easy_handle]["lastHeaders"] := lastHeaders
+        */
+       
+        this._performCleanup(easy_handle)
+        this.HeaderToMem(0,easy_handle) ;resets the header buffer
+        this.WriteToMem(0,easy_handle) ;resets the header buffer
+        ;todo - write an "output to null" callback function for more safely reseting file writes
+        return retCode
+    }
+    
+    _performCleanup(easy_handle){
+        this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Close()
+        this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Close()
+        ;accessibly attach body to easy_handle output
+        bodyObj := this.easyHandleMap[easy_handle]["callbacks"]["body"]
+        lastBody := (bodyObj["writeType"]="memory"?bodyObj["writeTo"]:FileOpen(bodyObj["filename"],"rw"))
+        this.easyHandleMap[easy_handle]["lastBody"] := lastBody
+    
+        ;accessibly attach headers to easy_handle output
+        headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
+        lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
+        this.easyHandleMap[easy_handle]["lastHeaders"] := lastHeaders
+    }
+    ; _QueryPerformanceCounter(){
+    ;     ; https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
+    ;     liPerformanceCount := Buffer(8)
+    ;     DllCall("QueryPerformanceCounter", "Ptr", liPerformanceCount)
+    ;     return NumGet(liPerformanceCount, 0, "Int64")
+    ; }
 
     class _struct {
         walkPtrArray(inPtr) {
@@ -825,7 +887,17 @@ class LibQurl {
                 return (NumGet(ptr,offset,"Ptr")=0?0:StrGet(NumGet(ptr,offset,"Ptr"),encoding))
             }
         }
-    
+        curl_CURLMsg(ptr){
+            retObj := Map()
+            retObj["msg"] := NumGet(ptr,0,"UInt")
+            retObj["easy_handle"] := NumGet(ptr,8,"Ptr")
+            retObj["result"] := NumGet(ptr,12,"Int")
+            ; msgbox ""
+            ;     .   "msg: " retObj["msg"] "`n"
+            ;     .   "easy_handle: " retObj["easy_handle"] "`n"
+            ;     .   "result: " retObj["result"] "`n"
+                return retObj
+        }
     }
 
     Class Storage {
@@ -956,6 +1028,7 @@ class LibQurl {
             }
     
             Close() {
+                
                 ; this.easyHandleMap[this.easy_handle]["lastHeaders"] := this.writeObj["writeTo"]
                 ; msgbox strget(this.writeObj["writeTo"],"UTF-8")
             }
@@ -1097,6 +1170,35 @@ class LibQurl {
     _curl_free(pointer) {   ;https://curl.se/libcurl/c/curl_free.html
         DllCall(this.curlDLLpath "\curl_free"
             ,   "Ptr", pointer)
+    }
+    _curl_multi_add_handle(multi_handle, easy_handle) { ;https://curl.se/libcurl/c/curl_multi_add_handle.html
+        return DllCall(this.curlDLLpath "\curl_multi_add_handle"
+            ,   "Ptr", multi_handle
+            ,   "Ptr", easy_handle)
+    }
+    _curl_multi_init() {    ;https://curl.se/libcurl/c/curl_multi_init.html
+        return DllCall(this.curlDLLpath "\curl_multi_init"
+            ,   "Ptr")
+    }
+    _curl_multi_perform(multi_handle, &running_handles) {    ;https://curl.se/libcurl/c/curl_multi_perform.html
+        running_handles := 0    ;required allocation
+        ret := DllCall(this.curlDLLpath "\curl_multi_perform"
+            ,   "Ptr", multi_handle
+            ,   "Ptr*", &running_handles)
+        return ret
+    }
+    _curl_multi_info_read(multi_handle, &msgs_in_queue) {    ;https://curl.se/libcurl/c/curl_multi_info_read.html
+        msgs_in_queue := 0
+        return DllCall(this.curlDLLpath "\curl_multi_info_read"
+            ,   "Int", multi_handle
+            ; ,   "Int", msgs_in_queue
+            ,   "Ptr*", &msgs_in_queue
+            ,   "Ptr")
+    }
+    _curl_multi_remove_handle(multi_handle, easy_handle) {   ;https://curl.se/libcurl/c/curl_multi_remove_handle.html
+        return DllCall(this.curlDLLpath "\curl_multi_remove_handle"
+            ,   "Int", multi_handle
+            ,   "Int", easy_handle)
     }
     _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
         return DllCall(this.curlDLLpath "\curl_slist_append"
@@ -1331,11 +1433,7 @@ class LibQurl {
             ,   "Int", mime_part
             ,   "AStr", mimetype)
     }
-    _curl_multi_add_handle(multi_handle, easy_handle) { ;untested   https://curl.se/libcurl/c/curl_multi_add_handle.html
-        return DllCall(this.curlDLLpath "\curl_multi_add_handle"
-            ,   "Ptr", multi_handle
-            ,   "Ptr", easy_handle)
-    }
+    
     _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html
         return DllCall(this.curlDLLpath "\curl_multi_assign"
             ,   "Int", multi_handle
@@ -1358,31 +1456,7 @@ class LibQurl {
             ,   "Int", multi_handle
             ,   "Ptr")
     }
-    _curl_multi_info_read(multi_handle, msgs_in_queue) {    ;untested   https://curl.se/libcurl/c/curl_multi_info_read.html
-        return DllCall(this.curlDLLpath "\curl_multi_info_read"
-            ,   "Int", multi_handle
-            ,   "Int", msgs_in_queue
-            ,   "Ptr")
-    }
-    _curl_multi_init() {    ;https://curl.se/libcurl/c/curl_multi_init.html
-        return DllCall(this.curlDLLpath "\curl_multi_init"
-            ,   "Ptr")
-    }
-    _curl_multi_perform(multi_handle, &running_handles) {    ;untested   https://curl.se/libcurl/c/curl_multi_perform.html
-        running_handles := 0
-        ret := DllCall(this.curlDLLpath "\curl_multi_perform"
-            ,   "Ptr", multi_handle
-            ,   "Ptr*", &running_handles)
-        ; msgbox "multi_handle: " multi_handle "`n"
-        ;     .   "running_handles: " running_handles "`n"
-        ;     .   "retcode: " ret
-        return ret
-    }
-    _curl_multi_remove_handle(multi_handle, easy_handle) {   ;untested   https://curl.se/libcurl/c/curl_multi_remove_handle.html
-        return DllCall(this.curlDLLpath "\curl_multi_remove_handle"
-            ,   "Int", multi_handle
-            ,   "Int", easy_handle)
-    }
+    
     _curl_multi_setopt(multi_handle, option, parameter) {  ;untested   https://curl.se/libcurl/c/curl_multi_setopt.html
         return DllCall(this.curlDLLpath "\_curl_multi_setopt"
             ,   "Int", multi_handle

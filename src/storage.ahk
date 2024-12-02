@@ -129,6 +129,7 @@ Class Storage {
         }
 
         Close() {
+            
             ; this.easyHandleMap[this.easy_handle]["lastHeaders"] := this.writeObj["writeTo"]
             ; msgbox strget(this.writeObj["writeTo"],"UTF-8")
         }
