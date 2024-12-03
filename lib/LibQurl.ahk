@@ -1,5 +1,5 @@
 #requires Autohotkey v2.1-alpha.9
-; #Include <v2\cjson>
+#Include "*i <Aris\G33kDude\cJson>"
 class LibQurl {
     ;core functionality
     __New() {

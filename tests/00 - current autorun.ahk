@@ -7,3 +7,6 @@ for k,v in clean
 	FileDelete(A_ScriptDir "\*." v)
 	
 run(A_ScriptDir "\" current ".ahk")
+
+
+

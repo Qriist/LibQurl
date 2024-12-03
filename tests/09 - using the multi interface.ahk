@@ -1,28 +1,10 @@
 ﻿#Requires AutoHotkey v2.0
+#Include "%A_ScriptDir%"
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\G33kDude\cjson.ahk
 SetWorkingDir(A_ScriptDir "\..")
 curl := LibQurl()
 curl.register(A_WorkingDir "\bin\libcurl-x64.dll")
-
-Type({a := "a": b := "b"})
-#Requires AutoHotkey v2.0
-test := "test"
-testArr := ["test"]
-testMap := Map()
-testMap["test"] := "test"
-
-; msgbox IsSet(test)
-; msgbox IsSet(testArr)
-; msgbox IsSet(testArr[1])
-; msgbox IsSet(testMap)
-; msgbox IsSet(testMap["test"])
-
-testMap["test"] := unset
-msgbox testmap.Has("test")
-testMap["test"] := "test"
-msgbox testmap.Has("test")
-ExitApp
 
 ;NOTE: .MultiInit() is automatically called during .register(), 
 ;but can be invoked multiple times to group downloads as desired

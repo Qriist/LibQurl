@@ -6,6 +6,14 @@ SetWorkingDir(A_ScriptDir)
 libSrc := ["helper","storage","_struct","dll"]  ;corresponds to each src file
 core := FileOpen(A_ScriptDir "\src\core.ahk","r").Read()
 core := stripHeader(core)
+
+; for k,v in StrSplit(core,"`n","`r") {
+;     RegExMatch(v,'mi)^(#include "\*i (<.+>))"$',&found)
+;     if IsSet(found) && (Type(found) = "RegExMatchInfo") {
+;         core := StrReplace(core,found[0],"#Include " found[2])
+;     }
+; }
+
 for k,v in libSrc {
     sub := FileOpen(A_ScriptDir "\src\" v ".ahk","r").Read()
     core := StrReplace(core,";#compile:" v,indent(stripHeader(sub)))

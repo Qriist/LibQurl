@@ -1,9 +1,10 @@
 ﻿;This file contains the core features of LibQurl.
 ;Generally, anything a user might want to directly access should go here.
 ;leave the #compile:whatever lines at the bottom!
+;when adding dependencies, use the "*i <lib>" format. It will be cleaned up by the generator.
 ;***
 #requires Autohotkey v2.1-alpha.9
-; #Include <v2\cjson>
+#Include "*i <Aris\G33kDude\cJson>"
 class LibQurl {
     ;core functionality
     __New() {
