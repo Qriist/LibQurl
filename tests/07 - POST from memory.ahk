@@ -11,29 +11,29 @@ curl.SetOpt("URL",postUrl)
 postSource := 1234567890
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.integer.json")
-curl.Perform()
+curl.Sync()
 
 postSource := "abcdefghij"
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.string.json")
-curl.Perform()
+curl.Sync()
 
 postSource := {ObjectToDump:"dummyValue1"} 
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.object.json")
-curl.Perform()
+curl.Sync()
 
 postSource := ["ArrayToDump","dummyValue2"]
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.array.json")
-curl.Perform()
+curl.Sync()
 
 postSource := Map("MapToDump","dummyValue3")
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.map.json")
-curl.Perform()
+curl.Sync()
 
 postSource := FileOpen(A_ScriptDir "\07.binary.upload.zip","r")
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.binary.json")
-curl.Perform()
+curl.Sync()

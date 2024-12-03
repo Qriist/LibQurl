@@ -13,4 +13,4 @@ curl.SetHeaders(Map("tidbit","is a header"
 curl.HeaderToFile(A_ScriptDir "\06.headers.txt")
 curl.WriteToFile(A_ScriptDir "\06.body.json")
 
-curl.Perform()
+curl.Sync()

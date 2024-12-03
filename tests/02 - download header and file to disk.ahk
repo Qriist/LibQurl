@@ -11,11 +11,11 @@ url := "https://www.titsandasses.org"
 curl.SetOpt("URL",url)
 curl.HeaderToFile(A_ScriptDir "\02.gzip.header.txt")
 curl.WriteToFile(A_ScriptDir "\02.gzip.body.html")
-curl.Perform()
+curl.Sync()
 
 ;test brotli
 url := "https://db.ygoprodeck.com/api/v7/checkDBVer.php"
 curl.SetOpt("URL",url)
 curl.HeaderToFile(A_ScriptDir "\02.brotli.header.txt")
 curl.WriteToFile(A_ScriptDir "\02.brotli.body.json")
-curl.Perform()
+curl.Sync()

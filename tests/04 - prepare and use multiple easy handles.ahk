@@ -17,8 +17,8 @@ curl.SetOpt("URL",betaUrl,beta)
 curl.WriteToFile(A_ScriptDir "\04.alpha.html",alpha)
 curl.WriteToFile(A_ScriptDir "\04.beta.html",beta)
 
-curl.Perform(alpha)
-curl.Perform(beta)
+curl.Sync(alpha)
+curl.Sync(beta)
 
 handles := "Currently open handles:`n" curl.ListHandles() "`n`n`n"
 

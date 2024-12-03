@@ -10,7 +10,7 @@ url := "https://www.titsandasses.org"
 curl.SetOpt("URL",url)
 curl.HeaderToMem()
 curl.WriteToMem()
-lastError := curl.Perform()
+lastError := curl.Sync()
 ; msgbox  A_Clipboard := "[[[   PERFORM   ]]]`n"
 ;     .   lastError "`n`n"
 ;     .   "[[[   HEADERS   ]]]`n" 
