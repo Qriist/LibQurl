@@ -3,7 +3,7 @@
 SetWorkingDir(A_ScriptDir)
 #Include <Aris\G33kDude\cJson>
 vArr := JSON.load(FileOpen(A_ScriptDir "\releases\version.json","r").Read())
-
+pkgArr := JSON.load(FileOpen(A_ScriptDir "\package.json","r").Read())
 msg := "LibQurl's current version is: " versionString(vArr) "`n`n"
     .   "Press Enter to bump the minor version, or input your own."
 
@@ -44,6 +44,8 @@ cmd := A_ScriptDir "\tools\7za.exe a -mx9 " Chr(34) "..\" releaseName ".zip" Chr
 RunWait(cmd,releaseDir)
 DirDelete(releaseDir,1)
 FileOpen(A_ScriptDir "\releases\version.json","w").Write(JSON.Dump(bumpedArr))
+pkgArr["version"] := "v" bumped.Value
+FileOpen(A_ScriptDir "\package.json","w").Write(JSON.Dump(pkgArr))
 ToolTip("Compiled LibQurl release v" bumped.Value ".")
 Sleep(1000)
 A_Clipboard := A_ScriptDir "\releases\" releaseName ".zip"
