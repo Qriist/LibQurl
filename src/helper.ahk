@@ -309,3 +309,12 @@ _performCleanup(easy_handle){
 ;     DllCall("QueryPerformanceCounter", "Ptr", liPerformanceCount)
 ;     return NumGet(liPerformanceCount, 0, "Int64")
 ; }
+_findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installation
+    If !FileExist(A_ScriptDir "\lib\Aris\Qriist\LibQurl.ahk")
+        return unset
+    packageDir := A_ScriptDir "\lib\Aris\Qriist"
+    loop files (packageDir "\LibQurl@*") , "D"{
+        LQdir := packageDir "\" A_LoopFileName
+    }
+    return LQdir "\bin\libcurl-x64.dll"
+}

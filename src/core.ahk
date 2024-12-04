@@ -28,6 +28,8 @@ class LibQurl {
     }
     register(dllPath,preconfigureSSL?) {
         if !FileExist(dllPath)
+            dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
+        if !FileExist(dllPath)
             throw ValueError("libcurl DLL not found!", -1, dllPath)
         this.curlDLLpath := dllpath
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory

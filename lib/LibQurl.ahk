@@ -23,6 +23,8 @@ class LibQurl {
     }
     register(dllPath,preconfigureSSL?) {
         if !FileExist(dllPath)
+            dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
+        if !FileExist(dllPath)
             throw ValueError("libcurl DLL not found!", -1, dllPath)
         this.curlDLLpath := dllpath
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
@@ -812,6 +814,15 @@ class LibQurl {
     ;     DllCall("QueryPerformanceCounter", "Ptr", liPerformanceCount)
     ;     return NumGet(liPerformanceCount, 0, "Int64")
     ; }
+    _findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installation
+        If !FileExist(A_ScriptDir "\lib\Aris\Qriist\LibQurl.ahk")
+            return unset
+        packageDir := A_ScriptDir "\lib\Aris\Qriist"
+        loop files (packageDir "\LibQurl@*") , "D"{
+            LQdir := packageDir "\" A_LoopFileName
+        }
+        return LQdir "\bin\libcurl-x64.dll"
+    }
 
     class _struct {
         walkPtrArray(inPtr) {
