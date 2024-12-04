@@ -11,7 +11,7 @@ Full libcurl wrap for AHKv2.
 - [ ] Externally unify the Easy, Multi, and Multi_Socket calls (if possible!)
 
 ## Implemented functions (https://curl.se/libcurl/c/allfuncs.html)
-- [ ] curl_easy_cleanup
+- [X] curl_easy_cleanup
 - [X] curl_easy_duphandle
 - [X] curl_easy_escape
 - [ ] curl_easy_getinfo
@@ -22,12 +22,12 @@ Full libcurl wrap for AHKv2.
 - [X] curl_easy_option_by_name
 - [X] curl_easy_option_next
 - [ ] curl_easy_pause
-- [ ] curl_easy_perform
+- [X] curl_easy_perform
 - [ ] curl_easy_recv
 - [X] curl_easy_reset
 - [ ] curl_easy_send
 - [X] curl_easy_setopt
-- [ ] curl_easy_strerror
+- [X] curl_easy_strerror
 - [ ] curl_easy_unescape
 - [ ] curl_easy_upkeep
 - [ ] curl_formadd
@@ -36,7 +36,7 @@ Full libcurl wrap for AHKv2.
 - [X] curl_free
 - [ ] curl_getdate
 - [ ] curl_global_cleanup
-- [x] curl_global_init  --only default mode for now
+- [X] curl_global_init  --only default mode for now
 - [ ] curl_global_init_mem
 - [ ] curl_global_sslset
 - [ ] curl_mime_addpart
@@ -51,14 +51,14 @@ Full libcurl wrap for AHKv2.
 - [ ] curl_mime_name
 - [ ] curl_mime_subparts
 - [ ] curl_mime_type
-- [ ] curl_multi_add_handle
+- [X] curl_multi_add_handle
 - [ ] curl_multi_assign
 - [ ] curl_multi_cleanup
 - [ ] curl_multi_fdset
-- [ ] curl_multi_info_read
-- [ ] curl_multi_init
-- [ ] curl_multi_perform
-- [ ] curl_multi_remove_handle
+- [X] curl_multi_info_read
+- [X] curl_multi_init
+- [X] curl_multi_perform
+- [X] curl_multi_remove_handle
 - [ ] curl_multi_setopt
 - [ ] curl_multi_socket_action
 - [ ] curl_multi_strerror

@@ -26,7 +26,7 @@ class LibQurl {
         this.constants := Map()
         this.CURL_ERROR_SIZE := 256
     }
-    register(dllPath,preconfigureSSL?) {
+    register(dllPath?,preconfigureSSL?) {
         if !FileExist(dllPath)
             dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
         if !FileExist(dllPath)

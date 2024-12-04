@@ -21,7 +21,7 @@ class LibQurl {
         this.constants := Map()
         this.CURL_ERROR_SIZE := 256
     }
-    register(dllPath,preconfigureSSL?) {
+    register(dllPath?,preconfigureSSL?) {
         if !FileExist(dllPath)
             dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
         if !FileExist(dllPath)
@@ -1111,7 +1111,7 @@ class LibQurl {
         }
     }
 
-    _curl_easy_cleanup(easy_handle) {    ;untested https://curl.se/libcurl/c/curl_easy_cleanup.html
+    _curl_easy_cleanup(easy_handle) {    ;https://curl.se/libcurl/c/curl_easy_cleanup.html
         DllCall(this.curlDLLpath "\curl_easy_cleanup"
             ,   "Ptr", easy_handle)
     }
@@ -1151,13 +1151,6 @@ class LibQurl {
             , "Ptr", easy_handle)
         return retCode
     }
-    _curl_global_init() {   ;https://curl.se/libcurl/c/curl_global_init.html
-        ;can't find the various flag values so it's locked to the default "everything" mode for now - prolly okay
-        if DllCall(this.curlDLLpath "\curl_global_init", "Int", 0x03, "CDecl")  ;returns 0 on success
-            throw ValueError("Problem in 'curl_global_init'! Unable to init DLL!", -1, this.curlDLLpath)
-        else
-            return
-    }
     _curl_easy_reset(easy_handle) {  ;https://curl.se/libcurl/c/curl_easy_reset.html
         DllCall(this.curlDLLpath "\curl_easy_reset"
             , "Ptr", easy_handle)
@@ -1177,15 +1170,34 @@ class LibQurl {
             ,   this.opt[option]["type"], parameter)
         return retCode
     }
-    
+    _curl_easy_strerror(errornum) {
+        return DllCall(this.curlDLLpath "\curl_easy_strerror"
+            , "Int", errornum
+            ,"Ptr")
+    }
     _curl_free(pointer) {   ;https://curl.se/libcurl/c/curl_free.html
         DllCall(this.curlDLLpath "\curl_free"
             ,   "Ptr", pointer)
+    }
+    _curl_global_init() {   ;https://curl.se/libcurl/c/curl_global_init.html
+        ;can't find the various flag values so it's locked to the default "everything" mode for now - prolly okay
+        if DllCall(this.curlDLLpath "\curl_global_init", "Int", 0x03, "CDecl")  ;returns 0 on success
+            throw ValueError("Problem in 'curl_global_init'! Unable to init DLL!", -1, this.curlDLLpath)
+        else
+            return
     }
     _curl_multi_add_handle(multi_handle, easy_handle) { ;https://curl.se/libcurl/c/curl_multi_add_handle.html
         return DllCall(this.curlDLLpath "\curl_multi_add_handle"
             ,   "Ptr", multi_handle
             ,   "Ptr", easy_handle)
+    }
+    _curl_multi_info_read(multi_handle, &msgs_in_queue) {    ;https://curl.se/libcurl/c/curl_multi_info_read.html
+        msgs_in_queue := 0
+        return DllCall(this.curlDLLpath "\curl_multi_info_read"
+            ,   "Int", multi_handle
+            ; ,   "Int", msgs_in_queue
+            ,   "Ptr*", &msgs_in_queue
+            ,   "Ptr")
     }
     _curl_multi_init() {    ;https://curl.se/libcurl/c/curl_multi_init.html
         return DllCall(this.curlDLLpath "\curl_multi_init"
@@ -1198,14 +1210,6 @@ class LibQurl {
             ,   "Ptr*", &running_handles)
         return ret
     }
-    _curl_multi_info_read(multi_handle, &msgs_in_queue) {    ;https://curl.se/libcurl/c/curl_multi_info_read.html
-        msgs_in_queue := 0
-        return DllCall(this.curlDLLpath "\curl_multi_info_read"
-            ,   "Int", multi_handle
-            ; ,   "Int", msgs_in_queue
-            ,   "Ptr*", &msgs_in_queue
-            ,   "Ptr")
-    }
     _curl_multi_remove_handle(multi_handle, easy_handle) {   ;https://curl.se/libcurl/c/curl_multi_remove_handle.html
         return DllCall(this.curlDLLpath "\curl_multi_remove_handle"
             ,   "Int", multi_handle
@@ -1217,7 +1221,7 @@ class LibQurl {
             , "AStr", strArrayItem
             , "Ptr")
     }
-    _curl_slist_free_all(ptrSList) {    ;untested   https://curl.se/libcurl/c/curl_slist_free_all.html
+    _curl_slist_free_all(ptrSList) {    ;https://curl.se/libcurl/c/curl_slist_free_all.html
         return DllCall(Curl.curlDLLpath "\curl_slist_free_all"
             , "Ptr", ptrSList)
     }
@@ -1225,11 +1229,6 @@ class LibQurl {
     
     
     
-    _curl_easy_strerror(errornum) {
-        return DllCall(this.curlDLLpath "\curl_easy_strerror"
-            , "Int", errornum
-            ,"Ptr")
-    }
     _curl_url() {   ;https://curl.se/libcurl/c/curl_url.html
         return DllCall(this.curlDLLpath "\curl_url")
     }
