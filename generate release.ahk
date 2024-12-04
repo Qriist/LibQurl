@@ -5,11 +5,23 @@ SetWorkingDir(A_ScriptDir)
 vArr := JSON.load(FileOpen(A_ScriptDir "\releases\version.json","r").Read())
 pkgArr := JSON.load(FileOpen(A_ScriptDir "\package.json","r").Read())
 msg := "LibQurl's current version is: " versionString(vArr) "`n`n"
-    .   "Press Enter to bump the minor version, or input your own."
+    .   "Press Enter to bump the minor version.`n"
+    .   "Input m to bump the major version.`n"
+    .   "Input p to bump the patch."
 
-bumped := InputBox(msg,,,versionString(vArr,2,&bumpedArr))
+bumped := InputBox(msg,,,versionString(vArr,2))
+If (bumped.Value = "m")
+    bumped.Value := versionString(vArr,1,&bumpedArr)
+else If (bumped.Value = "p")
+    bumped.Value := versionString(vArr,3,&bumpedArr)
+else
+    bumped.Value := versionString(vArr,2,&bumpedArr)
 If bumped.Result = "Cancel"
     ExitApp
+
+pkgArr["version"] := "v" bumped.Value
+FileOpen(A_ScriptDir "\package.json","w").Write(JSON.Dump(pkgArr))
+
 releaseName := "LibQurl v" bumped.Value
 releaseDir := A_ScriptDir "\releases\LibQurl v" bumped.Value
 DirCreate(releaseDir)
@@ -44,8 +56,7 @@ cmd := A_ScriptDir "\tools\7za.exe a -mx9 " Chr(34) "..\" releaseName ".zip" Chr
 RunWait(cmd,releaseDir)
 DirDelete(releaseDir,1)
 FileOpen(A_ScriptDir "\releases\version.json","w").Write(JSON.Dump(bumpedArr))
-pkgArr["version"] := "v" bumped.Value
-FileOpen(A_ScriptDir "\package.json","w").Write(JSON.Dump(pkgArr))
+
 ToolTip("Compiled LibQurl release v" bumped.Value ".")
 Sleep(1000)
 A_Clipboard := A_ScriptDir "\releases\" releaseName ".zip"
@@ -65,9 +76,9 @@ indent(input){
         ret .= "    " v "`n" 
     return ret
 }
-versionString(vArr,bump?,&bumpedArr?){
+versionString(vArr,bump := 0,&bumpedArr?){
     bumpedArr := Map("major",vArr["major"],"minor",vArr["minor"],"patch",vArr["patch"])
-    If !IsSet(bump)
+    If (bump=0)
         return (vArr["major"] "." vArr["minor"] "." vArr["patch"])
     If (bump=1)
         return (bumpedArr["major"] := vArr["major"] + 1) ".0.0"
