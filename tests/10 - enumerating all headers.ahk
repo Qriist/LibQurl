@@ -11,13 +11,13 @@ curl.SetOpt("URL",url)
 curl.WriteToMem()    ;just need a transfer
 curl.Sync()
 
-; c["STRING"] := 0x100000
-msgbox long := curl.GetInfo("HEADER_SIZE")    ;good
-; c["DOUBLE"] := 0x300000
-; c["SLIST"] := 0x400000
+str := curl.GetInfo("EFFECTIVE_URL") ;good
+long := curl.GetInfo("HEADER_SIZE")    ;good
+; msgbox curl.GetInfo("CONNECT_TIME")
+double := curl.GetInfo("CONNECT_TIME")  ;good
 ; c["PTR"] := 0x400000    ;same as SLIST
 ; c["SOCKET"] := 0x500000
-; c["OFF_T"] := 0x600000
+; msgbox off_t := curl.GetInfo("SPEED_DOWNLOAD_T")    ;good
 ; c["MASK"] := 0x0fffff
 ; c["TYPEMASK"] := 0xf00000
 

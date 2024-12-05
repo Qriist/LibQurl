@@ -460,8 +460,11 @@ class LibQurl {
     }
     GetInfo(infoOption,curl_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        result := this._curl_easy_getinfo(easy_handle,this.constants["CURLINFO"][infoOption],&info := 0)
-        ;todo - error handling result (CURLE)
+        result := this._curl_easy_getinfo(easy_handle,infoOption,&info := 0)
+
+        If (this.constants["CURLINFO"][infoOption]["infoType"] = "STRING")
+            info := StrGet(info,"UTF-8")
+        
         return info
     }
 

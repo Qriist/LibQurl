@@ -180,10 +180,23 @@ _curl_easy_escape(easy_handle, url) {
 
 }
 _curl_easy_getinfo(easy_handle,info,&retCode) {  ;untested   https://curl.se/libcurl/c/curl_easy_getinfo.html
-    return DllCall(this.curlDLLpath "\curl_easy_getinfo"
+    static c := this.constants["CURLINFO"]
+
+    ; MsgBox info "`n" c[info]["dllType"]
+    ; c[info]["dllType"] := "Str"
+    ; c[info]["dllType"] := "Str*"
+    ; c[info]["dllType"] := "Ptr"
+    ; c[info]["dllType"] := "Ptr*"
+    check := DllCall(this.curlDLLpath "\curl_easy_getinfo"
         ,   "Ptr", easy_handle
-        ,   "Int", info
-        ,   "Int*", &retCode)
+        ; ,   "Int", requestedInfo
+        ,   "Int", c[info]["id"]
+        ,   c[info]["dllType"], &retCode)
+        ; ,   "Int*", &retCode)
+    ; msgbox check "`n" StrGet(retCode,"UTF-8")
+
+    ;     ExitApp
+        return
 }
 _curl_easy_header(easy_handle,name,index,origin,request) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
     return DllCall(this.curlDLLpath "\curl_easy_header"
