@@ -316,6 +316,7 @@ class LibQurl {
         ;   -an Object/Array/Map to dump as JSON
 
         ;NOTE: the file is currently read completely into memory before being sent
+        ;todo - create callback that reads POSTed file incrementally
 
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
@@ -457,6 +458,12 @@ class LibQurl {
             this.AddEasyToMulti(v,newMultiHandle)
         }
     }
+    GetInfo(infoOption,curl_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        result := this._curl_easy_getinfo(easy_handle,this.constants["CURLINFO"][infoOption],&info := 0)
+        ;todo - error handling result (CURLE)
+        return info
+    }
 
     ;dummied code that doesn't work right yet
 
@@ -514,5 +521,6 @@ class LibQurl {
 ;#compile:helper
 ;#compile:_struct
 ;#compile:storage
+;#compile:_declareConstants
 ;#compile:dll
 }

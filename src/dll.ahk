@@ -182,8 +182,8 @@ _curl_easy_escape(easy_handle, url) {
 _curl_easy_getinfo(easy_handle,info,&retCode) {  ;untested   https://curl.se/libcurl/c/curl_easy_getinfo.html
     return DllCall(this.curlDLLpath "\curl_easy_getinfo"
         ,   "Ptr", easy_handle
-        ,   "UInt", info
-        ,   "Int", retCode)
+        ,   "Int", info
+        ,   "Int*", &retCode)
 }
 _curl_easy_header(easy_handle,name,index,origin,request) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
     return DllCall(this.curlDLLpath "\curl_easy_header"
