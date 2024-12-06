@@ -198,15 +198,13 @@ _curl_easy_header(easy_handle,name,index,origin,request) {   ;untested https://c
         ,   "Ptr")
 }
 
-_curl_easy_nextheader(easy_handle,origin,request,previous_curl_header := 1) { ;untested https://curl.se/libcurl/c/curl_easy_nextheader.html
-    ret := DllCall(this.curlDLLpath "\curl_easy_nextheader"
+_curl_easy_nextheader(easy_handle,origin,request,previous_curl_header) { ;untested https://curl.se/libcurl/c/curl_easy_nextheader.html
+    return DllCall(this.curlDLLpath "\curl_easy_nextheader"
         ,   "Ptr", easy_handle
         ,   "UInt", origin
         ,   "Int", request
         ,   "Ptr", previous_curl_header
         ,   "Ptr")
-
-    msgbox ret
 }
 
 

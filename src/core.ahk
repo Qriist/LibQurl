@@ -478,22 +478,29 @@ class LibQurl {
     }
     GetAllHeaders(easy_handle?) {   ;use GetLastHeaders() unless you need to examine the headers from a redirect
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-
-        static origin
+        static c := this.constants["CURLH_ORIGINS"]
+        
         redirects := this.GetInfo("REDIRECT_COUNT")
         retObj := []
 
-        previous_curl_header := 0
-        origin := 0
-        request := 0
-        ret := this._curl_easy_nextheader(easy_handle,origin,request,previous_curl_header)
-        ; msgbox redirects
-        msgbox "hi"
+        ;tod
+        origin ??= c["HEADER"]
+        
         loop redirects + 1 {
-            originObj := Map()
-            origin := a_index - 1   ;0-based
-            ; o
+            request := a_index - 1
+            previous_curl_header := 0
+            retObj.Push([])
+            specificRetObj := retObj[retObj.Length]
+
+            loop{
+                headerPtr := this._curl_easy_nextheader(easy_handle,origin,request,previous_curl_header)
+                If !headerPtr
+                    break
+                specificRetObj.Push(this.struct.curl_header(headerPtr))    
+                previous_curl_header := headerPtr
+            }
         }
+        return retObj
     }
 
     ;dummied code that doesn't work right yet

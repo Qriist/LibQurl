@@ -87,12 +87,11 @@ class _struct {
     }
     curl_header(ptr){
         retObj := Map()
-        ; offset := 0
         retObj["name"] := str(ptr,0)
-        ; retObj["value"] := 
-        ; retObj["amount"] := 
-        ; retObj["index"] := 
-        ; retObj["origin"] := 
+        retObj["value"] := str(ptr,8)
+        retObj["amount"] := NumGet(ptr,16,"UInt")
+        retObj["index"] := NumGet(ptr,24,"UInt")
+        retObj["origin"] := NumGet(ptr,24,"UInt")
         return retObj
         str(ptr,offset,encoding := "UTF-8"){
             return (NumGet(ptr,offset,"Ptr")=0?0:StrGet(NumGet(ptr,offset,"Ptr"),encoding))

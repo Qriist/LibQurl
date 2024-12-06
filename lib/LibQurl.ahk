@@ -473,17 +473,36 @@ class LibQurl {
     }
     GetAllHeaders(easy_handle?) {   ;use GetLastHeaders() unless you need to examine the headers from a redirect
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-
-        static origin
+        static c := this.constants["CURLH_ORIGINS"]
+        
         redirects := this.GetInfo("REDIRECT_COUNT")
         retObj := []
 
-        previous_curl_header := 0
-        origin := 0
-        request := 0
-        ret := this._curl_easy_nextheader(easy_handle,origin,request,previous_curl_header)
-        ; msgbox redirects
-        msgbox "hi"
+        origin ??= c["HEADER"]
+        
+        
+        
+        loop redirects + 1 {
+            request := a_index - 1
+            previous_curl_header := 0
+            retObj.Push([])
+            specificRetObj := retObj[retObj.Length]
+
+            loop{
+                headerPtr := this._curl_easy_nextheader(easy_handle,origin,request,previous_curl_header)
+                If !headerPtr
+                    break
+                specificRetObj.Push(this.struct.curl_header(headerPtr))    
+                previous_curl_header := headerPtr
+            }
+            ; msgbox this.ShowOB(this.struct.curl_header(headerPtr))
+            ;     .   "`nnew headerPtr=" previous_curl_header := headerPtr
+            ;     ; .   "`n" NumGet(headerPtr) 
+            ;     previous_curl_header := headerPtr
+        }
+
+        ; ret := 
+        msgbox this.ShowOB(retObj)
         loop redirects + 1 {
             originObj := Map()
             origin := a_index - 1   ;0-based
@@ -918,12 +937,11 @@ class LibQurl {
         }
         curl_header(ptr){
             retObj := Map()
-            ; offset := 0
             retObj["name"] := str(ptr,0)
-            ; retObj["value"] := 
-            ; retObj["amount"] := 
-            ; retObj["index"] := 
-            ; retObj["origin"] := 
+            retObj["value"] := str(ptr,8)
+            retObj["amount"] := NumGet(ptr,16,"UInt")
+            retObj["index"] := NumGet(ptr,24,"UInt")
+            retObj["origin"] := NumGet(ptr,24,"UInt")
             return retObj
             str(ptr,offset,encoding := "UTF-8"){
                 return (NumGet(ptr,offset,"Ptr")=0?0:StrGet(NumGet(ptr,offset,"Ptr"),encoding))
@@ -1472,15 +1490,13 @@ class LibQurl {
             ,   "Ptr")
     }
     
-    _curl_easy_nextheader(easy_handle,origin,request,previous_curl_header := 1) { ;untested https://curl.se/libcurl/c/curl_easy_nextheader.html
-        ret := DllCall(this.curlDLLpath "\curl_easy_nextheader"
+    _curl_easy_nextheader(easy_handle,origin,request,previous_curl_header) { ;untested https://curl.se/libcurl/c/curl_easy_nextheader.html
+        return DllCall(this.curlDLLpath "\curl_easy_nextheader"
             ,   "Ptr", easy_handle
             ,   "UInt", origin
             ,   "Int", request
             ,   "Ptr", previous_curl_header
             ,   "Ptr")
-    
-        msgbox ret
     }
     
     
