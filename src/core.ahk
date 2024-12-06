@@ -35,6 +35,11 @@ class LibQurl {
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
         ;this._curl_global_sslset   -todo
         this._curl_global_init()
+        try{
+            this._declareConstants()
+        } catch Error {
+
+        }
         this._declareConstants()
         this._buildOptMap()
         this.VersionInfo := this.GetVersionInfo()
@@ -462,11 +467,33 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         result := this._curl_easy_getinfo(easy_handle,infoOption,&info := 0)
 
-        If (this.constants["CURLINFO"][infoOption]["infoType"] = "STRING")
-            info := StrGet(info,"UTF-8")
-        
-        return info
-        
+        switch this.constants["CURLINFO"][infoOption]["infoType"] {
+            case "STRING":
+                return StrGet(info,"UTF-8")
+            case "PTR":
+                return (info!=0?numget(info,"ptr"):0)
+            default:
+                return info
+        }
+    }
+    GetAllHeaders(easy_handle?) {   ;use GetLastHeaders() unless you need to examine the headers from a redirect
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+
+        static origin
+        redirects := this.GetInfo("REDIRECT_COUNT")
+        retObj := []
+
+        previous_curl_header := 0
+        origin := 0
+        request := 0
+        ret := this._curl_easy_nextheader(easy_handle,origin,request,previous_curl_header)
+        ; msgbox redirects
+        msgbox "hi"
+        loop redirects + 1 {
+            originObj := Map()
+            origin := a_index - 1   ;0-based
+            ; o
+        }
     }
 
     ;dummied code that doesn't work right yet
