@@ -7,22 +7,22 @@ curl := LibQurl()
 curl.register(A_WorkingDir "\bin\libcurl-x64.dll")
 easy_handle := curl.Init()
 url := "https://www.titsandasses.org"
+url := "https://database.lichess.org/standard/lichess_db_standard_rated_2013-01.pgn.zst" 
 curl.SetOpt("URL",url)
 curl.WriteToMem()    ;just need a transfer
 curl.Sync()
 
 str := curl.GetInfo("EFFECTIVE_URL") ;good
 long := curl.GetInfo("HEADER_SIZE")    ;good
-; msgbox curl.GetInfo("CONNECT_TIME")
-double := curl.GetInfo("CONNECT_TIME")  ;good
+double := curl.GetInfo("SPEED_DOWNLOAD_T")  ;good
 ; c["PTR"] := 0x400000    ;same as SLIST
 ; c["SOCKET"] := 0x500000
-; msgbox off_t := curl.GetInfo("SPEED_DOWNLOAD_T")    ;good
+off_t := curl.GetInfo("CONTENT_LENGTH_DOWNLOAD_T")    ;good
 ; c["MASK"] := 0x0fffff
 ; c["TYPEMASK"] := 0xf00000
 
-
-
+; msgbox str "`n" long "`n" double ;"`n" str "`n" str "`n" str "`n" str "`n" 
+msgbox off_t
 ; curl._curl_easy_header(easy_handle)
 
 

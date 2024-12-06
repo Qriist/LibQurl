@@ -466,6 +466,7 @@ class LibQurl {
             info := StrGet(info,"UTF-8")
         
         return info
+        
     }
 
     ;dummied code that doesn't work right yet
