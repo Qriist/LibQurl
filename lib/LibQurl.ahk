@@ -30,11 +30,7 @@ class LibQurl {
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
         ;this._curl_global_sslset   -todo
         this._curl_global_init()
-        try{
-            this._declareConstants()
-        } catch Error {
-
-        }
+        this._declareConstants()
         this._declareConstants()
         this._buildOptMap()
         this.VersionInfo := this.GetVersionInfo()
@@ -191,14 +187,6 @@ class LibQurl {
         this.SetOpt("WRITEDATA",writeHandle,easy_handle)
         this.SetOpt("WRITEFUNCTION",this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"],easy_handle) 
         Return
-    }
-    _RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle without breaking the connection
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        ; this._prepareInitCallbacks(easy_handle)
-        ; this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
-        this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
-        
-        ;todo - gather and clean the SetOpts
     }
     ReadyAsync(inEasyHandles,multi_handle?){    ;Add any number of easy_handles to the multi pool. Accepts integers or object.
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
@@ -836,6 +824,14 @@ class LibQurl {
             LQdir := packageDir "\" A_LoopFileName
         }
         return LQdir "\bin\libcurl-x64.dll"
+    }
+    _RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle without breaking the connection
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        ; this._prepareInitCallbacks(easy_handle)
+        ; this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
+        this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
+        
+        ;todo - gather and clean the SetOpts
     }
 
     class _struct {

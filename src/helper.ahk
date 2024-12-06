@@ -287,3 +287,11 @@ _findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installatio
     }
     return LQdir "\bin\libcurl-x64.dll"
 }
+_RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle without breaking the connection
+    easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+    ; this._prepareInitCallbacks(easy_handle)
+    ; this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
+    this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
+    
+    ;todo - gather and clean the SetOpts
+}
