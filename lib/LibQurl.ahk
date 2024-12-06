@@ -924,7 +924,7 @@ class LibQurl {
             ; retObj["amount"] := 
             ; retObj["index"] := 
             ; retObj["origin"] := 
-            return
+            return retObj
             str(ptr,offset,encoding := "UTF-8"){
                 return (NumGet(ptr,offset,"Ptr")=0?0:StrGet(NumGet(ptr,offset,"Ptr"),encoding))
             }
@@ -1278,6 +1278,14 @@ class LibQurl {
         DllCall(this.curlDLLpath "\curl_easy_cleanup"
             ,   "Ptr", easy_handle)
     }
+    _curl_easy_getinfo(easy_handle,info,&retCode) {  ;untested   https://curl.se/libcurl/c/curl_easy_getinfo.html
+        static c := this.constants["CURLINFO"]
+        check := DllCall(this.curlDLLpath "\curl_easy_getinfo"
+            ,   "Ptr", easy_handle
+            ,   "Int", c[info]["id"]
+            ,   c[info]["dllType"], &retCode)
+        return check
+    }
     _curl_easy_init() {
         return DllCall(this.curlDLLpath "\curl_easy_init"
             ,   "Ptr")
@@ -1453,14 +1461,7 @@ class LibQurl {
         return StrGet(esc, "UTF-8")
     
     }
-    _curl_easy_getinfo(easy_handle,info,&retCode) {  ;untested   https://curl.se/libcurl/c/curl_easy_getinfo.html
-        static c := this.constants["CURLINFO"]
-        check := DllCall(this.curlDLLpath "\curl_easy_getinfo"
-            ,   "Ptr", easy_handle
-            ,   "Int", c[info]["id"]
-            ,   c[info]["dllType"], &retCode)
-        return check
-    }
+    
     _curl_easy_header(easy_handle,name,index,origin,request) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
         return DllCall(this.curlDLLpath "\curl_easy_header"
             ,   "Ptr", easy_handle
