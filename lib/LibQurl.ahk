@@ -478,9 +478,8 @@ class LibQurl {
         redirects := this.GetInfo("REDIRECT_COUNT")
         retObj := []
 
+        ;todo - check out the other origin types
         origin ??= c["HEADER"]
-        
-        
         
         loop redirects + 1 {
             request := a_index - 1
@@ -495,19 +494,8 @@ class LibQurl {
                 specificRetObj.Push(this.struct.curl_header(headerPtr))    
                 previous_curl_header := headerPtr
             }
-            ; msgbox this.ShowOB(this.struct.curl_header(headerPtr))
-            ;     .   "`nnew headerPtr=" previous_curl_header := headerPtr
-            ;     ; .   "`n" NumGet(headerPtr) 
-            ;     previous_curl_header := headerPtr
         }
-
-        ; ret := 
-        msgbox this.ShowOB(retObj)
-        loop redirects + 1 {
-            originObj := Map()
-            origin := a_index - 1   ;0-based
-            ; o
-        }
+        return retObj
     }
 
     ;dummied code that doesn't work right yet

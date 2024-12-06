@@ -483,7 +483,7 @@ class LibQurl {
         redirects := this.GetInfo("REDIRECT_COUNT")
         retObj := []
 
-        ;tod
+        ;todo - check out the other origin types
         origin ??= c["HEADER"]
         
         loop redirects + 1 {
