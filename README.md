@@ -35,7 +35,7 @@ Full libcurl wrap for AHKv2.
 - build the share opt map
 - create callback that reads POSTed file incrementally
 - add the other origin types to GetAllHeaders
-- 
+  
 <details><summary>Implemented Functions</summary>
 https://curl.se/libcurl/c/allfuncs.html
   
