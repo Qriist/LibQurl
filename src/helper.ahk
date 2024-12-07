@@ -287,6 +287,13 @@ _findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installatio
     }
     return LQdir "\bin\libcurl-x64.dll"
 }
+
+; _findDLLfromAris_hash(){ ;dynamically finds the dll from a versioned Aris installation
+;     hash := SHA512("Qriist/LibQurl")
+;     If (IsSet(SHA12))
+;     return LQdir "\bin\libcurl-x64.dll"
+; }
+
 _RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle without breaking the connection
     easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
     ; this._prepareInitCallbacks(easy_handle)

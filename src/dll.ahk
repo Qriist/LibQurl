@@ -188,17 +188,18 @@ _curl_easy_escape(easy_handle, url) {
 
 }
 
-_curl_easy_header(easy_handle,name,index,origin,request) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
+_curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
     return DllCall(this.curlDLLpath "\curl_easy_header"
         ,   "Ptr", easy_handle
-        ,   "Ptr", name
-        ,   "Int", index
-        ,   "Int", origin
+        ,   "Str*", name
+        ,   "UPtr", index
+        ,   "UInt", origin
         ,   "Int", request
-        ,   "Ptr")
+        ,   "Ptr*", curl_header
+        ,   "UInt")
 }
 
-_curl_easy_nextheader(easy_handle,origin,request,previous_curl_header) { ;untested https://curl.se/libcurl/c/curl_easy_nextheader.html
+_curl_easy_nextheader(easy_handle,origin,request,previous_curl_header) { ;https://curl.se/libcurl/c/curl_easy_nextheader.html
     return DllCall(this.curlDLLpath "\curl_easy_nextheader"
         ,   "Ptr", easy_handle
         ,   "UInt", origin

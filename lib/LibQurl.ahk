@@ -485,9 +485,31 @@ class LibQurl {
         }
         return retObj
     }
-
+    InspectHeader(name,index := 0, origin?,request := -1,easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        static c := this.constants["CURLH_ORIGINS"]
+        origin ??= c["HEADER"]
+        ; msgbox this.ShowOB(this.GetAllHeaders())
+        name:= "server"
+        ret := this._curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0)
+        msgbox ret
+    }
+    PrintObj(ObjectMapOrArray,depth := 5,indentLevel := ""){
+        list := ""
+        For k,v in (Type(ObjectMapOrArray)!="Object"?ObjectMapOrArray:ObjectMapOrArray.OwnProps()){
+            list .= indentLevel "[" k "]"
+            Switch Type(v) {
+                case "Map","Array","Object":
+                    list .= "`n" this.PrintObj(v,depth-1,indentLevel  "    ")
+                Default:
+                    list .= " => " v
+            }
+            list := RTrim(list,"`r`n`r ") "`n"
+        }
+        return RTrim(list)
+    }
     ;dummied code that doesn't work right yet
-
+    
 
     ; DupeInit(easy_handle?){
         ; newHandle := this._curl_easy_duphandle(easy_handle)
@@ -825,6 +847,13 @@ class LibQurl {
         }
         return LQdir "\bin\libcurl-x64.dll"
     }
+    
+    ; _findDLLfromAris_hash(){ ;dynamically finds the dll from a versioned Aris installation
+    ;     hash := SHA512("Qriist/LibQurl")
+    ;     If (IsSet(SHA12))
+    ;     return LQdir "\bin\libcurl-x64.dll"
+    ; }
+    
     _RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle without breaking the connection
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         ; this._prepareInitCallbacks(easy_handle)
@@ -1464,17 +1493,18 @@ class LibQurl {
     
     }
     
-    _curl_easy_header(easy_handle,name,index,origin,request) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
+    _curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
         return DllCall(this.curlDLLpath "\curl_easy_header"
             ,   "Ptr", easy_handle
-            ,   "Ptr", name
-            ,   "Int", index
-            ,   "Int", origin
+            ,   "Str*", name
+            ,   "UPtr", index
+            ,   "UInt", origin
             ,   "Int", request
-            ,   "Ptr")
+            ,   "Ptr*", curl_header
+            ,   "UInt")
     }
     
-    _curl_easy_nextheader(easy_handle,origin,request,previous_curl_header) { ;untested https://curl.se/libcurl/c/curl_easy_nextheader.html
+    _curl_easy_nextheader(easy_handle,origin,request,previous_curl_header) { ;https://curl.se/libcurl/c/curl_easy_nextheader.html
         return DllCall(this.curlDLLpath "\curl_easy_nextheader"
             ,   "Ptr", easy_handle
             ,   "UInt", origin

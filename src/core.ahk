@@ -490,9 +490,31 @@ class LibQurl {
         }
         return retObj
     }
-
+    InspectHeader(name,index := 0, origin?,request := -1,easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        static c := this.constants["CURLH_ORIGINS"]
+        origin ??= c["HEADER"]
+        ; msgbox this.ShowOB(this.GetAllHeaders())
+        name:= "server"
+        ret := this._curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0)
+        msgbox ret
+    }
+    PrintObj(ObjectMapOrArray,depth := 5,indentLevel := ""){
+        list := ""
+        For k,v in (Type(ObjectMapOrArray)!="Object"?ObjectMapOrArray:ObjectMapOrArray.OwnProps()){
+            list .= indentLevel "[" k "]"
+            Switch Type(v) {
+                case "Map","Array","Object":
+                    list .= "`n" this.PrintObj(v,depth-1,indentLevel  "    ")
+                Default:
+                    list .= " => " v
+            }
+            list := RTrim(list,"`r`n`r ") "`n"
+        }
+        return RTrim(list)
+    }
     ;dummied code that doesn't work right yet
-
+    
 
     ; DupeInit(easy_handle?){
         ; newHandle := this._curl_easy_duphandle(easy_handle)
