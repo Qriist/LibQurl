@@ -23,6 +23,19 @@ Full libcurl wrap for AHKv2.
 - [ ] Wrap misc functions that weren't required by any of the above
 - [ ] Externally unify the Easy, Multi, and Multi_Socket calls (if possible!)
 
+## Random to-do list, in no real order
+- enable preloading sslset
+- auto-updating the cert bundle
+- add handling for Opts with scaffolding during the batch SetOpts
+- gather and clean the SetOpts after a handle finishes downloading
+- investigate POST mode differences (probably when I wrap the mime API)
+- build the read/progress/debug callbacks
+- write an "output to null" callback function for more safely reseting file writes (currently resets to memory output)
+- build the multi opt map
+- build the share opt map
+- create callback that reads POSTed file incrementally
+- add the other origin types to GetAllHeaders
+- 
 <details><summary>Implemented Functions</summary>
 https://curl.se/libcurl/c/allfuncs.html
   
