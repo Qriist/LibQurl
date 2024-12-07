@@ -86,12 +86,6 @@ class LibQurl {
         }
         return Trim(ret,"`n")
     }
-    ShowOB(ob, strOB := "") {  ; returns `n list.  pass object, returns list of elements. nice chart format with `n.  strOB for internal use only.
-        (Type(Ob) ~= 'Object|Gui') ? Ob := Ob.OwnProps() : 1
-        for i, v in ob
-        (!isobject(v)) ? (rets .= "`n [" strOB i "] = [" v "]") : (rets .= this.ShowOB(v, strOB i "."))
-        return isSet(rets) ? rets : ""
-    }
     GetVersionInfo(){
         verPtr := this._curl_version_info()
         retObj := this.struct.curl_version_info_data(verPtr)
@@ -414,7 +408,7 @@ class LibQurl {
         }
         
         return retObj
-        ; msgbox this.ShowOB(retObj)
+        ; msgbox this.PrintObj(retObj)
         ; msgbox retCode "`n" msgsInQueue
     }
 
@@ -533,7 +527,7 @@ class LibQurl {
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
         ; msgbox easy_handle "`n" newHandle "`n`n" this.easyHandleMap[0]["easy_handle"]
         this.easyHandleMap[newHandle] := this.DeepClone(this.easyHandleMap[easy_handle])
-        msgbox this.ShowOB(this.easyHandleMap[newHandle])
+        msgbox this.PrintObj(this.easyHandleMap[newHandle])
         this.easyHandleMap[0]["easy_handle"] := this.easyHandleMap[newHandle]["easy_handle"]
         ; msgbox this.easyHandleMap[newHandle]["easy_handle"] "`n" this.easyHandleMap[easy_handle]["easy_handle"] "`n`n" this.easyHandleMap[0]["easy_handle"]
         ; this.easyHandleMap[newHandle] := this.easyHandleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created easy_handle
@@ -609,7 +603,7 @@ class LibQurl {
             If !this.OptById.Has(o["id"])   ;the DLL was giving an errorneous "ENCODING" option, maybe others, idk
                 this.OptById[o["id"]] := o["name"]
         }
-        ; msgbox this.ShowOB(this.opt)
+        ; msgbox this.PrintObj(this.opt)
     }
     
     _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){

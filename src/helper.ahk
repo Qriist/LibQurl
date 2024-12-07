@@ -46,7 +46,7 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
         If !this.OptById.Has(o["id"])   ;the DLL was giving an errorneous "ENCODING" option, maybe others, idk
             this.OptById[o["id"]] := o["name"]
     }
-    ; msgbox this.ShowOB(this.opt)
+    ; msgbox this.PrintObj(this.opt)
 }
 
 _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
