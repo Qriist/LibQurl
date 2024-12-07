@@ -19,9 +19,9 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_duphandle           |                              |
 | &check;    | curl_easy_escape              |                              |
 | &check;    | curl_easy_getinfo             |                              |
-|            | curl_easy_header              |                              |
+| &check;    | curl_easy_header              |                              |
 | &check;    | curl_easy_init                |                              |
-|            | curl_easy_nextheader          |                              |
+| &check;    | curl_easy_nextheader          |                              |
 | &check;    | curl_easy_option_by_id        |                              |
 | &check;    | curl_easy_option_by_name      |                              |
 | &check;    | curl_easy_option_next         |                              |
