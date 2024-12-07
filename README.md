@@ -3,10 +3,10 @@ Full libcurl wrap for AHKv2.
 
 ## Features
 - This is a full direct binding of libcurl, meaning that you have access* to all functions.
-- libcurl's "easy" interface is currently partially wrapped in a user-friendly way.
+- libcurl's "easy" interface is currently mostly wrapped in a user-friendly way.
 - Seamless async transfers are possible if desired.
 - Transparently compressed transfers are on by default - this saves bandwidth and time.
-- Numerous simultaneous curl handles are supported, as is the multi interface.
+- Numerous simultaneous curl handles are supported, as is the multi interface. All options are remembered per-handle.
 - The ability to download a file directly into RAM without touching the disk - very useful when working with APIs.
 - Effortless POSTing of data from almost any source, be it a String, Integer, Object, Array, Map, or even a FileObject.
 - Much work has been done to abstract away the need for a full understanding of curl's rather arcane architecture, while still allowing complete access to those inner workings when required.
