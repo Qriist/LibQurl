@@ -10,7 +10,8 @@ Full libcurl wrap for AHKv2.
 - The ability to download a file directly into RAM without touching the disk - very useful when working with APIs.
 - Effortless POSTing of data from almost any source, be it a String, Integer, Object, Array, Map, or even a FileObject.
 - Much work has been done to abstract away the need for a full understanding of curl's rather arcane architecture, while still allowing complete access to those inner workings when required.
-  
+- Full support for @Descolada's fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris).
+
 <sup><sub>*Around 50 dll functions were added in an "untested" state and are clearly marked as such. Among these, there are almost certainly some instances of providing the wrong data type in the DllCall. *Caveat emptor* until checked off on the function list below. Most common functions are already properly wrapped.</sup></sub>
 
 ## Roadmap
