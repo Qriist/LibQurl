@@ -302,3 +302,7 @@ _RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle withou
     
     ;todo - gather and clean the SetOpts
 }
+
+_getDllAddress(dllPath,dllfunction){
+    return DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", dllPath, "Ptr"), "AStr", dllfunction, "Ptr")
+}

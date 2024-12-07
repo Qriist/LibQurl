@@ -85,8 +85,6 @@ for k,v in SHA256{
 
 FileOpen(a_scriptdir "\09.results.txt","w").write(failed " failed hashes")
 
-
-
 ExitApp
 
 ; HashFile by Deo
