@@ -6,50 +6,28 @@ SetWorkingDir(A_ScriptDir "\..")
 curl := LibQurl()
 curl.register(A_WorkingDir "\bin\libcurl-x64.dll")
 easy_handle := curl.Init()
-; url := "https://www.titsandasses.org"
-; url := "https://database.lichess.org/standard/lichess_db_standard_rated_2013-01.pgn.zst" 
-url := "https://www.google.com"
-; url := "https://www.archive.today"
+curl.WriteToMem()    ;don't care about the body content
+
+;using httpbin to force a redirect so we have multiple header indices 
+url := "https://httpbin.org/redirect-to?url=https%3A%2F%2Farchive.today"
 curl.SetOpt("URL",url)
-curl.WriteToMem()    ;just need a transfer
-; curl.HeaderToFile("test.txt")
 curl.Sync()
-; msgbox curl.GetLastHeaders()
-; curl.GetAllHeaders()
 
-curl.InspectHeader(1)
-; msgbox curl.GetInfo("REDIRECT_COUNT")   ; 2 w/archive.today
-/*
-st_printArr(array, depth=5, indentLevel="")
-{
-	for k,v in Array
-	{
-        
-		list.= indentLevel "[" k "]"
-		if (IsObject(v) && depth>1)
-			list.="`n" st_printArr(v, depth-1, indentLevel . "    ")
-		Else
-			list.=" => " v
-        ; list.="`n"
-		list:=rtrim(list, "`r`n `t") "`n"
-	}
-	return rtrim(list)
-}
-*/
+redirectCount := curl.GetInfo("REDIRECT_COUNT")
 
-; _curl_easy_header(easy_handle,name,index,origin,request) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
-;     return DllCall(this.curlDLLpath "\curl_easy_header"
-;         ,   "Ptr", name
-;         ,   "Int", index
-;         ,   "Int", origin
-;         ,   "Int", request
-;         ,   "Ptr")
-; }
+out := "The total number of redirects was:  " redirectCount "`n"
+out .= "Total numer of resulting header groups: " redirectCount + 1 "`n`n"
 
-; _curl_easy_nextheader(easy_handle,origin,request,prev) { ;untested https://curl.se/libcurl/c/curl_easy_nextheader.html
-;     return DllCall(this.curlDLLpath "\curl_easy_nextheader"
-;         ,   "Int", origin
-;         ,   "Int", request
-;         ,   "Ptr", prev
-;         ,   "Ptr")
-; }
+desiredHeader := "date"
+;to get the first entry, use curl.InspectHeader(desiredHeader,,,0)
+out .= "The initial connection was established at:  " curl.InspectHeader(desiredHeader,,,0) "`n"
+
+;To get the final entry, use curl.InspectHeader(desiredHeader)
+;(This is usually what you want.)
+out .= "The final connection was established at:    " curl.InspectHeader(desiredHeader) "`n`n"
+
+;GetAllHeaders returns a complete array of all headers for you to iterate over
+allHeaders := curl.GetAllHeaders()
+out .= "The following is a complete dump of all received headers:`n" curl.PrintObj(allHeaders)
+
+FileOpen(A_ScriptDir "\10.headers.txt","w").Write(out)

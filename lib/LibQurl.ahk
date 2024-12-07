@@ -489,17 +489,20 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         static c := this.constants["CURLH_ORIGINS"]
         origin ??= c["HEADER"]
-        ; msgbox this.ShowOB(this.GetAllHeaders())
-        name:= "server"
+
         ret := this._curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0)
-        msgbox ret
+        If curl_header
+            return this.struct.curl_header(curl_header)["value"]
+        return unset
     }
     PrintObj(ObjectMapOrArray,depth := 5,indentLevel := ""){
+        ; static self := StrSplit(A_ThisFunc,".")[StrSplit(A_ThisFunc,".").Length]
         list := ""
         For k,v in (Type(ObjectMapOrArray)!="Object"?ObjectMapOrArray:ObjectMapOrArray.OwnProps()){
             list .= indentLevel "[" k "]"
             Switch Type(v) {
                 case "Map","Array","Object":
+                    ; list .= "`n" this.%self%(v,depth-1,indentLevel  "    ")
                     list .= "`n" this.PrintObj(v,depth-1,indentLevel  "    ")
                 Default:
                     list .= " => " v
@@ -969,7 +972,7 @@ class LibQurl {
             __New(filename, &handleMap, storageCategory, accessMode := "w", easy_handle?) {
                 this.easyHandleMap := handleMap
                 easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-                
+    
                 this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
                 this.writeObj["writeType"] := "file"
                 this.writeObj["filename"] := filename
@@ -1496,11 +1499,11 @@ class LibQurl {
     _curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
         return DllCall(this.curlDLLpath "\curl_easy_header"
             ,   "Ptr", easy_handle
-            ,   "Str*", name
-            ,   "UPtr", index
+            ,   "AStr", name
+            ,   "Ptr", index
             ,   "UInt", origin
             ,   "Int", request
-            ,   "Ptr*", curl_header
+            ,   "Ptr*", &curl_header
             ,   "UInt")
     }
     

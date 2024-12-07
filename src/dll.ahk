@@ -191,11 +191,11 @@ _curl_easy_escape(easy_handle, url) {
 _curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
     return DllCall(this.curlDLLpath "\curl_easy_header"
         ,   "Ptr", easy_handle
-        ,   "Str*", name
-        ,   "UPtr", index
+        ,   "AStr", name
+        ,   "Ptr", index
         ,   "UInt", origin
         ,   "Int", request
-        ,   "Ptr*", curl_header
+        ,   "Ptr*", &curl_header
         ,   "UInt")
 }
 

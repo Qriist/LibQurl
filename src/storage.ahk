@@ -8,7 +8,7 @@ Class Storage {
         __New(filename, &handleMap, storageCategory, accessMode := "w", easy_handle?) {
             this.easyHandleMap := handleMap
             easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-            
+
             this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
             this.writeObj["writeType"] := "file"
             this.writeObj["filename"] := filename
