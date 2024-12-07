@@ -12,8 +12,26 @@ _curl_easy_getinfo(easy_handle,info,&retCode) {  ;untested   https://curl.se/lib
         ,   c[info]["dllType"], &retCode)
     return check
 }
+_curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
+    return DllCall(this.curlDLLpath "\curl_easy_header"
+        ,   "Ptr", easy_handle
+        ,   "AStr", name
+        ,   "Ptr", index
+        ,   "UInt", origin
+        ,   "Int", request
+        ,   "Ptr*", &curl_header
+        ,   "UInt")
+}
 _curl_easy_init() {
     return DllCall(this.curlDLLpath "\curl_easy_init"
+        ,   "Ptr")
+}
+_curl_easy_nextheader(easy_handle,origin,request,previous_curl_header) { ;https://curl.se/libcurl/c/curl_easy_nextheader.html
+    return DllCall(this.curlDLLpath "\curl_easy_nextheader"
+        ,   "Ptr", easy_handle
+        ,   "UInt", origin
+        ,   "Int", request
+        ,   "Ptr", previous_curl_header
         ,   "Ptr")
 }
 _curl_easy_option_by_id(id) {
@@ -185,31 +203,7 @@ _curl_easy_escape(easy_handle, url) {
         , "Int", 0
         , "Ptr")
     return StrGet(esc, "UTF-8")
-
 }
-
-_curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
-    return DllCall(this.curlDLLpath "\curl_easy_header"
-        ,   "Ptr", easy_handle
-        ,   "AStr", name
-        ,   "Ptr", index
-        ,   "UInt", origin
-        ,   "Int", request
-        ,   "Ptr*", &curl_header
-        ,   "UInt")
-}
-
-_curl_easy_nextheader(easy_handle,origin,request,previous_curl_header) { ;https://curl.se/libcurl/c/curl_easy_nextheader.html
-    return DllCall(this.curlDLLpath "\curl_easy_nextheader"
-        ,   "Ptr", easy_handle
-        ,   "UInt", origin
-        ,   "Int", request
-        ,   "Ptr", previous_curl_header
-        ,   "Ptr")
-}
-
-
-
 
 _curl_easy_pause(easy_handle,bitmask) {  ;untested   https://curl.se/libcurl/c/curl_easy_pause.html
     return DllCall(this.curlDLLpath "\curl_easy_pause"
