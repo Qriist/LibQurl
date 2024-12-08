@@ -52,7 +52,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_option_by_id        |                              |
 | &check;    | curl_easy_option_by_name      |                              |
 | &check;    | curl_easy_option_next         |                              |
-|            | curl_easy_pause               |                              |
+| &check;    | curl_easy_pause               |                              |
 | &check;    | curl_easy_perform             |                              |
 |            | curl_easy_recv                |                              |
 | &check;    | curl_easy_reset               |                              |
@@ -61,9 +61,9 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_strerror            |                              |
 |            | curl_easy_unescape            |                              |
 |            | curl_easy_upkeep              |                              |
-| &#10060;   | curl_formadd                  | deprecated                   |
-| &#10060;   | curl_formfree                 | deprecated                   |
-| &#10060;   | curl_formget                  | deprecated                   |
+| &#10060;   | curl_formadd                  | deprecated, use the mime API |
+| &#10060;   | curl_formfree                 | deprecated, use the mime API |
+| &#10060;   | curl_formget                  | deprecated, use the mime API |
 | &check;    | curl_free                     |                              |
 |            | curl_getdate                  |                              |
 |            | curl_global_cleanup           |                              |

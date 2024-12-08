@@ -66,7 +66,12 @@ _curl_easy_option_next(optPtr) {    ;https://curl.se/libcurl/c/curl_easy_option_
         ,   "UInt", optPtr
         ,   "Ptr")
 }
-
+_curl_easy_pause(easy_handle,bitmask) {  ;https://curl.se/libcurl/c/curl_easy_pause.html
+    static curl_easy_pause := this._getDllAddress(this.curlDLLpath,"curl_easy_pause") 
+    return DllCall(curl_easy_pause
+        ,   "Int", easy_handle
+        ,   "UInt", bitmask)
+}
 _curl_easy_perform(easy_handle?) {
     easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
     static curl_easy_perform := this._getDllAddress(this.curlDLLpath,"curl_easy_perform")
@@ -233,12 +238,6 @@ _curl_easy_escape(easy_handle, url) {
     return StrGet(esc, "UTF-8")
 }
 
-_curl_easy_pause(easy_handle,bitmask) {  ;untested   https://curl.se/libcurl/c/curl_easy_pause.html
-    static curl_easy_pause := this._getDllAddress(this.curlDLLpath,"curl_easy_pause") 
-    return DllCall(curl_easy_pause
-        ,   "Int", easy_handle
-        ,   "UInt", bitmask)
-}
 
 _curl_easy_recv(easy_handle,buffer,buflen,&bytes) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
     static curl_easy_recv := this._getDllAddress(this.curlDLLpath,"curl_easy_recv") 
