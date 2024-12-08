@@ -10,10 +10,8 @@ curl.WriteToMem()    ;don't care about the body content
 
 ;using httpbin to force a redirect so we have multiple header indices 
 url := "https://httpbin.org/redirect-to?url=https%3A%2F%2Farchive.today"
-url := "https://titsandasses.org/"
 curl.SetOpt("URL",url)
 curl.Sync()
-
 
 redirectCount := curl.GetInfo("REDIRECT_COUNT")
 

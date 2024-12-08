@@ -263,8 +263,14 @@ class LibQurl {
         this.Cleanup(easy_handle?)
     }
 
-
-    
+    Pause(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        return this._curl_easy_pause(easy_handle,PauseMode := 5)
+    }
+    UnPause(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        return this._curl_easy_pause(easy_handle,PauseMode := 0)
+    }
 
 	SetHeaders(headersArrayOrMap,easy_handle?) {    ;Sets custom HTTP headers for request.
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
