@@ -1,5 +1,5 @@
 # LibQurl
-This is a full libcurl wrap for AHKv2.
+This is a full [libcurl](https://curl.se/) wrap for AHKv2.
 
 Much work has been done to abstract away the need for a full understanding of curl's rather arcane architecture, while still allowing complete access to those inner workings when required.
 
