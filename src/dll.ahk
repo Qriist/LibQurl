@@ -266,7 +266,7 @@ _curl_easy_unescape(easy_handle,input,inlength,outlength) { ;untested   https://
         ,   "Int", inlength
         ,   "Int", outlength)
 }
-_curl_easy_upkeep(easy_handle) { ;untested https://curl.se/libcurl/c/curl_easy_upkeep.html
+_curl_easy_upkeep(easy_handle) { ;https://curl.se/libcurl/c/curl_easy_upkeep.html
     static curl_easy_upkeep := this._getDllAddress(this.curlDLLpath,"curl_easy_upkeep") 
     return DllCall(curl_easy_upkeep
         , "Ptr", easy_handle)
