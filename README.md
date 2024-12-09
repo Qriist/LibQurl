@@ -5,12 +5,13 @@ Much work has been done to abstract away the need for a full understanding of cu
 
 ## Features
 - This is a full direct binding of libcurl, meaning that you have access* to all functions.
-- libcurl's "easy" interface is currently mostly wrapped in a user-friendly way.
+- libcurl's "easy" interface is completely wrapped in a user-friendly way.
 - Seamless async transfers are possible if desired.
 - Transparently compressed transfers are on by default - this saves bandwidth and time.
 - Numerous simultaneous curl handles are supported, as is the multi interface. All options are remembered per-handle.
 - The ability to download a file directly into RAM without touching the disk - very useful when working with APIs.
 - Effortless POSTing of data from almost any source, be it a String, Integer, Object, Array, Map, or even a FileObject.
+- You can manually send and receive protocol-level raw data.
 - Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris). (This is the recommended installation method!)
 
 <sup><sub>*Around 50 dll functions were added in an "untested" state and are clearly marked as such. Among these, there are almost certainly some instances of providing the wrong data type in the DllCall. *Caveat emptor* until checked off on the function list below. Most common functions are already properly wrapped.</sup></sub>
