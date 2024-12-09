@@ -223,7 +223,50 @@ class LibQurl {
         }
         return this._Perform(easy_handle?)    
     }
+    RawSend(outgoing,easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
+        switch Type(outgoing) {
+            case "String","Integer":
+                outBuffer := this._StrBuf(outgoing)
+            case "Object","Array","Map":
+                outBuffer := this._StrBuf(json.dump(outgoing))
+            case "File":
+                outBuffer := Buffer(outgoing.length)  ;create the buffer with the right size
+                outgoing.RawRead(outBuffer) ;read the file into the buffer
+            case "Buffer":
+                outBuffer := outgoing
+            Default:
+                throw ValueError("Unknown object type passed to RawSend: " Type(outgoing))
+        }
+        sent := 0
+        this._curl_easy_send(easy_handle,outBuffer,outBuffer.size,&sent)
+        return sent
+    }
+    RawReceive(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        retBuffer := Buffer(0)   ;makes no assumptions on incoming size
+        replyBuffer := Buffer(32 * 1024 * 1024)    ;allocates 32mb for wash loop, same as curl
+        got := 0
+        offset := 0
+        loop {
+            ret := curl._curl_easy_recv(easy_handle,replyBuffer,replyBuffer.size,&got)
+            offsetPtr := retBuffer.ptr + got
+
+            ;append data to buffer if any was received
+            if (retBuffer.size + got > retBuffer.size)  {
+                ;resize buffer to accomodate new data
+                retBuffer.Size += got
+
+                ;do the copy
+                DllCall("kernel32.dll\RtlMoveMemory", "Ptr", retBuffer.ptr + offset, "Ptr", replyBuffer, "UInt", got, "Cdecl")
+                
+                ;update offset by the bytes copied
+                offset += got
+            }
+        } until (got = 0)   ;break on no data received
+        return retBuffer
+    }
 
     GetLastHeaders(returnAsEncoding := "UTF-8",easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle

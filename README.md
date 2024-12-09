@@ -54,9 +54,9 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_option_next         |                              |
 | &check;    | curl_easy_pause               |                              |
 | &check;    | curl_easy_perform             |                              |
-|            | curl_easy_recv                |                              |
+| &check;    | curl_easy_recv                |                              |
 | &check;    | curl_easy_reset               |                              |
-|            | curl_easy_send                |                              |
+| &check;    | curl_easy_send                |                              |
 | &check;    | curl_easy_setopt              |                              |
 | &check;    | curl_easy_strerror            |                              |
 |            | curl_easy_unescape            |                              |

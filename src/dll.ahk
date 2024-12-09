@@ -239,22 +239,22 @@ _curl_easy_escape(easy_handle, url) {
 }
 
 
-_curl_easy_recv(easy_handle,buffer,buflen,&bytes) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
+_curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
     static curl_easy_recv := this._getDllAddress(this.curlDLLpath,"curl_easy_recv") 
     return DllCall(curl_easy_recv
         ,   "Ptr", easy_handle
-        ,   "Ptr", buffer
+        ,   "Ptr", dataBuffer
         ,   "Int", buflen
-        ,   "Int", &bytes)
+        ,   "Int*", &bytes)
 }
 
-_curl_easy_send(easy_handle,buffer,buflen,&bytes) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
+_curl_easy_send(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
     static curl_easy_send := this._getDllAddress(this.curlDLLpath,"curl_easy_send") 
     return DllCall(curl_easy_send
         ,   "Ptr", easy_handle
-        ,   "Ptr", buffer
+        ,   "Ptr", dataBuffer
         ,   "Int", buflen
-        ,   "Int", &bytes)
+        ,   "Int*", &bytes)
 }
 
 

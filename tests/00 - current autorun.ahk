@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "11 - pausing and resuming a download"
+current := "12 - send and receive raw data over easy handle"
 
 clean := ["txt","html","json","zst"]
 for k,v in clean
