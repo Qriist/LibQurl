@@ -318,7 +318,7 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         return this._curl_easy_upkeep(easy_handle)
     }
-
+    
 	SetHeaders(headersArrayOrMap,easy_handle?) {    ;Sets custom HTTP headers for request.
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
