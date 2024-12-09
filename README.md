@@ -44,7 +44,6 @@ https://curl.se/libcurl/c/allfuncs.html
 |:----------:|:------------------------------|:-----------------------------|
 | &check;    | curl_easy_cleanup             |                              |
 | &check;    | curl_easy_duphandle           |                              |
-| &#10060;   | curl_easy_escape              | deprecated, use the URL API  |
 | &check;    | curl_easy_getinfo             |                              |
 | &check;    | curl_easy_header              |                              |
 | &check;    | curl_easy_init                |                              |
@@ -59,12 +58,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_send                |                              |
 | &check;    | curl_easy_setopt              |                              |
 | &check;    | curl_easy_strerror            |                              |
-| &#10060;   | curl_easy_unescape            | deprecated, use the URL API  |
 | &check;    | curl_easy_upkeep              |                              |
-| &#10060;   | curl_escape                   | deprecated, use the URL API  |
-| &#10060;   | curl_formadd                  | deprecated, use the mime API |
-| &#10060;   | curl_formfree                 | deprecated, use the mime API |
-| &#10060;   | curl_formget                  | deprecated, use the mime API |
 | &check;    | curl_free                     |                              |
 |            | curl_getdate                  |                              |
 |            | curl_global_cleanup           |                              |
@@ -106,7 +100,6 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_share_strerror           |                              |
 | &check;    | curl_slist_append             |                              |
 | &check;    | curl_slist_free_all           |                              |
-| &#10060;   | curl_unescape                 | deprecated, use the URL API  |
 | &check;    | curl_url                      |                              |
 | &check;    | curl_url_cleanup              |                              |
 | &check;    | curl_url_dup                  |                              |
@@ -118,4 +111,12 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_ws_recv                  |                              |
 |            | curl_ws_send                  |                              |
 |            | curl_ws_meta                  |                              |
+<details><summary>Deprecated Functions with Suggested Alternatives</summary>
+  
+| Wrapped?   | Name                          | Alternative                  |
+|:----------:|:------------------------------|:-----------------------------|
+| &#10060;   | curl_easy_escape<br>curl_easy_unescape<br>curl_escape<br>curl_unescape | use the URL API  |
+| &#10060;   | curl_formadd<br>curl_formfree<br>curl_formget | use the mime API |
+</summary>
 </details>
+
