@@ -44,7 +44,7 @@ https://curl.se/libcurl/c/allfuncs.html
 |:----------:|:------------------------------|:-----------------------------|
 | &check;    | curl_easy_cleanup             |                              |
 | &check;    | curl_easy_duphandle           |                              |
-| &check;    | curl_easy_escape              |                              |
+| &#10060;   | curl_easy_escape              |                              |
 | &check;    | curl_easy_getinfo             |                              |
 | &check;    | curl_easy_header              |                              |
 | &check;    | curl_easy_init                |                              |
@@ -59,9 +59,9 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_send                |                              |
 | &check;    | curl_easy_setopt              |                              |
 | &check;    | curl_easy_strerror            |                              |
-|            | curl_easy_unescape            |                              |
-|            | curl_easy_upkeep              |                              |
-| &#10060;   | curl_escape                   | deprecated, use curl_easy_escape  |
+| &#10060;   | curl_easy_unescape            | deprecated, use the URL API  |
+| &check;    | curl_easy_upkeep              |                              |
+| &#10060;   | curl_escape                   | deprecated, use the URL API  |
 | &#10060;   | curl_formadd                  | deprecated, use the mime API |
 | &#10060;   | curl_formfree                 | deprecated, use the mime API |
 | &#10060;   | curl_formget                  | deprecated, use the mime API |
@@ -106,7 +106,7 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_share_strerror           |                              |
 | &check;    | curl_slist_append             |                              |
 | &check;    | curl_slist_free_all           |                              |
-| &#10060;   | curl_unescape                 | deprecated, use curl_easy_unescape|
+| &#10060;   | curl_unescape                 | deprecated, use the URL API  |
 | &check;    | curl_url                      |                              |
 | &check;    | curl_url_cleanup              |                              |
 | &check;    | curl_url_dup                  |                              |

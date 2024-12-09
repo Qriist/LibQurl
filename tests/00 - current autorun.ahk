@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "12 - send and receive raw data over easy handle"
+current := "13 - duplicate an easy handle"
 
 clean := ["txt","html","json","zst"]
 for k,v in clean

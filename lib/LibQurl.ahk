@@ -318,7 +318,13 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         return this._curl_easy_upkeep(easy_handle)
     }
-    
+    ; UrlEscape(){
+    ;     ;todo - write a Unicode-aware string escaper
+    ; }
+    ; UrlUnescape(){
+
+    ; }
+
 	SetHeaders(headersArrayOrMap,easy_handle?) {    ;Sets custom HTTP headers for request.
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
@@ -551,6 +557,8 @@ class LibQurl {
                 case "Map","Array","Object":
                     ; list .= "`n" this.%self%(v,depth-1,indentLevel  "    ")
                     list .= "`n" this.PrintObj(v,depth-1,indentLevel  "    ")
+                case "Buffer","LibQurl.Storage.MemBuffer":
+                    list .= " => [BUFFER] "
                 Default:
                     list .= " => " v
             }
@@ -561,37 +569,29 @@ class LibQurl {
     ;dummied code that doesn't work right yet
     
 
-    ; DupeInit(easy_handle?){
-        ; newHandle := this._curl_easy_duphandle(easy_handle)
-        ; this.easyHandleMap[newHandle] := this.easyHandleMap[0] := this.DeepClone(this.easyHandleMap[easy_handle])
-        ; If !this.easyHandleMap[newHandle]
-        ;     throw ValueError("Problem in 'curl_easy_duphandle'! Unable to init easy interface!", -1, this.curlDLLpath)
-        ; this.easyHandleMap[newHandle] := this.easyHandleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created easy_handle
-        ; ,this.easyHandleMap[newHandle]["options"] := Map()  ;prepares option storage
-        ; for k,v in this.easyHandleMap[easy_handle]["options"]
-        ;     this.SetOpt(k,v,newHandle)
-        ; this.easyHandleMap[newHandle]["easy_handle"] := newHandle
-        ; return newHandle 
-        /*
-        if !IsSet(easy_handle)
-            easy_handle := this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-        newHandle := this._curl_easy_duphandle(easy_handle)
-        If !this.easyHandleMap[easy_handle]
-            throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
-        ; msgbox easy_handle "`n" newHandle "`n`n" this.easyHandleMap[0]["easy_handle"]
-        this.easyHandleMap[newHandle] := this.DeepClone(this.easyHandleMap[easy_handle])
-        msgbox this.PrintObj(this.easyHandleMap[newHandle])
-        this.easyHandleMap[0]["easy_handle"] := this.easyHandleMap[newHandle]["easy_handle"]
-        ; msgbox this.easyHandleMap[newHandle]["easy_handle"] "`n" this.easyHandleMap[easy_handle]["easy_handle"] "`n`n" this.easyHandleMap[0]["easy_handle"]
-        ; this.easyHandleMap[newHandle] := this.easyHandleMap[0] := Map() ;handleMap[0] is a dynamic reference to the last created easy_handle
-        ; ,this.easyHandleMap[newHandle]["options"] := Map()  ;prepares option storage
+    DupeInit(old_easy_handle?){
+        ;NOTE: curl_easy_duphandle was not playing well with this class.
+        ;I was unable to figure out why. It was probably something stupid. 
+        ;Regardless, Init() is called instead.
+        ;The end result is the same as long as you haven't bypassed SetOpt/etc.
+        old_easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        new_easy_handle := this.Init()
 
-
-        ; for k,v in this.easyHandleMap[easy_handle]["options"]
-        ;     this.SetOpt(k,v,newHandle)
-        return newHandle   
-    */     
-    ; }
+        ;filter file/header writing callback functions as those got setup in Init
+        for k,v in this.easyHandleMap[old_easy_handle]["options"] {
+            switch k {
+                case "WRITEDATA","WRITEFUNCTION":
+                    continue
+                case "HEADERDATA", "HEADERFUNCTION":
+                    continue
+                default:
+                    this.SetOpt(k,v,new_easy_handle)
+            }
+        }
+        ; MsgBox this.PrintObj(this.easyHandleMap[new_easy_handle]["options"])
+        this.WriteToMem(0,new_easy_handle)    ;automatically save lastBody to memory
+        return new_easy_handle
+    }
 
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
@@ -1443,6 +1443,23 @@ class LibQurl {
         return DllCall(curl_easy_reset
             , "Ptr", easy_handle)
     }
+    _curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
+        static curl_easy_recv := this._getDllAddress(this.curlDLLpath,"curl_easy_recv") 
+        return DllCall(curl_easy_recv
+            ,   "Ptr", easy_handle
+            ,   "Ptr", dataBuffer
+            ,   "Int", buflen
+            ,   "Int*", &bytes)
+    }
+    
+    _curl_easy_send(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
+        static curl_easy_send := this._getDllAddress(this.curlDLLpath,"curl_easy_send") 
+        return DllCall(curl_easy_send
+            ,   "Ptr", easy_handle
+            ,   "Ptr", dataBuffer
+            ,   "Int", buflen
+            ,   "Int*", &bytes)
+    }
     _curl_easy_setopt(easy_handle, option, parameter, debug?) {
         if IsSet(debug)
             msgbox this.showob(this.opt[option]) "`n`n`n"
@@ -1463,6 +1480,11 @@ class LibQurl {
         return DllCall(curl_easy_strerror
             , "Int", errornum
             ,"Ptr")
+    }
+    _curl_easy_upkeep(easy_handle) { ;https://curl.se/libcurl/c/curl_easy_upkeep.html
+        static curl_easy_upkeep := this._getDllAddress(this.curlDLLpath,"curl_easy_upkeep") 
+        return DllCall(curl_easy_upkeep
+            , "Ptr", easy_handle)
     }
     _curl_free(pointer) {   ;https://curl.se/libcurl/c/curl_free.html
         static curl_free := this._getDllAddress(this.curlDLLpath,"curl_free") 
@@ -1527,6 +1549,12 @@ class LibQurl {
     
     
     _curl_url() {   ;https://curl.se/libcurl/c/curl_url.html
+        /*  use the URL interface instead of the following deprecated functions:
+            curl_easy_escape
+            curl_easy_unescape
+            curl_escape
+            curl_unescape
+        */
         static curl_url := this._getDllAddress(this.curlDLLpath,"curl_url") 
         return DllCall(curl_url)
     }
@@ -1585,52 +1613,6 @@ class LibQurl {
             , "Int", easy_handle)
         return ret
     }
-    _curl_easy_escape(easy_handle, url) {
-        ;doesn't like unicode, should I use the native windows function for this?
-        ;char *curl_easy_escape(CURL *curl, const char *string, int length);
-        static curl_easy_escape := this._getDllAddress(this.curlDLLpath,"curl_easy_escape")
-        esc := DllCall(curl_easy_escape
-            , "Ptr", easy_handle
-            , "AStr", url
-            , "Int", 0
-            , "Ptr")
-        return StrGet(esc, "UTF-8")
-    }
-    
-    
-    _curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
-        static curl_easy_recv := this._getDllAddress(this.curlDLLpath,"curl_easy_recv") 
-        return DllCall(curl_easy_recv
-            ,   "Ptr", easy_handle
-            ,   "Ptr", dataBuffer
-            ,   "Int", buflen
-            ,   "Int*", &bytes)
-    }
-    
-    _curl_easy_send(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
-        static curl_easy_send := this._getDllAddress(this.curlDLLpath,"curl_easy_send") 
-        return DllCall(curl_easy_send
-            ,   "Ptr", easy_handle
-            ,   "Ptr", dataBuffer
-            ,   "Int", buflen
-            ,   "Int*", &bytes)
-    }
-    
-    
-    _curl_easy_unescape(easy_handle,input,inlength,outlength) { ;untested   https://curl.se/libcurl/c/curl_easy_unescape.html
-        static curl_easy_unescape := this._getDllAddress(this.curlDLLpath,"curl_easy_unescape") 
-        return DllCall(curl_easy_unescape
-            ,   "Ptr", easy_handle
-            ,   "AStr", input
-            ,   "Int", inlength
-            ,   "Int", outlength)
-    }
-    _curl_easy_upkeep(easy_handle) { ;https://curl.se/libcurl/c/curl_easy_upkeep.html
-        static curl_easy_upkeep := this._getDllAddress(this.curlDLLpath,"curl_easy_upkeep") 
-        return DllCall(curl_easy_upkeep
-            , "Ptr", easy_handle)
-    }
-    
     _curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate.html
         static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
         return DllCall(curl_getdate
@@ -1854,8 +1836,6 @@ class LibQurl {
             ,   "Int", errornum
             ,   "Ptr")
     }
-    
-    
     _curl_ws_recv(easy_handle,buffer,buflen,&recv,&meta) {   ;untested   https://curl.se/libcurl/c/curl_ws_recv.html
         static curl_ws_recv := this._getDllAddress(this.curlDLLpath,"curl_ws_recv") 
         return DllCall(curl_ws_recv

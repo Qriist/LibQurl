@@ -84,6 +84,23 @@ _curl_easy_reset(easy_handle) {  ;https://curl.se/libcurl/c/curl_easy_reset.html
     return DllCall(curl_easy_reset
         , "Ptr", easy_handle)
 }
+_curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
+    static curl_easy_recv := this._getDllAddress(this.curlDLLpath,"curl_easy_recv") 
+    return DllCall(curl_easy_recv
+        ,   "Ptr", easy_handle
+        ,   "Ptr", dataBuffer
+        ,   "Int", buflen
+        ,   "Int*", &bytes)
+}
+
+_curl_easy_send(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
+    static curl_easy_send := this._getDllAddress(this.curlDLLpath,"curl_easy_send") 
+    return DllCall(curl_easy_send
+        ,   "Ptr", easy_handle
+        ,   "Ptr", dataBuffer
+        ,   "Int", buflen
+        ,   "Int*", &bytes)
+}
 _curl_easy_setopt(easy_handle, option, parameter, debug?) {
     if IsSet(debug)
         msgbox this.showob(this.opt[option]) "`n`n`n"
@@ -104,6 +121,11 @@ _curl_easy_strerror(errornum) {
     return DllCall(curl_easy_strerror
         , "Int", errornum
         ,"Ptr")
+}
+_curl_easy_upkeep(easy_handle) { ;https://curl.se/libcurl/c/curl_easy_upkeep.html
+    static curl_easy_upkeep := this._getDllAddress(this.curlDLLpath,"curl_easy_upkeep") 
+    return DllCall(curl_easy_upkeep
+        , "Ptr", easy_handle)
 }
 _curl_free(pointer) {   ;https://curl.se/libcurl/c/curl_free.html
     static curl_free := this._getDllAddress(this.curlDLLpath,"curl_free") 
@@ -168,6 +190,12 @@ _curl_slist_free_all(ptrSList) {    ;https://curl.se/libcurl/c/curl_slist_free_a
 
 
 _curl_url() {   ;https://curl.se/libcurl/c/curl_url.html
+    /*  use the URL interface instead of the following deprecated functions:
+        curl_easy_escape
+        curl_easy_unescape
+        curl_escape
+        curl_unescape
+    */
     static curl_url := this._getDllAddress(this.curlDLLpath,"curl_url") 
     return DllCall(curl_url)
 }
@@ -226,52 +254,6 @@ _curl_easy_duphandle(easy_handle) {  ;untested   https://curl.se/libcurl/c/curl_
         , "Int", easy_handle)
     return ret
 }
-_curl_easy_escape(easy_handle, url) {
-    ;doesn't like unicode, should I use the native windows function for this?
-    ;char *curl_easy_escape(CURL *curl, const char *string, int length);
-    static curl_easy_escape := this._getDllAddress(this.curlDLLpath,"curl_easy_escape")
-    esc := DllCall(curl_easy_escape
-        , "Ptr", easy_handle
-        , "AStr", url
-        , "Int", 0
-        , "Ptr")
-    return StrGet(esc, "UTF-8")
-}
-
-
-_curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
-    static curl_easy_recv := this._getDllAddress(this.curlDLLpath,"curl_easy_recv") 
-    return DllCall(curl_easy_recv
-        ,   "Ptr", easy_handle
-        ,   "Ptr", dataBuffer
-        ,   "Int", buflen
-        ,   "Int*", &bytes)
-}
-
-_curl_easy_send(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
-    static curl_easy_send := this._getDllAddress(this.curlDLLpath,"curl_easy_send") 
-    return DllCall(curl_easy_send
-        ,   "Ptr", easy_handle
-        ,   "Ptr", dataBuffer
-        ,   "Int", buflen
-        ,   "Int*", &bytes)
-}
-
-
-_curl_easy_unescape(easy_handle,input,inlength,outlength) { ;untested   https://curl.se/libcurl/c/curl_easy_unescape.html
-    static curl_easy_unescape := this._getDllAddress(this.curlDLLpath,"curl_easy_unescape") 
-    return DllCall(curl_easy_unescape
-        ,   "Ptr", easy_handle
-        ,   "AStr", input
-        ,   "Int", inlength
-        ,   "Int", outlength)
-}
-_curl_easy_upkeep(easy_handle) { ;https://curl.se/libcurl/c/curl_easy_upkeep.html
-    static curl_easy_upkeep := this._getDllAddress(this.curlDLLpath,"curl_easy_upkeep") 
-    return DllCall(curl_easy_upkeep
-        , "Ptr", easy_handle)
-}
-
 _curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate.html
     static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
     return DllCall(curl_getdate
@@ -495,8 +477,6 @@ _curl_share_strerror(errornum) {    ;untested   https://curl.se/libcurl/c/curl_s
         ,   "Int", errornum
         ,   "Ptr")
 }
-
-
 _curl_ws_recv(easy_handle,buffer,buflen,&recv,&meta) {   ;untested   https://curl.se/libcurl/c/curl_ws_recv.html
     static curl_ws_recv := this._getDllAddress(this.curlDLLpath,"curl_ws_recv") 
     return DllCall(curl_ws_recv
