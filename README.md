@@ -44,7 +44,7 @@ https://curl.se/libcurl/c/allfuncs.html
 |:----------:|:------------------------------|:-----------------------------|
 | &check;    | curl_easy_cleanup             |                              |
 | &check;    | curl_easy_duphandle           |                              |
-| &#10060;   | curl_easy_escape              |                              |
+| &#10060;   | curl_easy_escape              | deprecated, use the URL API  |
 | &check;    | curl_easy_getinfo             |                              |
 | &check;    | curl_easy_header              |                              |
 | &check;    | curl_easy_init                |                              |
