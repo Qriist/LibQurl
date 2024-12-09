@@ -18,7 +18,6 @@ Much work has been done to abstract away the need for a full understanding of cu
 
 ## Roadmap
 - [X] Establish basic communication with the DLL
-- [ ] Get feature list from DLL and dynamically enable/disable class features
 - [X] Wrap Easy
 - [ ] Wrap Multi
 - [ ] Wrap Multi_Socket
