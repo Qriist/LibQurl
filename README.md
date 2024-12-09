@@ -53,7 +53,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_option_by_name      |                              |
 | &check;    | curl_easy_option_next         |                              |
 | &check;    | curl_easy_pause               |                              |
-| &check;    | curl_easy_perform             |                              |
+| &check;    | curl_easy_perform             | use .Sync()                  |
 | &check;    | curl_easy_recv                |                              |
 | &check;    | curl_easy_reset               |                              |
 | &check;    | curl_easy_send                |                              |
@@ -61,6 +61,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_strerror            |                              |
 |            | curl_easy_unescape            |                              |
 |            | curl_easy_upkeep              |                              |
+| &#10060;   | curl_escape                   | deprecated, use curl_easy_escape  |
 | &#10060;   | curl_formadd                  | deprecated, use the mime API |
 | &#10060;   | curl_formfree                 | deprecated, use the mime API |
 | &#10060;   | curl_formget                  | deprecated, use the mime API |
@@ -82,13 +83,13 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_mime_name                |                              |
 |            | curl_mime_subparts            |                              |
 |            | curl_mime_type                |                              |
-| &check;    | curl_multi_add_handle         |                              |
+| &check;    | curl_multi_add_handle         | use .ReadySync()             |
 |            | curl_multi_assign             |                              |
 |            | curl_multi_cleanup            |                              |
 |            | curl_multi_fdset              |                              |
 | &check;    | curl_multi_info_read          |                              |
 | &check;    | curl_multi_init               |                              |
-| &check;    | curl_multi_perform            |                              |
+| &check;    | curl_multi_perform            | use .Async()                 |
 | &check;    | curl_multi_remove_handle      |                              |
 |            | curl_multi_setopt             |                              |
 |            | curl_multi_socket_action      |                              |
@@ -105,6 +106,7 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_share_strerror           |                              |
 | &check;    | curl_slist_append             |                              |
 | &check;    | curl_slist_free_all           |                              |
+| &#10060;   | curl_unescape                 | deprecated, use curl_easy_unescape|
 | &check;    | curl_url                      |                              |
 | &check;    | curl_url_cleanup              |                              |
 | &check;    | curl_url_dup                  |                              |
