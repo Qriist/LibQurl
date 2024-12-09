@@ -34,7 +34,7 @@ Much work has been done to abstract away the need for a full understanding of cu
 - write an "output to null" callback function for more safely reseting file writes (currently resets to memory output)
 - build the multi opt map
 - build the share opt map
-- create callback that reads POSTed file incrementally
+- create callback that reads POSTed file incrementally (currently read entirely into memory before uploading)
 - add the other origin types to GetAllHeaders
   
 <details><summary>Implemented Functions</summary>
