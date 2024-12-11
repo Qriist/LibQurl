@@ -5,20 +5,20 @@ Much work has been done to abstract away the need for a full understanding of cu
 
 ## Features
 - This is a full direct binding of libcurl, meaning that you have access* to all functions.
-- libcurl's "easy" interface is currently mostly wrapped in a user-friendly way.
+- libcurl's "easy" interface is completely wrapped in a user-friendly way.
 - Seamless async transfers are possible if desired.
 - Transparently compressed transfers are on by default - this saves bandwidth and time.
 - Numerous simultaneous curl handles are supported, as is the multi interface. All options are remembered per-handle.
 - The ability to download a file directly into RAM without touching the disk - very useful when working with APIs.
 - Effortless POSTing of data from almost any source, be it a String, Integer, Object, Array, Map, or even a FileObject.
+- You can manually send and receive protocol-level raw data.
 - Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris). (This is the recommended installation method!)
 
 <sup><sub>*Around 50 dll functions were added in an "untested" state and are clearly marked as such. Among these, there are almost certainly some instances of providing the wrong data type in the DllCall. *Caveat emptor* until checked off on the function list below. Most common functions are already properly wrapped.</sup></sub>
 
 ## Roadmap
 - [X] Establish basic communication with the DLL
-- [ ] Get feature list from DLL and dynamically enable/disable class features
-- [ ] Wrap Easy
+- [X] Wrap Easy
 - [ ] Wrap Multi
 - [ ] Wrap Multi_Socket
 - [ ] Wrap misc functions that weren't required by any of the above
@@ -44,7 +44,6 @@ https://curl.se/libcurl/c/allfuncs.html
 |:----------:|:------------------------------|:-----------------------------|
 | &check;    | curl_easy_cleanup             |                              |
 | &check;    | curl_easy_duphandle           |                              |
-| &#10060;   | curl_easy_escape              |                              |
 | &check;    | curl_easy_getinfo             |                              |
 | &check;    | curl_easy_header              |                              |
 | &check;    | curl_easy_init                |                              |
@@ -59,12 +58,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_send                |                              |
 | &check;    | curl_easy_setopt              |                              |
 | &check;    | curl_easy_strerror            |                              |
-| &#10060;   | curl_easy_unescape            | deprecated, use the URL API  |
 | &check;    | curl_easy_upkeep              |                              |
-| &#10060;   | curl_escape                   | deprecated, use the URL API  |
-| &#10060;   | curl_formadd                  | deprecated, use the mime API |
-| &#10060;   | curl_formfree                 | deprecated, use the mime API |
-| &#10060;   | curl_formget                  | deprecated, use the mime API |
 | &check;    | curl_free                     |                              |
 |            | curl_getdate                  |                              |
 |            | curl_global_cleanup           |                              |
@@ -106,7 +100,6 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_share_strerror           |                              |
 | &check;    | curl_slist_append             |                              |
 | &check;    | curl_slist_free_all           |                              |
-| &#10060;   | curl_unescape                 | deprecated, use the URL API  |
 | &check;    | curl_url                      |                              |
 | &check;    | curl_url_cleanup              |                              |
 | &check;    | curl_url_dup                  |                              |
@@ -118,4 +111,12 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_ws_recv                  |                              |
 |            | curl_ws_send                  |                              |
 |            | curl_ws_meta                  |                              |
+<details><summary>Deprecated Functions with Suggested Alternatives</summary>
+  
+| Wrapped?   | Name                          | Alternative                  |
+|:----------:|:------------------------------|:-----------------------------|
+| &#10060;   | curl_easy_escape<br>curl_easy_unescape<br>curl_escape<br>curl_unescape | use the URL API  |
+| &#10060;   | curl_formadd<br>curl_formfree<br>curl_formget | use the mime API |
+</summary>
 </details>
+
