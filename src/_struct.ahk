@@ -97,4 +97,23 @@ class _struct {
             return (NumGet(ptr,offset,"Ptr")=0?0:StrGet(NumGet(ptr,offset,"Ptr"),encoding))
         }
     }
+    curl_ssl_backend(ptr){
+        retObj := Map()
+        ;technically processes several structs at once,
+        ;but that's fine since we can only proc at the start
+        out := ""
+        loop {
+            backendPtr1 := NumGet(ptr,(A_Index - 1) * 8,"ptr")
+            if (backendPtr1 = 0)
+                break
+            id := NumGet(backendPtr1,"Int")
+            backendPtr2 := backendPtr1 + 8
+            retObj[id] := StrGet(NumGet(backendPtr2,"Ptr*"),"CP0")
+            ; retObj[a_index] := Map()
+            ; retObj[a_index]["id"] := NumGet(backendPtr1,"Int")
+            ; backendPtr2 := backendPtr1 + 8
+            ; retObj[A_Index]["SSL"] := StrGet(NumGet(backendPtr2,"Ptr*"),"CP0") "`n"
+        }
+        return retObj
+    }
 }

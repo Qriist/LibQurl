@@ -5,7 +5,14 @@ _curl_easy_cleanup(easy_handle) {    ;https://curl.se/libcurl/c/curl_easy_cleanu
     return DllCall(curl_easy_cleanup
         ,   "Ptr", easy_handle)
 }
-_curl_easy_getinfo(easy_handle,info,&retCode) {  ;untested   https://curl.se/libcurl/c/curl_easy_getinfo.html
+_curl_easy_duphandle(easy_handle) {  ;https://curl.se/libcurl/c/curl_easy_duphandle.html
+    ;technically unused by the class
+    static curl_easy_duphandle := this._getDllAddress(this.curlDLLpath,"curl_easy_duphandle")
+    ret := DllCall(this.curlDLLpath "\curl_easy_duphandle"
+        , "Int", easy_handle)
+    return ret
+}
+_curl_easy_getinfo(easy_handle,info,&retCode) {  ;https://curl.se/libcurl/c/curl_easy_getinfo.html
     static c := this.constants["CURLINFO"]
     static curl_easy_getinfo := this._getDllAddress(this.curlDLLpath,"curl_easy_getinfo") 
     return DllCall(curl_easy_getinfo
@@ -13,7 +20,7 @@ _curl_easy_getinfo(easy_handle,info,&retCode) {  ;untested   https://curl.se/lib
         ,   "Int", c[info]["id"]
         ,   c[info]["dllType"], &retCode)
 }
-_curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
+_curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;https://curl.se/libcurl/c/curl_easy_header.html
     static curl_easy_header := this._getDllAddress(this.curlDLLpath,"curl_easy_header") 
     return DllCall(curl_easy_header
         ,   "Ptr", easy_handle
@@ -84,7 +91,7 @@ _curl_easy_reset(easy_handle) {  ;https://curl.se/libcurl/c/curl_easy_reset.html
     return DllCall(curl_easy_reset
         , "Ptr", easy_handle)
 }
-_curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
+_curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;https://curl.se/libcurl/c/curl_easy_recv.html
     static curl_easy_recv := this._getDllAddress(this.curlDLLpath,"curl_easy_recv") 
     return DllCall(curl_easy_recv
         ,   "Ptr", easy_handle
@@ -92,8 +99,7 @@ _curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https:/
         ,   "Int", buflen
         ,   "Int*", &bytes)
 }
-
-_curl_easy_send(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
+_curl_easy_send(easy_handle,dataBuffer,buflen,&bytes := 0) { ;https://curl.se/libcurl/c/curl_easy_send.html
     static curl_easy_send := this._getDllAddress(this.curlDLLpath,"curl_easy_send") 
     return DllCall(curl_easy_send
         ,   "Ptr", easy_handle
@@ -248,12 +254,6 @@ _curl_version_info() {  ;https://curl.se/libcurl/c/curl_version_info.html
 
 ; all dll calls below this line haven't been fully tested
 
-_curl_easy_duphandle(easy_handle) {  ;untested   https://curl.se/libcurl/c/curl_easy_duphandle.html
-    static curl_easy_duphandle := this._getDllAddress(this.curlDLLpath,"curl_easy_duphandle")
-    ret := DllCall(this.curlDLLpath "\curl_easy_duphandle"
-        , "Int", easy_handle)
-    return ret
-}
 _curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate.html
     static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
     return DllCall(curl_getdate
@@ -270,12 +270,12 @@ _curl_global_cleanup(easy_handle) {  ;untested   https://curl.se/libcurl/c/curl_
     ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
     ; return DllCall(curl_global_init_mem
 ; }
-_curl_global_sslset(id,name,&avail?) {  ;untested   https://curl.se/libcurl/c/curl_global_sslset.html
+_curl_global_sslset(id,name,&avail := 0) {  ;untested   https://curl.se/libcurl/c/curl_global_sslset.html
     static curl_global_sslset := this._getDllAddress(this.curlDLLpath,"curl_global_sslset") 
     return DllCall(curl_global_sslset
-        ,   "Int", id
+        ,   "UInt", id
         ,   "AStr", name
-        ,   "Ptr", &avail)
+        ,   "Ptr*", &avail := 0)
 }
 _curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_trace.html
     static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 

@@ -128,6 +128,18 @@ _declareConstants(){
     c["1XX"] := (1<<3)
     c["PSUEDO"] := (1<<4)
     
+    this.constants["curl_sslbackend"] := c := Map()
+    c.CaseSense := 0
+    c["NONE"] := 0
+    c["OPENSSL"] := 1
+    c["GNUTLS"] := 2
+    c["WOLFSSL"] := 7
+    c["SCHANNEL"] := 8
+    c["SECURETRANSPORT"] := 9
+    c["MBEDTLS"] := 11
+    c["BEARSSL"] := 13
+    c["RUSTLS"] := 14
+
     ; todo with the error handlers
     ; this.constants["CURLHcode"] := c := Map()  
     ; typedef enum {

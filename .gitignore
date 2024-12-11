@@ -428,3 +428,5 @@ download/b-body.json
 *.zst
 releases
 lib/Aris
+bin/vcpkg
+bin/x64-windows

@@ -21,14 +21,30 @@ class LibQurl {
         this.constants := Map()
         this.CURL_ERROR_SIZE := 256
     }
-    register(dllPath?,preconfigureSSL?) {
+    register(dllPath?,requestedSSLprovider := "WolfSSL") {
+        Critical "On"   ;so the DLL loading doesn't get interrupted
         if !FileExist(dllPath)
             dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
         if !FileExist(dllPath)
             throw ValueError("libcurl DLL not found!", -1, dllPath)
+
+        ;save the current working dir so we can safely load the DLL
+        oldWorkingDir := A_WorkingDir
+        SplitPath(dllPath,,&dllDir)
+        SetWorkingDir(dllDir)
+
+        ;load the DLL into resident memory
         this.curlDLLpath := dllpath
-        this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
-        ;this._curl_global_sslset   -todo
+        this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")
+
+        ;restore the user's intended workingDir
+        A_WorkingDir := oldWorkingDir
+        
+        ;out of the danger zone
+        Critical "Off"
+
+        ;continue loading
+        this._configureSLL(requestedSSLprovider?)   
         this._curl_global_init()
         this._declareConstants()
         this._declareConstants()
@@ -916,6 +932,42 @@ class LibQurl {
     _getDllAddress(dllPath,dllfunction){
         return DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", dllPath, "Ptr"), "AStr", dllfunction, "Ptr")
     }
+    
+    _configureSLL(requestedSSLprovider := "WolfSSL",probeOnly?){
+        ;probe SSLs
+        this._curl_global_sslset(id := 0,name := 0,&avail)   
+        this.availableSSLproviders := this.struct.curl_ssl_backend(avail)
+        
+    
+        ;pass requested provider
+        if !this._curl_global_sslset(id := 0,requestedSSLprovider,&avail){
+            this.selectedSSLprovider := requestedSSLprovider
+            return 0
+        }
+        
+    
+        ;currently known SSLs in the curl source
+        listOfSSLs := ["WolfSSL" ; id = 7
+            ,   "OpenSSL"   ;1 (plus any of its forks)
+            ,   "Schannel"  ;8
+            ,   "GnuTLS"    ;2
+            ,   "SecureTransport"   ;9
+            ,   "mbedTLS"   ;11
+            ,   "BearSSL"   ;13
+            ,   "RustLS"]   ;14
+        
+        for k,v in listOfSSLs {
+            ret := this._curl_global_sslset(id := 0,v,&avail)
+            if (ret = 0){
+                this.selectedSSLprovider := requestedSSLprovider
+                return 0
+            }
+        }
+        
+        
+        ;if it's not available then curl will go with its default
+        this._curl_global_sslset(id := 0,"",&avail)
+    }
 
     class _struct {
         walkPtrArray(inPtr) {
@@ -1013,6 +1065,25 @@ class LibQurl {
             str(ptr,offset,encoding := "UTF-8"){
                 return (NumGet(ptr,offset,"Ptr")=0?0:StrGet(NumGet(ptr,offset,"Ptr"),encoding))
             }
+        }
+        curl_ssl_backend(ptr){
+            retObj := Map()
+            ;technically processes several structs at once,
+            ;but that's fine since we can only proc at the start
+            out := ""
+            loop {
+                backendPtr1 := NumGet(ptr,(A_Index - 1) * 8,"ptr")
+                if (backendPtr1 = 0)
+                    break
+                id := NumGet(backendPtr1,"Int")
+                backendPtr2 := backendPtr1 + 8
+                retObj[id] := StrGet(NumGet(backendPtr2,"Ptr*"),"CP0")
+                ; retObj[a_index] := Map()
+                ; retObj[a_index]["id"] := NumGet(backendPtr1,"Int")
+                ; backendPtr2 := backendPtr1 + 8
+                ; retObj[A_Index]["SSL"] := StrGet(NumGet(backendPtr2,"Ptr*"),"CP0") "`n"
+            }
+            return retObj
         }
     }
 
@@ -1344,6 +1415,18 @@ class LibQurl {
         c["1XX"] := (1<<3)
         c["PSUEDO"] := (1<<4)
         
+        this.constants["curl_sslbackend"] := c := Map()
+        c.CaseSense := 0
+        c["NONE"] := 0
+        c["OPENSSL"] := 1
+        c["GNUTLS"] := 2
+        c["WOLFSSL"] := 7
+        c["SCHANNEL"] := 8
+        c["SECURETRANSPORT"] := 9
+        c["MBEDTLS"] := 11
+        c["BEARSSL"] := 13
+        c["RUSTLS"] := 14
+    
         ; todo with the error handlers
         ; this.constants["CURLHcode"] := c := Map()  
         ; typedef enum {
@@ -1364,7 +1447,14 @@ class LibQurl {
         return DllCall(curl_easy_cleanup
             ,   "Ptr", easy_handle)
     }
-    _curl_easy_getinfo(easy_handle,info,&retCode) {  ;untested   https://curl.se/libcurl/c/curl_easy_getinfo.html
+    _curl_easy_duphandle(easy_handle) {  ;https://curl.se/libcurl/c/curl_easy_duphandle.html
+        ;technically unused by the class
+        static curl_easy_duphandle := this._getDllAddress(this.curlDLLpath,"curl_easy_duphandle")
+        ret := DllCall(this.curlDLLpath "\curl_easy_duphandle"
+            , "Int", easy_handle)
+        return ret
+    }
+    _curl_easy_getinfo(easy_handle,info,&retCode) {  ;https://curl.se/libcurl/c/curl_easy_getinfo.html
         static c := this.constants["CURLINFO"]
         static curl_easy_getinfo := this._getDllAddress(this.curlDLLpath,"curl_easy_getinfo") 
         return DllCall(curl_easy_getinfo
@@ -1372,7 +1462,7 @@ class LibQurl {
             ,   "Int", c[info]["id"]
             ,   c[info]["dllType"], &retCode)
     }
-    _curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;untested https://curl.se/libcurl/c/curl_easy_header.html
+    _curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0) {   ;https://curl.se/libcurl/c/curl_easy_header.html
         static curl_easy_header := this._getDllAddress(this.curlDLLpath,"curl_easy_header") 
         return DllCall(curl_easy_header
             ,   "Ptr", easy_handle
@@ -1443,7 +1533,7 @@ class LibQurl {
         return DllCall(curl_easy_reset
             , "Ptr", easy_handle)
     }
-    _curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_recv.html
+    _curl_easy_recv(easy_handle,dataBuffer,buflen,&bytes := 0) { ;https://curl.se/libcurl/c/curl_easy_recv.html
         static curl_easy_recv := this._getDllAddress(this.curlDLLpath,"curl_easy_recv") 
         return DllCall(curl_easy_recv
             ,   "Ptr", easy_handle
@@ -1451,8 +1541,7 @@ class LibQurl {
             ,   "Int", buflen
             ,   "Int*", &bytes)
     }
-    
-    _curl_easy_send(easy_handle,dataBuffer,buflen,&bytes := 0) { ;untested   https://curl.se/libcurl/c/curl_easy_send.html
+    _curl_easy_send(easy_handle,dataBuffer,buflen,&bytes := 0) { ;https://curl.se/libcurl/c/curl_easy_send.html
         static curl_easy_send := this._getDllAddress(this.curlDLLpath,"curl_easy_send") 
         return DllCall(curl_easy_send
             ,   "Ptr", easy_handle
@@ -1607,12 +1696,6 @@ class LibQurl {
     
     ; all dll calls below this line haven't been fully tested
     
-    _curl_easy_duphandle(easy_handle) {  ;untested   https://curl.se/libcurl/c/curl_easy_duphandle.html
-        static curl_easy_duphandle := this._getDllAddress(this.curlDLLpath,"curl_easy_duphandle")
-        ret := DllCall(this.curlDLLpath "\curl_easy_duphandle"
-            , "Int", easy_handle)
-        return ret
-    }
     _curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate.html
         static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
         return DllCall(curl_getdate
@@ -1629,12 +1712,12 @@ class LibQurl {
         ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
         ; return DllCall(curl_global_init_mem
     ; }
-    _curl_global_sslset(id,name,&avail?) {  ;untested   https://curl.se/libcurl/c/curl_global_sslset.html
+    _curl_global_sslset(id,name,&avail := 0) {  ;untested   https://curl.se/libcurl/c/curl_global_sslset.html
         static curl_global_sslset := this._getDllAddress(this.curlDLLpath,"curl_global_sslset") 
         return DllCall(curl_global_sslset
-            ,   "Int", id
+            ,   "UInt", id
             ,   "AStr", name
-            ,   "Ptr", &avail)
+            ,   "Ptr*", &avail := 0)
     }
     _curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_trace.html
         static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 

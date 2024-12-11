@@ -306,3 +306,40 @@ _RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle withou
 _getDllAddress(dllPath,dllfunction){
     return DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", dllPath, "Ptr"), "AStr", dllfunction, "Ptr")
 }
+
+_configureSLL(requestedSSLprovider := "WolfSSL",probeOnly?){
+    ;probe SSLs
+    this._curl_global_sslset(id := 0,name := 0,&avail)   
+    this.availableSSLproviders := this.struct.curl_ssl_backend(avail)
+    
+
+    ;pass requested provider
+    if !this._curl_global_sslset(id := 0,requestedSSLprovider,&avail){
+        this.selectedSSLprovider := requestedSSLprovider
+        return 0
+    }
+    
+
+    ;currently known SSLs in the curl source
+    listOfSSLs := ["WolfSSL" ; id = 7
+        ,   "OpenSSL"   ;1 (plus any of its forks)
+        ,   "Schannel"  ;8
+        ,   "GnuTLS"    ;2
+        ,   "SecureTransport"   ;9
+        ,   "mbedTLS"   ;11
+        ,   "BearSSL"   ;13
+        ,   "RustLS"]   ;14
+    
+    for k,v in listOfSSLs {
+        ret := this._curl_global_sslset(id := 0,v,&avail)
+        if (ret = 0){
+            this.selectedSSLprovider := requestedSSLprovider
+            return 0
+        }
+    }
+    
+    
+    ;if it's not available then curl will go with its default
+    this._curl_global_sslset(id := 0,"",&avail)
+}
+

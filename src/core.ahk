@@ -26,14 +26,30 @@ class LibQurl {
         this.constants := Map()
         this.CURL_ERROR_SIZE := 256
     }
-    register(dllPath?,preconfigureSSL?) {
+    register(dllPath?,requestedSSLprovider := "WolfSSL") {
+        Critical "On"   ;so the DLL loading doesn't get interrupted
         if !FileExist(dllPath)
             dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
         if !FileExist(dllPath)
             throw ValueError("libcurl DLL not found!", -1, dllPath)
+
+        ;save the current working dir so we can safely load the DLL
+        oldWorkingDir := A_WorkingDir
+        SplitPath(dllPath,,&dllDir)
+        SetWorkingDir(dllDir)
+
+        ;load the DLL into resident memory
         this.curlDLLpath := dllpath
-        this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")   ;load the DLL into resident memory
-        ;this._curl_global_sslset   -todo
+        this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")
+
+        ;restore the user's intended workingDir
+        A_WorkingDir := oldWorkingDir
+        
+        ;out of the danger zone
+        Critical "Off"
+
+        ;continue loading
+        this._configureSLL(requestedSSLprovider?)   
         this._curl_global_init()
         this._declareConstants()
         this._declareConstants()
