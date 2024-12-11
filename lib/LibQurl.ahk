@@ -1589,6 +1589,13 @@ class LibQurl {
         else
             return
     }
+    _curl_global_sslset(id,name,&avail := 0) {  ;https://curl.se/libcurl/c/curl_global_sslset.html
+        static curl_global_sslset := this._getDllAddress(this.curlDLLpath,"curl_global_sslset") 
+        return DllCall(curl_global_sslset
+            ,   "UInt", id
+            ,   "AStr", name
+            ,   "Ptr*", &avail := 0)
+    }
     _curl_multi_add_handle(multi_handle, easy_handle) { ;https://curl.se/libcurl/c/curl_multi_add_handle.html
         static curl_multi_add_handle := this._getDllAddress(this.curlDLLpath,"curl_multi_add_handle") 
         return DllCall(curl_multi_add_handle
@@ -1713,13 +1720,6 @@ class LibQurl {
         ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
         ; return DllCall(curl_global_init_mem
     ; }
-    _curl_global_sslset(id,name,&avail := 0) {  ;untested   https://curl.se/libcurl/c/curl_global_sslset.html
-        static curl_global_sslset := this._getDllAddress(this.curlDLLpath,"curl_global_sslset") 
-        return DllCall(curl_global_sslset
-            ,   "UInt", id
-            ,   "AStr", name
-            ,   "Ptr*", &avail := 0)
-    }
     _curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_trace.html
         static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 
         return DllCall(curl_global_trace
