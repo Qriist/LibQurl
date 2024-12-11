@@ -32,6 +32,11 @@ curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.map.json")
 curl.Sync()
 
+postSource := Buffer(17,81) ;17 Q's
+curl.SetPost(postSource)
+curl.WriteToFile(A_ScriptDir "\07.buffer.json")
+curl.Sync()
+
 postSource := FileOpen(A_ScriptDir "\07.binary.upload.zip","r")
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.binary.json")

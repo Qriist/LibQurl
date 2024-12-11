@@ -388,6 +388,9 @@ class LibQurl {
                 this.easyHandleMap[easy_handle]["postData"] := Buffer(sourceData.length)  ;create the buffer with the right size
                 sourceData.RawRead(this.easyHandleMap[easy_handle]["postData"]) ;read the file into the buffer
                 this.SetOpt("POSTFIELDSIZE_LARGE",sourceData.length)
+            case "Buffer":
+                this.easyHandleMap[easy_handle]["postData"] := sourceData
+                this.SetOpt("POSTFIELDSIZE_LARGE",sourceData.size)
             Default:
                 throw ValueError("Unknown object type passed as POST data: " Type(sourceData))
         }
