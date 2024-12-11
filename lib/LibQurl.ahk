@@ -21,8 +21,11 @@ class LibQurl {
         this.constants := Map()
         this.CURL_ERROR_SIZE := 256
     }
-    register(dllPath?,requestedSSLprovider := "WolfSSL") {
+    register(dllPath?,requestedSSLprovider?) {
         Critical "On"   ;so the DLL loading doesn't get interrupted
+
+        ;todo - make dll auto-load feature more robust
+        ;determine where the dll will load from
         if !FileExist(dllPath)
             dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
         if !FileExist(dllPath)
@@ -933,40 +936,41 @@ class LibQurl {
         return DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", dllPath, "Ptr"), "AStr", dllfunction, "Ptr")
     }
     
-    _configureSSL(requestedSSLprovider := "WolfSSL",probeOnly?){
+    _configureSSL(requestedSSLprovider := "WolfSSL"){
         ;probe SSLs
-        this._curl_global_sslset(id := 0,name := 0,&avail)   
+        ret := this._curl_global_sslset(id := 0,name := "",&avail)
         this.availableSSLproviders := this.struct.curl_ssl_backend(avail)
         
-    
-        ;pass requested provider
-        if !this._curl_global_sslset(id := 0,requestedSSLprovider,&avail){
-            this.selectedSSLprovider := requestedSSLprovider
-            return 0
+        if (ret = 3){
+            this.selectedSSLprovider := "This version of libcurl was not built with SSL capabilities."
+            return
         }
         
     
         ;currently known SSLs in the curl source
-        listOfSSLs := ["WolfSSL" ; id = 7
-            ,   "OpenSSL"   ;1 (plus any of its forks)
-            ,   "Schannel"  ;8
-            ,   "GnuTLS"    ;2
-            ,   "SecureTransport"   ;9
-            ,   "mbedTLS"   ;11
-            ,   "BearSSL"   ;13
-            ,   "RustLS"]   ;14
+        ;the user's requested string is the first provider, even if it already exists
+        listOfSSLs := [ requestedSSLprovider    
+            ;insert any new providers BELOW this line
+    
+            ,   "WolfSSL"           ; id = 7
+            ,   "OpenSSL"           ; id = 1 (plus any of its forks)
+            ,   "Schannel"          ; id = 8
+            ,   "GnuTLS"            ; id = 2
+            ,   "SecureTransport"   ; id = 9
+            ,   "mbedTLS"           ; id = 11
+            ,   "BearSSL"           ; id = 13
+            ,   "RustLS"            ; id = 14
+    
+            ;insert any new providers ABOVE this line
+            ,   ""]                 ;fallback on whatever curl has
         
         for k,v in listOfSSLs {
             ret := this._curl_global_sslset(id := 0,v,&avail)
-            if (ret = 0){
-                this.selectedSSLprovider := requestedSSLprovider
-                return 0
-            }
-        }
-        
+        }   until (ret = 0)
     
-        ;if it's not available then curl will go with its default
-        this._curl_global_sslset(id := 0,"",&avail)
+        sslHaystack := this.GetVersionInfo()["ssl_version"]
+        pos := RegExMatch(sslHaystack,"(?:^| )([A-Za-z\/0-9\\.]+)",&captured)    
+        this.selectedSSLprovider := captured[1]
     }
 
     class _struct {

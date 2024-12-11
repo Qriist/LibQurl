@@ -26,8 +26,11 @@ class LibQurl {
         this.constants := Map()
         this.CURL_ERROR_SIZE := 256
     }
-    register(dllPath?,requestedSSLprovider := "WolfSSL") {
+    register(dllPath?,requestedSSLprovider?) {
         Critical "On"   ;so the DLL loading doesn't get interrupted
+
+        ;todo - make dll auto-load feature more robust
+        ;determine where the dll will load from
         if !FileExist(dllPath)
             dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
         if !FileExist(dllPath)
