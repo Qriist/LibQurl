@@ -16,8 +16,8 @@
     curl.availableSSLproviders property holds a Map of all *presently* known
     SSL providers. Pass one of those names on future runs.
 
-    Additionally curl.selectedSSLprovider holds whatever gets loaded,
-    unless curl itself chose something.
+    Additionally curl.selectedSSLprovider holds the library/version of the 
+    currently loaded provider.
 */
 
 ;partial list based on what LibQurl is distributed with
