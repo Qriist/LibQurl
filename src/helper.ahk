@@ -307,7 +307,7 @@ _getDllAddress(dllPath,dllfunction){
     return DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", dllPath, "Ptr"), "AStr", dllfunction, "Ptr")
 }
 
-_configureSLL(requestedSSLprovider := "WolfSSL",probeOnly?){
+_configureSSL(requestedSSLprovider := "WolfSSL",probeOnly?){
     ;probe SSLs
     this._curl_global_sslset(id := 0,name := 0,&avail)   
     this.availableSSLproviders := this.struct.curl_ssl_backend(avail)
@@ -338,7 +338,7 @@ _configureSLL(requestedSSLprovider := "WolfSSL",probeOnly?){
         }
     }
     
-    
+
     ;if it's not available then curl will go with its default
     this._curl_global_sslset(id := 0,"",&avail)
 }

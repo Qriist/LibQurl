@@ -25,7 +25,6 @@ Much work has been done to abstract away the need for a full understanding of cu
 - [ ] Externally unify the Easy, Multi, and Multi_Socket calls (if possible!)
 
 ## Random to-do list, in no real order
-- enable preloading sslset
 - auto-updating the cert bundle
 - add handling for Opts with scaffolding during the batch SetOpts
 - gather and clean the SetOpts after a handle finishes downloading
@@ -64,7 +63,7 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_global_cleanup           |                              |
 | &check;    | curl_global_init              | only default mode for now    |
 |            | curl_global_init_mem          |                              |
-|            | curl_global_sslset            |                              |
+| &check;    | curl_global_sslset            |                              |
 |            | curl_mime_addpart             |                              |
 |            | curl_mime_data                |                              |
 |            | curl_mime_data_cb             |                              |

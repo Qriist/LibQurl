@@ -49,7 +49,7 @@ class LibQurl {
         Critical "Off"
 
         ;continue loading
-        this._configureSLL(requestedSSLprovider?)   
+        this._configureSSL(requestedSSLprovider?)   
         this._curl_global_init()
         this._declareConstants()
         this._declareConstants()
