@@ -59,8 +59,7 @@ class LibQurl {
         this.Init()
         return
     }
-    Init(multi_handle?){
-        ; multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+    Init(){
         easy_handle := this._curl_easy_init()
         this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][-1] is a dynamic reference to the last created easy_handle
         this.easyHandleMap[easy_handle] := Map() 
@@ -73,10 +72,6 @@ class LibQurl {
         this.SetOpt("ACCEPT_ENCODING","",easy_handle)    ;enables compressed transfers without affecting input headers
         this.SetOpt("FOLLOWLOCATION",1,easy_handle)    ;allows curl to follow redirects
         this.SetOpt("MAXREDIRS",30,easy_handle)    ;limits redirects to 30 (matches recent curl default)
-
-        ; this.AddEasyToMulti(easy_handle,multi_handle)
-        ; this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
-        ; msgbox this.easyHandleMap[easy_handle]["associated_multi_handle"]
 
         ;try to auto-load curl's cert bundle
         ;can still be set per easy_handle
