@@ -25,7 +25,7 @@ class LibQurl {
         this.writeRefs := Map()    ;holds the various write handles
         this.constants := Map()
         this.CURL_ERROR_SIZE := 256
-        this.register(dllPath?,requestedSSLprovider?)
+        this._register(dllPath?,requestedSSLprovider?)
     }
     _register(dllPath?,requestedSSLprovider?) {
         Critical "On"   ;so the DLL loading doesn't get interrupted
