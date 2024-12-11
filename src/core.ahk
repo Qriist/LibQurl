@@ -7,7 +7,7 @@
 #Include "*i <Aris\G33kDude\cJson>"
 class LibQurl {
     ;core functionality
-    __New() {
+    __New(dllPath?,requestedSSLprovider?) {
         this.easyHandleMap := Map()
         this.easyHandleMap[0] := []
         this.urlHandleMap := Map()
@@ -25,8 +25,9 @@ class LibQurl {
         this.writeRefs := Map()    ;holds the various write handles
         this.constants := Map()
         this.CURL_ERROR_SIZE := 256
+        this.register(dllPath?,requestedSSLprovider?)
     }
-    register(dllPath?,requestedSSLprovider?) {
+    _register(dllPath?,requestedSSLprovider?) {
         Critical "On"   ;so the DLL loading doesn't get interrupted
 
         ;todo - make dll auto-load feature more robust
@@ -60,7 +61,8 @@ class LibQurl {
         this.VersionInfo := this.GetVersionInfo()
         this.UrlInit()
         this.MultiInit()
-        return this.Init()
+        this.Init()
+        return
     }
     Init(multi_handle?){
         ; multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle

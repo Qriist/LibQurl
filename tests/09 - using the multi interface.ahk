@@ -3,8 +3,7 @@
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\G33kDude\cjson.ahk
 SetWorkingDir(A_ScriptDir "\..")
-curl := LibQurl()
-curl.register(A_WorkingDir "\bin\libcurl-x64.dll")
+curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
 
 ;NOTE: .MultiInit() is automatically called during .register(), 
 ;but can be invoked multiple times to group downloads as desired

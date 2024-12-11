@@ -2,8 +2,7 @@
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\G33kDude\cjson.ahk
 SetWorkingDir(A_ScriptDir "\..")
-curl := LibQurl()
-curl.register(A_WorkingDir "\bin\libcurl-x64.dll")
+curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
 
 curl.SetOpt("URL","https://httpbin.org/headers")
 curl.SetHeaders(Map("tidbit","is a header"

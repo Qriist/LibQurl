@@ -6,8 +6,8 @@
     SSL *has* to be selected before anything else gets set in curl.
     In order of priority, the provider is chosen like this:
         1) the user's input string
-        2) from a priority list, with WolfSSL at the top
-        3) whatever curl decides
+        2) from a list of known providers, with WolfSSL at the top
+        3) whatever curl decides (in the event of future unknowns)
 
     You can safely pass would-be provider strings that your specific
     build is unaware of. Options 2 and 3 will be sequentially tried, then
@@ -32,8 +32,7 @@ randomSSL := listOfSSLs[randomSSL]
 
 
 SetWorkingDir(A_ScriptDir "\..")
-curl := LibQurl()
-curl.register(A_ScriptDir "\..\bin\libcurl.dll",randomSSL)
+curl := LibQurl(A_ScriptDir "\..\bin\libcurl.dll",randomSSL)
 
 out := "The SSL providers known to this build of libcurl are:`n`n"
 out .= "( [id] => name )`n`n"
