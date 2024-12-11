@@ -48,8 +48,10 @@ class LibQurl {
         Critical "Off"
 
         ;continue loading
+
         this._configureSSL(requestedSSLprovider?)   
         this._curl_global_init()
+        OnExit (*) => this._globalCleanup()
         this._declareConstants()
         this._declareConstants()
         this._buildOptMap()
@@ -969,6 +971,9 @@ class LibQurl {
         pos := RegExMatch(sslHaystack,"(?:^| )([A-Za-z\/0-9\\.]+)",&captured)    
         this.selectedSSLprovider := captured[1]
     }
+    _globalCleanup(){   ;this should be called when shutting down LibQurl
+        this._curl_global_cleanup()
+    }
 
     class _struct {
         walkPtrArray(inPtr) {
@@ -1710,9 +1715,9 @@ class LibQurl {
             ,   "AStr", datestring
             ,   "UInt", "") ;not used, pass a NULL
     }
-    _curl_global_cleanup(easy_handle) {  ;untested   https://curl.se/libcurl/c/curl_global_cleanup.html
+    _curl_global_cleanup() {  ;untested   https://curl.se/libcurl/c/curl_global_cleanup.html
         static curl_global_cleanup := this._getDllAddress(this.curlDLLpath,"curl_global_cleanup") 
-        return DllCall(curl_global_cleanup)
+        DllCall(curl_global_cleanup)    ;no return value
     }
     ;_curl_global_init
     

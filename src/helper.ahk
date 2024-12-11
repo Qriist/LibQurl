@@ -343,4 +343,6 @@ _configureSSL(requestedSSLprovider := "WolfSSL"){
     pos := RegExMatch(sslHaystack,"(?:^| )([A-Za-z\/0-9\\.]+)",&captured)    
     this.selectedSSLprovider := captured[1]
 }
-
+_globalCleanup(){   ;this should be called when shutting down LibQurl
+    this._curl_global_cleanup()
+}
