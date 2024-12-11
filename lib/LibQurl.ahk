@@ -48,7 +48,6 @@ class LibQurl {
         Critical "Off"
 
         ;continue loading
-
         this._configureSSL(requestedSSLprovider?)   
         this._curl_global_init()
         OnExit (*) => this._globalCleanup()
@@ -577,6 +576,8 @@ class LibQurl {
                     list .= "`n" this.PrintObj(v,depth-1,indentLevel  "    ")
                 case "Buffer","LibQurl.Storage.MemBuffer":
                     list .= " => [BUFFER] "
+                case "File":
+                    list .= " => [FILE] "
                 Default:
                     list .= " => " v
             }
