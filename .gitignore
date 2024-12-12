@@ -430,3 +430,4 @@ releases
 lib/Aris
 bin/vcpkg
 bin/x64-windows
+curl source

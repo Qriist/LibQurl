@@ -81,9 +81,9 @@ versionString(vArr,bump := 0,&bumpedArr?){
     If (bump=0)
         return (vArr["major"] "." vArr["minor"] "." vArr["patch"])
     If (bump=1)
-        return (bumpedArr["major"] := vArr["major"] + 1) ".0.0"
+        return (bumpedArr["major"] += 1) "." (vArr["minor"] := 0) "." (vArr["patch"] := 0)
     If (bump=2)
-        return vArr["major"] "." (bumpedArr["minor"] := vArr["minor"] + 1) ".0" 
+        return vArr["major"] "." (bumpedArr["minor"] += 1) "." (vArr["patch"] := 0)
     If (bump=3)
-        return vArr["major"] "." vArr["minor"] "." (bumpedArr["patch"] := vArr["patch"] + 1)
+        return vArr["major"] "." vArr["minor"] "." (bumpedArr["patch"] += 1)
 }
