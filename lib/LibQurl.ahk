@@ -639,10 +639,23 @@ class LibQurl {
         return new_easy_handle
     }
 
-    MultiGetHandles(multi_handle?){ ;lists all easy_handles in the multi_handle
+    MultiGetHandles(multi_handle?){
+        ;Returns array of all easy_handles in the multi_handle.
+        ;This matches the multiHandleMap unless you've bypassed class methods.
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
 
+        ;gets the pointer array
         ret := this._curl_multi_get_handles(multi_handle)
+
+        ;walk the pointer array
+        out := []
+        loop 11 {
+            ptr := NumGet(ret,(a_index - 1) * A_PtrSize,"Ptr")
+            if (ptr = 0)    ;no more
+                break
+            out.Push(ptr)
+        }
+        return out
     }
 
     ; WriteToNone() {
@@ -1671,6 +1684,12 @@ class LibQurl {
             ,   "Ptr", multi_handle
             ,   "Ptr", easy_handle)
     }
+    _curl_multi_get_handles(multi_handle) { ;https://curl.se/libcurl/c/curl_multi_get_handles.html
+        static curl_multi_get_handles := this._getDllAddress(this.curlDLLpath,"curl_multi_get_handles") 
+        return DllCall(curl_multi_get_handles
+            ,   "Int", multi_handle
+            ,   "Ptr")
+    }
     _curl_multi_info_read(multi_handle, &msgs_in_queue) {    ;https://curl.se/libcurl/c/curl_multi_info_read.html
         static curl_multi_info_read := this._getDllAddress(this.curlDLLpath,"curl_multi_info_read") 
         msgs_in_queue := 0
@@ -1902,12 +1921,6 @@ class LibQurl {
             ,   "Ptr", write_fd_set
             ,   "Ptr", exc_fd_set
             ,   "Int", max_fd)
-    }
-    _curl_multi_get_handles(multi_handle) { ;untested   https://curl.se/libcurl/c/curl_multi_get_handles.html
-        static curl_multi_get_handles := this._getDllAddress(this.curlDLLpath,"curl_multi_get_handles") 
-        return DllCall(curl_multi_get_handles
-            ,   "Int", multi_handle
-            ,   "Ptr")
     }
     
     _curl_multi_socket_action(multi_handle,sockfd,ev_bitmask,running_handles) {   ;untested   https://curl.se/libcurl/c/curl_multi_socket_action.html

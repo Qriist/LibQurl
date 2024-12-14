@@ -644,10 +644,23 @@ class LibQurl {
         return new_easy_handle
     }
 
-    MultiGetHandles(multi_handle?){ ;lists all easy_handles in the multi_handle
+    MultiGetHandles(multi_handle?){
+        ;Returns array of all easy_handles in the multi_handle.
+        ;This matches the multiHandleMap unless you've bypassed class methods.
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
 
+        ;gets the pointer array
         ret := this._curl_multi_get_handles(multi_handle)
+
+        ;walk the pointer array
+        out := []
+        loop 11 {
+            ptr := NumGet(ret,(a_index - 1) * A_PtrSize,"Ptr")
+            if (ptr = 0)    ;no more
+                break
+            out.Push(ptr)
+        }
+        return out
     }
 
     ; WriteToNone() {
