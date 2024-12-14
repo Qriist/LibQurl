@@ -56,6 +56,7 @@ class LibQurl {
         this._declareConstants()
         this._buildOptMap()
         this.mOpt := this.constants["CURLMoption"]
+        ; msgbox this.PrintObj(this.mopt)
         this.VersionInfo := this.GetVersionInfo()
         this.UrlInit()
         this.MultiInit()
@@ -141,9 +142,9 @@ class LibQurl {
         } else {
             throw ValueError("Problem in 'curl_multi_setopt'! Unknown option: " option, -1, this.curlDLLpath)
         }
-
+        
         this.multiHandleMap[multi_handle]["options"][option] := parameter
-        return this.curl_multi_setopt(multi_handle,option,parameter)
+        return this._curl_multi_setopt(multi_handle,option,parameter)
     }
     SetOpts(optionMap,&optErrMap?,easy_handle?){  ;for setting multiple options at once
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
@@ -217,8 +218,10 @@ class LibQurl {
         this.SetOpt("WRITEFUNCTION",this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"],easy_handle) 
         Return
     }
-    ReadyAsync(inEasyHandles,multi_handle?){    ;Add any number of easy_handles to the multi pool. Accepts integers or object.
+    ReadyAsync(inEasyHandles?,multi_handle?){    ;Add any number of easy_handles to the multi pool. Accepts integers or object.
+        inEasyHandles ??= this.easyHandleMap[0][-1] ;defaults to the last created easy_handle
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+
         If (Type(inEasyHandles) = "Integer")
             inEasyHandles := [inEasyHandles]
         for k,v in (Type(inEasyHandles)!="Object"?inEasyHandles:inEasyHandles.OwnProps()) { ;itemize Objects if required
@@ -513,7 +516,8 @@ class LibQurl {
         multi_handle := this._curl_multi_init()
         this.multiHandleMap[0].push(multi_handle) ;multiHandleMap[0][-1] is a dynamic reference to the last created multi_handle
         this.multiHandleMap[multi_handle] := Map()
-        this.multiHandleMap[multi_handle]["associatedEasyHandles"] := []
+        this.multiHandleMap[multi_handle]["options"] := Map()
+        this.multiHandleMap[multi_handle]["associatedEasyHandles"] := Map()
         return multi_handle
     }
     AddEasyToMulti(easy_handle?,multi_handle?){ ;auto-invoked during EasyInit()
@@ -521,6 +525,7 @@ class LibQurl {
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
         ret := this._curl_multi_add_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
+        this.multiHandleMap[multi_handle]["associatedEasyHandles"][multi_handle] := A_NowUTC
         ; this.multiHandleMap["pending_callbacks"].push(easy_handle)
         return ret
     }
@@ -529,6 +534,7 @@ class LibQurl {
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
         ret := this._curl_multi_remove_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := unset
+        this.multiHandleMap[multi_handle]["associatedEasyHandles"][multi_handle] := unset
         return ret
     }
     SwapMultiPools(easyHandleArr,oldMultiHandle,newMultiHandle){   ;used to transfer easy_handles between multi_handles
@@ -1894,9 +1900,9 @@ class LibQurl {
     _curl_multi_setopt(multi_handle, option, parameter) {  ;untested   https://curl.se/libcurl/c/curl_multi_setopt.html
         static curl_multi_setopt := this._getDllAddress(this.curlDLLpath,"curl_multi_setopt") 
         return DllCall(curl_multi_setopt
-            ,   "Int", multi_handle
-            ,   "Int", option
-            ,   paramType?, parameter)   ;TODO - build multi opt map
+            ,   "Ptr", multi_handle
+            ,   "Int", this.mOpt[option]["id"]
+            ,   this.mOpt[option]["dllType"], parameter)   ;TODO - build multi opt map
     }
     _curl_multi_socket_action(multi_handle,sockfd,ev_bitmask,running_handles) {   ;untested   https://curl.se/libcurl/c/curl_multi_socket_action.html
         static _curl_multi_socket_action := this._getDllAddress(this.curlDLLpath,"_curl_multi_socket_action") 

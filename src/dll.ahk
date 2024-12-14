@@ -394,9 +394,9 @@ _curl_multi_get_handles(multi_handle) { ;untested   https://curl.se/libcurl/c/cu
 _curl_multi_setopt(multi_handle, option, parameter) {  ;untested   https://curl.se/libcurl/c/curl_multi_setopt.html
     static curl_multi_setopt := this._getDllAddress(this.curlDLLpath,"curl_multi_setopt") 
     return DllCall(curl_multi_setopt
-        ,   "Int", multi_handle
-        ,   "Int", option
-        ,   paramType?, parameter)   ;TODO - build multi opt map
+        ,   "Ptr", multi_handle
+        ,   "Int", this.mOpt[option]["id"]
+        ,   this.mOpt[option]["dllType"], parameter)   ;TODO - build multi opt map
 }
 _curl_multi_socket_action(multi_handle,sockfd,ev_bitmask,running_handles) {   ;untested   https://curl.se/libcurl/c/curl_multi_socket_action.html
     static _curl_multi_socket_action := this._getDllAddress(this.curlDLLpath,"_curl_multi_socket_action") 
