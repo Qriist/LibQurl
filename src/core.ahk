@@ -340,6 +340,13 @@ class LibQurl {
         for k,v in this.easyHandleMap[easy_handle]["callbacks"]
             if IsInteger(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
                 CallbackFree(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
+
+        ; make sure the easy_handle is disassociated from its multi_handle, if applicable
+        If this.easyHandleMap[easy_handle].has("associated_multi_handle"){
+            multi_handle := this.easyHandleMap[easy_handle]["associated_multi_handle"] ;Intentionally does NOT default
+            this.RemoveEasyFromMulti(easy_handle,multi_handle)
+        }
+
         this.easyHandleMap.Delete(easy_handle)
         for k,v in this.easyHandleMap[0] {
             if (v = easy_handle){
@@ -347,12 +354,27 @@ class LibQurl {
                 break
             }
         }
+
         this._curl_easy_cleanup(easy_handle)
         if (this.easyHandleMap[0].length = 0)   ;ensures there's always a usable easy_handle
             this.EasyInit()
     }
     EasyCleanup(easy_handle?){   ;alias for Cleanup
         this.Cleanup(easy_handle?)
+    }
+    MultiCleanup(multi_handle?){
+        ;Gracefully closes a multi_handle *plus* all associated easy_handles.
+        ;Any easy_handles you want to keep should be manually removed prior.
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        
+        ;Process the associated easy_handles first
+        for k,v in this.MultiGetHandles(){
+            easy_handle := v
+            this.RemoveEasyFromMulti(easy_handle,multi_handle)
+            this.EasyCleanup(easy_handle)
+        }
+
+        return this._curl_multi_cleanup(multi_handle)
     }
 
     Pause(easy_handle?){
@@ -545,7 +567,7 @@ class LibQurl {
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
         ret := this._curl_multi_remove_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := unset
-        this.multiHandleMap[multi_handle]["associatedEasyHandles"][multi_handle] := unset
+        this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := unset
         return ret
     }
     SwapMultiPools(easyHandleArr,oldMultiHandle,newMultiHandle){   ;used to transfer easy_handles between multi_handles

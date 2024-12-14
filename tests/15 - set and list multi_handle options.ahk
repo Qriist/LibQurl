@@ -14,3 +14,5 @@ curl.MultiSetOpt("MAX_HOST_CONNECTIONS",25)
 curl.ReadyAsync(e)  ;ready the whole array of easy_handles
 
 FileOpen(A_ScriptDir "\15.results.txt", "w").write(curl.PrintObj(curl.multiHandleMap))
+
+curl.MultiCleanup()
