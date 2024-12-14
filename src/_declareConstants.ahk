@@ -140,7 +140,37 @@ _declareConstants(){
     c["BEARSSL"] := 13
     c["RUSTLS"] := 14
 
-    ; todo with the error handlers
+    this.constants["CURLOPTTYPE"] := o := Map()   
+    o.CaseSense := 0
+    o["LONG"] := Map("offset",0,"multiType","LONG","dllType","Int*")  ;good
+    o["OBJECTPOINT"] := Map("offset",10000,"multiType","LONG","dllType","Int*")  ;good
+    o["FUNCTIONPOINT"] := Map("offset",20000,"multiType","LONG","dllType","Int*")  ;good
+    o["OFF_T"] := Map("offset",30000,"multiType","LONG","dllType","Int*")  ;good
+    o["BLOB"] := Map("offset",40000,"multiType","LONG","dllType","Int*")  ;good
+    
+    offsetGroup := "CURLOPTTYPE"    
+    this.constants["CURLMoption"] := c := Map()
+    c.CaseSense := 0
+    c["SOCKETFUNCTION"]                 := bindOffsets(offsetGroup, 1, "FUNCTIONPOINT")
+    c["SOCKETDATA"]                     := bindOffsets(offsetGroup, 2, "OBJECTPOINT")
+    c["PIPELINING"]                     := bindOffsets(offsetGroup, 3, "LONG")
+    c["TIMERFUNCTION"]                  := bindOffsets(offsetGroup, 4, "FUNCTIONPOINT")
+    c["TIMERDATA"]                      := bindOffsets(offsetGroup, 5, "OBJECTPOINT")
+    c["MAXCONNECTS"]                    := bindOffsets(offsetGroup, 6, "LONG")
+    c["MAX_HOST_CONNECTIONS"]           := bindOffsets(offsetGroup, 7, "LONG")
+    c["MAX_PIPELINE_LENGTH"]            := bindOffsets(offsetGroup, 8, "LONG")
+    c["CONTENT_LENGTH_PENALTY_SIZE"]    := bindOffsets(offsetGroup, 9, "OFF_T")
+    c["CHUNK_LENGTH_PENALTY_SIZE"]      := bindOffsets(offsetGroup, 10, "OFF_T")
+    c["PIPELINING_SITE_BL"]             := bindOffsets(offsetGroup, 11, "OBJECTPOINT")
+    c["PIPELINING_SERVER_BL"]           := bindOffsets(offsetGroup, 12, "OBJECTPOINT")
+    c["MAX_TOTAL_CONNECTIONS"]          := bindOffsets(offsetGroup, 13, "LONG")
+    c["PUSHFUNCTION"]                   := bindOffsets(offsetGroup, 14, "FUNCTIONPOINT")
+    c["PUSHDATA"]                       := bindOffsets(offsetGroup, 15, "OBJECTPOINT")
+    c["MAX_CONCURRENT_STREAMS"]         := bindOffsets(offsetGroup, 16, "LONG")
+    c["LASTENTRY"]                      := unset
+
+    
+        ; todo with the error handlers
     ; this.constants["CURLHcode"] := c := Map()  
     ; typedef enum {
     ;     CURLHE_OK,

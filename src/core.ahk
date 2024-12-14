@@ -21,6 +21,8 @@ class LibQurl {
         static curlDLLpath := ""
         this.Opt := Map()
         this.OptById := Map()
+        this.mOpt := Map()
+        this.mOptById := Map()
         this.struct := LibQurl._struct()  ;holds the various structs
         this.writeRefs := Map()    ;holds the various write handles
         this.constants := Map()
@@ -76,6 +78,7 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["easy_handle"] := easy_handle
         this.easyHandleMap[easy_handle]["options"] := Map()  ;prepares option storage
         this.SetOpt("ACCEPT_ENCODING","",easy_handle)    ;enables compressed transfers without affecting input headers
+        ; this.SetOpt("SSH_COMPRESSION",1,easy_handle)    ;enables compressed transfers without affecting input headers
         this.SetOpt("FOLLOWLOCATION",1,easy_handle)    ;allows curl to follow redirects
         this.SetOpt("MAXREDIRS",30,easy_handle)    ;limits redirects to 30 (matches recent curl default)
 
@@ -119,6 +122,7 @@ class LibQurl {
     SetOpt(option,parameter,easy_handle?,debug?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
+        ;todo - move the EasyOpts to the standardized Constants array
         If this.Opt.Has(option){    ;determine if the option is known
             ;nothing to be done
         } else if InStr(option,"CURLOPT_") && this.Opt.Has(StrReplace("CURLOPT_",option)){
@@ -131,6 +135,20 @@ class LibQurl {
 
         this.easyHandleMap[easy_handle]["options"][option] := parameter
         return this._curl_easy_setopt(easy_handle,option,parameter,debug?)
+    }
+    MultiSetOpt(option,parameter,multi_handle?){
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+
+        If this.mOpt.Has(option){
+            ;nothing to be done
+        } else if InStr(option,"CURLMOPT_") && this.mOpt.Has(StrReplace("CURLMOPT_",option)){
+            option := StrReplace("CURLMOPT_",option)
+        } else {
+            throw ValueError("Problem in 'curl_multi_setopt'! Unknown option: " option, -1, this.curlDLLpath)
+        }
+
+        this.multiHandleMap[multi_handle]["options"][option] := parameter
+        return this.curl_multi_setopt(multi_handle,option,parameter)
     }
     SetOpts(optionMap,&optErrMap?,easy_handle?){  ;for setting multiple options at once
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle

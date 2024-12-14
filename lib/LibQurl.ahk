@@ -16,6 +16,8 @@ class LibQurl {
         static curlDLLpath := ""
         this.Opt := Map()
         this.OptById := Map()
+        this.mOpt := Map()
+        this.mOptById := Map()
         this.struct := LibQurl._struct()  ;holds the various structs
         this.writeRefs := Map()    ;holds the various write handles
         this.constants := Map()
@@ -71,6 +73,7 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["easy_handle"] := easy_handle
         this.easyHandleMap[easy_handle]["options"] := Map()  ;prepares option storage
         this.SetOpt("ACCEPT_ENCODING","",easy_handle)    ;enables compressed transfers without affecting input headers
+        ; this.SetOpt("SSH_COMPRESSION",1,easy_handle)    ;enables compressed transfers without affecting input headers
         this.SetOpt("FOLLOWLOCATION",1,easy_handle)    ;allows curl to follow redirects
         this.SetOpt("MAXREDIRS",30,easy_handle)    ;limits redirects to 30 (matches recent curl default)
 
@@ -114,6 +117,7 @@ class LibQurl {
     SetOpt(option,parameter,easy_handle?,debug?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
+        ;todo - move the EasyOpts to the standardized Constants array
         If this.Opt.Has(option){    ;determine if the option is known
             ;nothing to be done
         } else if InStr(option,"CURLOPT_") && this.Opt.Has(StrReplace("CURLOPT_",option)){
@@ -126,6 +130,20 @@ class LibQurl {
 
         this.easyHandleMap[easy_handle]["options"][option] := parameter
         return this._curl_easy_setopt(easy_handle,option,parameter,debug?)
+    }
+    MultiSetOpt(option,parameter,multi_handle?){
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+
+        If this.mOpt.Has(option){
+            ;nothing to be done
+        } else if InStr(option,"CURLMOPT_") && this.mOpt.Has(StrReplace("CURLMOPT_",option)){
+            option := StrReplace("CURLMOPT_",option)
+        } else {
+            throw ValueError("Problem in 'curl_multi_setopt'! Unknown option: " option, -1, this.curlDLLpath)
+        }
+
+        this.multiHandleMap[multi_handle]["options"][option] := parameter
+        return this.curl_multi_setopt(multi_handle,option,parameter)
     }
     SetOpts(optionMap,&optErrMap?,easy_handle?){  ;for setting multiple options at once
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
@@ -1437,7 +1455,35 @@ class LibQurl {
         c["BEARSSL"] := 13
         c["RUSTLS"] := 14
     
-        ; todo with the error handlers
+        this.constants["CURLOPTTYPE"] := o := Map()   
+        o.CaseSense := 0
+        o["LONG"] := Map("offset",0,"multiType","LONG","dllType","Int*")  ;good
+        o["OBJECTPOINT"] := Map("offset",10000,"multiType","LONG","dllType","Int*")  ;good
+        o["FUNCTIONPOINT"] := Map("offset",20000,"multiType","LONG","dllType","Int*")  ;good
+        o["OFF_T"] := Map("offset",30000,"multiType","LONG","dllType","Int*")  ;good
+        o["BLOB"] := Map("offset",40000,"multiType","LONG","dllType","Int*")  ;good
+        
+        offsetGroup := "CURLOPTTYPE"    
+        this.constants["CURLMoption"] := c := Map()
+        c.CaseSense := 0
+        c["SOCKETFUNCTION"]                 := bindOffsets(offsetGroup, 1, "FUNCTIONPOINT")
+        c["SOCKETDATA"]                     := bindOffsets(offsetGroup, 2, "OBJECTPOINT")
+        c["PIPELINING"]                     := bindOffsets(offsetGroup, 3, "LONG")
+        c["TIMERFUNCTION"]                  := bindOffsets(offsetGroup, 4, "FUNCTIONPOINT")
+        c["TIMERDATA"]                      := bindOffsets(offsetGroup, 5, "OBJECTPOINT")
+        c["MAXCONNECTS"]                    := bindOffsets(offsetGroup, 6, "LONG")
+        c["MAX_HOST_CONNECTIONS"]           := bindOffsets(offsetGroup, 7, "LONG")
+        c["MAX_PIPELINE_LENGTH"]            := bindOffsets(offsetGroup, 8, "LONG")
+        c["CONTENT_LENGTH_PENALTY_SIZE"]    := bindOffsets(offsetGroup, 9, "OFF_T")
+        c["CHUNK_LENGTH_PENALTY_SIZE"]      := bindOffsets(offsetGroup, 10, "OFF_T")
+        c["PIPELINING_SITE_BL"]             := bindOffsets(offsetGroup, 11, "OBJECTPOINT")
+        c["PIPELINING_SERVER_BL"]           := bindOffsets(offsetGroup, 12, "OBJECTPOINT")
+        c["MAX_TOTAL_CONNECTIONS"]          := bindOffsets(offsetGroup, 13, "LONG")
+        c["PUSHFUNCTION"]                   := bindOffsets(offsetGroup, 14, "FUNCTIONPOINT")
+        c["PUSHDATA"]                       := bindOffsets(offsetGroup, 15, "OBJECTPOINT")
+        c["MAX_CONCURRENT_STREAMS"]         := bindOffsets(offsetGroup, 16, "LONG")
+        c["LASTENTRY"]                      := unset
+            ; todo with the error handlers
         ; this.constants["CURLHcode"] := c := Map()  
         ; typedef enum {
         ;     CURLHE_OK,
