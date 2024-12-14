@@ -54,7 +54,6 @@ class LibQurl {
         this._curl_global_init()
         OnExit (*) => this._globalCleanup()
         this._declareConstants()
-        this._declareConstants()
         this._buildOptMap()
         this.VersionInfo := this.GetVersionInfo()
         this.UrlInit()
@@ -1483,6 +1482,8 @@ class LibQurl {
         c["PUSHDATA"]                       := bindOffsets(offsetGroup, 15, "OBJECTPOINT")
         c["MAX_CONCURRENT_STREAMS"]         := bindOffsets(offsetGroup, 16, "LONG")
         c["LASTENTRY"]                      := unset
+    
+        
             ; todo with the error handlers
         ; this.constants["CURLHcode"] := c := Map()  
         ; typedef enum {

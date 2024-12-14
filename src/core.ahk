@@ -59,7 +59,6 @@ class LibQurl {
         this._curl_global_init()
         OnExit (*) => this._globalCleanup()
         this._declareConstants()
-        this._declareConstants()
         this._buildOptMap()
         this.VersionInfo := this.GetVersionInfo()
         this.UrlInit()
