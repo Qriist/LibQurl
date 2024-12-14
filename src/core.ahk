@@ -181,6 +181,9 @@ class LibQurl {
     GetEasyErrorString(errornum){   ;alias for GetErrorString
         return this.GetErrorString(errornum)
     }
+    GetMultiErrorString(errornum){
+        return StrGet(this._curl_multi_strerror(errornum),"UTF-8")
+    }
 	HeaderToMem(maxCapacity := 0, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         passedHandleMap := this.easyHandleMap

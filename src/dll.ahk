@@ -159,6 +159,12 @@ _curl_multi_add_handle(multi_handle, easy_handle) { ;https://curl.se/libcurl/c/c
         ,   "Ptr", multi_handle
         ,   "Ptr", easy_handle)
 }
+_curl_multi_strerror(errornum) {    ;https://curl.se/libcurl/c/curl_multi_strerror.html
+    static curl_multi_strerror := this._getDllAddress(this.curlDLLpath,"curl_multi_strerror") 
+    return DllCall(curl_multi_strerror
+        ,   "Int", errornum
+        ,   "Ptr")
+}
 _curl_multi_get_handles(multi_handle) { ;https://curl.se/libcurl/c/curl_multi_get_handles.html
     static curl_multi_get_handles := this._getDllAddress(this.curlDLLpath,"curl_multi_get_handles") 
     return DllCall(curl_multi_get_handles
@@ -405,12 +411,6 @@ _curl_multi_socket_action(multi_handle,sockfd,ev_bitmask,running_handles) {   ;u
         ,   "Int", sockfd
         ,   "Int", ev_bitmask
         ,   "Int", running_handles)
-}
-_curl_multi_strerror(errornum) {    ;untested   https://curl.se/libcurl/c/curl_multi_strerror.html
-    static curl_multi_strerror := this._getDllAddress(this.curlDLLpath,"curl_multi_strerror") 
-    return DllCall(curl_multi_strerror
-        ,   "Int", errornum
-        ,   "Ptr")
 }
 _curl_multi_timeout(multi_handle,timeout) { ;untested   https://curl.se/libcurl/c/curl_multi_timeout.html
     static curl_multi_timeout := this._getDllAddress(this.curlDLLpath,"curl_multi_timeout") 
