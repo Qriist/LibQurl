@@ -525,7 +525,7 @@ class LibQurl {
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
         ret := this._curl_multi_add_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
-        this.multiHandleMap[multi_handle]["associatedEasyHandles"][multi_handle] := A_NowUTC
+        this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
         ; this.multiHandleMap["pending_callbacks"].push(easy_handle)
         return ret
     }
@@ -637,6 +637,12 @@ class LibQurl {
         ; MsgBox this.PrintObj(this.easyHandleMap[new_easy_handle]["options"])
         this.WriteToMem(0,new_easy_handle)    ;automatically save lastBody to memory
         return new_easy_handle
+    }
+
+    MultiGetHandles(multi_handle?){ ;lists all easy_handles in the multi_handle
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+
+        ret := this._curl_multi_get_handles(multi_handle)
     }
 
     ; WriteToNone() {
@@ -1692,6 +1698,13 @@ class LibQurl {
             ,   "Int", multi_handle
             ,   "Int", easy_handle)
     }
+    _curl_multi_setopt(multi_handle, option, parameter) {  ;https://curl.se/libcurl/c/curl_multi_setopt.html
+        static curl_multi_setopt := this._getDllAddress(this.curlDLLpath,"curl_multi_setopt") 
+        return DllCall(curl_multi_setopt
+            ,   "Ptr", multi_handle
+            ,   "Int", this.mOpt[option]["id"]
+            ,   this.mOpt[option]["dllType"], parameter)
+    }
     _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
         static curl_slist_append := this._getDllAddress(this.curlDLLpath,"curl_slist_append") 
         return DllCall(curl_slist_append
@@ -1897,13 +1910,6 @@ class LibQurl {
             ,   "Ptr")
     }
     
-    _curl_multi_setopt(multi_handle, option, parameter) {  ;untested   https://curl.se/libcurl/c/curl_multi_setopt.html
-        static curl_multi_setopt := this._getDllAddress(this.curlDLLpath,"curl_multi_setopt") 
-        return DllCall(curl_multi_setopt
-            ,   "Ptr", multi_handle
-            ,   "Int", this.mOpt[option]["id"]
-            ,   this.mOpt[option]["dllType"], parameter)   ;TODO - build multi opt map
-    }
     _curl_multi_socket_action(multi_handle,sockfd,ev_bitmask,running_handles) {   ;untested   https://curl.se/libcurl/c/curl_multi_socket_action.html
         static _curl_multi_socket_action := this._getDllAddress(this.curlDLLpath,"_curl_multi_socket_action") 
         return DllCall(_curl_multi_socket_action

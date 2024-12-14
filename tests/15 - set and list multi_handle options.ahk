@@ -4,8 +4,14 @@
 SetWorkingDir(A_ScriptDir "\..")
 curl := LibQurl(A_ScriptDir "\..\bin\libcurl.dll")
 
+;generate some easy_handles
+e := Map()
+loop 10
+    e[a_index] := curl.Init()
+
+
 curl.MultiSetOpt("MAXCONNECTS",10)
 curl.MultiSetOpt("MAX_HOST_CONNECTIONS",25)
-curl.ReadyAsync()
+curl.ReadyAsync(e)
 
 FileOpen(A_ScriptDir "\15.results.txt", "w").write(curl.PrintObj(curl.multiHandleMap))

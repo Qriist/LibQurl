@@ -530,7 +530,7 @@ class LibQurl {
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
         ret := this._curl_multi_add_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
-        this.multiHandleMap[multi_handle]["associatedEasyHandles"][multi_handle] := A_NowUTC
+        this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
         ; this.multiHandleMap["pending_callbacks"].push(easy_handle)
         return ret
     }
@@ -642,6 +642,12 @@ class LibQurl {
         ; MsgBox this.PrintObj(this.easyHandleMap[new_easy_handle]["options"])
         this.WriteToMem(0,new_easy_handle)    ;automatically save lastBody to memory
         return new_easy_handle
+    }
+
+    MultiGetHandles(multi_handle?){ ;lists all easy_handles in the multi_handle
+        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+
+        ret := this._curl_multi_get_handles(multi_handle)
     }
 
     ; WriteToNone() {

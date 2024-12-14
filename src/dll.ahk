@@ -186,6 +186,13 @@ _curl_multi_remove_handle(multi_handle, easy_handle) {   ;https://curl.se/libcur
         ,   "Int", multi_handle
         ,   "Int", easy_handle)
 }
+_curl_multi_setopt(multi_handle, option, parameter) {  ;https://curl.se/libcurl/c/curl_multi_setopt.html
+    static curl_multi_setopt := this._getDllAddress(this.curlDLLpath,"curl_multi_setopt") 
+    return DllCall(curl_multi_setopt
+        ,   "Ptr", multi_handle
+        ,   "Int", this.mOpt[option]["id"]
+        ,   this.mOpt[option]["dllType"], parameter)
+}
 _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
     static curl_slist_append := this._getDllAddress(this.curlDLLpath,"curl_slist_append") 
     return DllCall(curl_slist_append
@@ -391,13 +398,6 @@ _curl_multi_get_handles(multi_handle) { ;untested   https://curl.se/libcurl/c/cu
         ,   "Ptr")
 }
 
-_curl_multi_setopt(multi_handle, option, parameter) {  ;untested   https://curl.se/libcurl/c/curl_multi_setopt.html
-    static curl_multi_setopt := this._getDllAddress(this.curlDLLpath,"curl_multi_setopt") 
-    return DllCall(curl_multi_setopt
-        ,   "Ptr", multi_handle
-        ,   "Int", this.mOpt[option]["id"]
-        ,   this.mOpt[option]["dllType"], parameter)   ;TODO - build multi opt map
-}
 _curl_multi_socket_action(multi_handle,sockfd,ev_bitmask,running_handles) {   ;untested   https://curl.se/libcurl/c/curl_multi_socket_action.html
     static _curl_multi_socket_action := this._getDllAddress(this.curlDLLpath,"_curl_multi_socket_action") 
     return DllCall(_curl_multi_socket_action
