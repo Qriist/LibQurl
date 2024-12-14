@@ -60,6 +60,7 @@ class LibQurl {
         OnExit (*) => this._globalCleanup()
         this._declareConstants()
         this._buildOptMap()
+        this.mOpt := this.constants["CURLMoption"]
         this.VersionInfo := this.GetVersionInfo()
         this.UrlInit()
         this.MultiInit()
