@@ -159,11 +159,10 @@ _curl_multi_add_handle(multi_handle, easy_handle) { ;https://curl.se/libcurl/c/c
         ,   "Ptr", multi_handle
         ,   "Ptr", easy_handle)
 }
-_curl_multi_strerror(errornum) {    ;https://curl.se/libcurl/c/curl_multi_strerror.html
-    static curl_multi_strerror := this._getDllAddress(this.curlDLLpath,"curl_multi_strerror") 
-    return DllCall(curl_multi_strerror
-        ,   "Int", errornum
-        ,   "Ptr")
+_curl_multi_cleanup(multi_handle) { ;https://curl.se/libcurl/c/curl_multi_cleanup.html
+    static curl_multi_cleanup := this._getDllAddress(this.curlDLLpath,"curl_multi_cleanup") 
+    return DllCall(curl_multi_cleanup
+        ,   "Int", multi_handle)
 }
 _curl_multi_get_handles(multi_handle) { ;https://curl.se/libcurl/c/curl_multi_get_handles.html
     static curl_multi_get_handles := this._getDllAddress(this.curlDLLpath,"curl_multi_get_handles") 
@@ -204,6 +203,12 @@ _curl_multi_setopt(multi_handle, option, parameter) {  ;https://curl.se/libcurl/
         ,   "Ptr", multi_handle
         ,   "Int", this.mOpt[option]["id"]
         ,   this.mOpt[option]["dllType"], parameter)
+}
+_curl_multi_strerror(errornum) {    ;https://curl.se/libcurl/c/curl_multi_strerror.html
+    static curl_multi_strerror := this._getDllAddress(this.curlDLLpath,"curl_multi_strerror") 
+    return DllCall(curl_multi_strerror
+        ,   "Int", errornum
+        ,   "Ptr")
 }
 _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
     static curl_slist_append := this._getDllAddress(this.curlDLLpath,"curl_slist_append") 
@@ -389,11 +394,6 @@ _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/
         ,   "Int", multi_handle
         ,   "Int", sockfd
         ,   "Ptr", sockptr)
-}
-_curl_multi_cleanup(multi_handle) { ;untested   https://curl.se/libcurl/c/curl_multi_cleanup.html
-    static curl_multi_cleanup := this._getDllAddress(this.curlDLLpath,"curl_multi_cleanup") 
-    return DllCall(curl_multi_cleanup
-        ,   "Int", multi_handle)
 }
 _curl_multi_fdset(multi_handle,read_fd_set,write_fd_set,exc_fd_set,max_fd) {    ;untested   https://curl.se/libcurl/c/curl_multi_fdset.html
     static curl_multi_fdset := this._getDllAddress(this.curlDLLpath,"curl_multi_fdset") 
