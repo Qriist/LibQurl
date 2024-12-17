@@ -198,18 +198,41 @@ _DeepClone(obj) {    ;https://github.com/thqby/ahk2_lib/blob/master/deepclone.ah
     }
 }
 
-_ErrorHandler(callingMethod,invokedCurlFunction,curlErrorCodeType,incomingValue?){
-    If (curlErrorCodeType = "Curlcode") {
+_ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValue := 0,errorBuffer?){
+    if !incomingValue
+        return 0
 
-    } else if (curlErrorCodeType = "Curlmcode") {
+    ;prune rolling array if required
+    If (this.caughtErrors.length = this.keepLastNumErrors)
+        this.caughtErrors.RemoveAt(1)   ;remove the oldest
 
-    } else if (curlErrorCodeType = "Curlshcode") {
+    thisError := Map()
+    thisError["timestamp"] := A_NowUTC
+    
+    callingMethod := StrReplace(callingMethod,"LibQurl.Prototype.")
+    thisError["invoked LibQurl method"] := callingMethod
+    thisError["error family"] := curlErrorCodeFamily
+    
+    thisError["invoked curl function"] := invokedCurlFunction
+    thisError["error code"] := incomingValue
+    thisError["error buffer"] := StrGet(errorBuffer,"UTF-8")
+    thisError["error string"] := this.GetErrorString(incomingValue)
 
-    } else if (curlErrorCodeType = "Curlucode") {
+    this.caughtErrors.push(thisError)
 
-    } else if (curlErrorCodeType = "Curlhcode") {
+    msgbox this.PrintObj(this.caughtErrors)
+    ; thisError["Error Code Type"] := 
+    ; If (curlErrorCodeType = "Curlcode") {
 
-    }
+    ; } else if (curlErrorCodeType = "Curlmcode") {
+
+    ; } else if (curlErrorCodeType = "Curlshcode") {
+
+    ; } else if (curlErrorCodeType = "Curlucode") {
+
+    ; } else if (curlErrorCodeType = "Curlhcode") {
+
+    ; }
 }
 
 ; Returns a Buffer object containing the string.

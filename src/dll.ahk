@@ -138,6 +138,12 @@ _curl_free(pointer) {   ;https://curl.se/libcurl/c/curl_free.html
     DllCall(curl_free
         ,   "Ptr", pointer)
 }
+_curl_getdate(datestring) {   ;https://curl.se/libcurl/c/curl_getdate.html
+    static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
+    return DllCall(curl_getdate
+        ,   "AStr", datestring
+        ,   "UInt", 0) ;not used, pass a NULL
+}
 _curl_global_init() {   ;https://curl.se/libcurl/c/curl_global_init.html
     ;can't find the various flag values so it's locked to the default "everything" mode for now - prolly okay
     static curl_global_init := this._getDllAddress(this.curlDLLpath,"curl_global_init") 
@@ -285,12 +291,6 @@ _curl_version_info() {  ;https://curl.se/libcurl/c/curl_version_info.html
 
 ; all dll calls below this line haven't been fully tested
 
-_curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate.html
-    static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
-    return DllCall(curl_getdate
-        ,   "AStr", datestring
-        ,   "UInt", 0) ;not used, pass a NULL
-}
 _curl_global_cleanup() {  ;untested   https://curl.se/libcurl/c/curl_global_cleanup.html
     static curl_global_cleanup := this._getDllAddress(this.curlDLLpath,"curl_global_cleanup") 
     DllCall(curl_global_cleanup)    ;no return value

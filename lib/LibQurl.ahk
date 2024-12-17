@@ -21,6 +21,9 @@ class LibQurl {
         this.struct := LibQurl._struct()  ;holds the various structs
         this.writeRefs := Map()    ;holds the various write handles
         this.constants := Map()
+
+        this.caughtErrors := []
+        this.keepLastNumErrors := 1000
         this.CURL_ERROR_SIZE := 256
         this._register(dllPath?,requestedSSLprovider?)
     }
@@ -73,16 +76,24 @@ class LibQurl {
 
         this.easyHandleMap[easy_handle]["easy_handle"] := easy_handle
         this.easyHandleMap[easy_handle]["options"] := Map()  ;prepares option storage
+
+        ;setup error handling
+        this.easyHandleMap[easy_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE)
+        this.SetOpt("ERRORBUFFER",this.easyHandleMap[easy_handle]["error buffer"])
+
         this.SetOpt("ACCEPT_ENCODING","",easy_handle)    ;enables compressed transfers without affecting input headers
         ; this.SetOpt("SSH_COMPRESSION",1,easy_handle)    ;enables compressed transfers without affecting input headers
         this.SetOpt("FOLLOWLOCATION",1,easy_handle)    ;allows curl to follow redirects
         this.SetOpt("MAXREDIRS",30,easy_handle)    ;limits redirects to 30 (matches recent curl default)
+
 
         ;try to auto-load curl's cert bundle
         ;can still be set per easy_handle
         SplitPath(this.curlDLLpath,,&dlldir)
         If FileExist(dlldir "\curl-ca-bundle.crt")
             this.SetOpt("CAINFO",dlldir "\curl-ca-bundle.crt",easy_handle)
+        else
+            msgbox "not found"
 
         ;todo - autoupdate the cert bundle
         this.easyHandleMap[easy_handle]["callbacks"] := Map()  ;prepares write callbacks
@@ -94,6 +105,7 @@ class LibQurl {
 
         this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
         this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
+
         return easy_handle
     }
     EasyInit(multi_handle?){ ;just a clarifying alias for Init()
@@ -260,7 +272,12 @@ class LibQurl {
         If IsSet(multi_handle) {
             this.RemoveEasyFromMulti(easy_handle,multi_handle)
         }
-        return this._Perform(easy_handle?)    
+
+        If ret := this._Perform(easy_handle?)
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_perform",ret,this.easyHandleMap[easy_handle]["error buffer"])
+
+        ; MsgBox ret
+        return ret
     }
     RawSend(outgoing,easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
@@ -688,10 +705,17 @@ class LibQurl {
 
     GetDate(dateString){
         ret := this._curl_getdate(dateString)
-        ; msgbox ret
 
         return ret
     }
+
+    ShareInit() {
+
+    }
+
+
+
+
 
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
@@ -908,18 +932,41 @@ class LibQurl {
         }
     }
     
-    _ErrorHandler(callingMethod,invokedCurlFunction,curlErrorCodeType,incomingValue?){
-        If (curlErrorCodeType = "Curlcode") {
+    _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValue := 0,errorBuffer?){
+        if !incomingValue
+            return 0
     
-        } else if (curlErrorCodeType = "Curlmcode") {
+        ;prune rolling array if required
+        If (this.caughtErrors.length = this.keepLastNumErrors)
+            this.caughtErrors.RemoveAt(1)   ;remove the oldest
     
-        } else if (curlErrorCodeType = "Curlshcode") {
+        thisError := Map()
+        thisError["timestamp"] := A_NowUTC
+        
+        callingMethod := StrReplace(callingMethod,"LibQurl.Prototype.")
+        thisError["invoked LibQurl method"] := callingMethod
+        thisError["error family"] := curlErrorCodeFamily
+        
+        thisError["invoked curl function"] := invokedCurlFunction
+        thisError["error code"] := incomingValue
+        thisError["error buffer"] := StrGet(errorBuffer,"UTF-8")
+        thisError["error string"] := this.GetErrorString(incomingValue)
     
-        } else if (curlErrorCodeType = "Curlucode") {
+        this.caughtErrors.push(thisError)
     
-        } else if (curlErrorCodeType = "Curlhcode") {
+        msgbox this.PrintObj(this.caughtErrors)
+        ; thisError["Error Code Type"] := 
+        ; If (curlErrorCodeType = "Curlcode") {
     
-        }
+        ; } else if (curlErrorCodeType = "Curlmcode") {
+    
+        ; } else if (curlErrorCodeType = "Curlshcode") {
+    
+        ; } else if (curlErrorCodeType = "Curlucode") {
+    
+        ; } else if (curlErrorCodeType = "Curlhcode") {
+    
+        ; }
     }
     
     ; Returns a Buffer object containing the string.
@@ -1698,6 +1745,12 @@ class LibQurl {
         DllCall(curl_free
             ,   "Ptr", pointer)
     }
+    _curl_getdate(datestring) {   ;https://curl.se/libcurl/c/curl_getdate.html
+        static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
+        return DllCall(curl_getdate
+            ,   "AStr", datestring
+            ,   "UInt", 0) ;not used, pass a NULL
+    }
     _curl_global_init() {   ;https://curl.se/libcurl/c/curl_global_init.html
         ;can't find the various flag values so it's locked to the default "everything" mode for now - prolly okay
         static curl_global_init := this._getDllAddress(this.curlDLLpath,"curl_global_init") 
@@ -1845,12 +1898,6 @@ class LibQurl {
     
     ; all dll calls below this line haven't been fully tested
     
-    _curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate.html
-        static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
-        return DllCall(curl_getdate
-            ,   "AStr", datestring
-            ,   "UInt", 0) ;not used, pass a NULL
-    }
     _curl_global_cleanup() {  ;untested   https://curl.se/libcurl/c/curl_global_cleanup.html
         static curl_global_cleanup := this._getDllAddress(this.curlDLLpath,"curl_global_cleanup") 
         DllCall(curl_global_cleanup)    ;no return value
