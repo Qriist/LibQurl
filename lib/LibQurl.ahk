@@ -78,8 +78,8 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["options"] := Map()  ;prepares option storage
 
         ;setup error handling
-        this.easyHandleMap[easy_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE)
-        this.SetOpt("ERRORBUFFER",this.easyHandleMap[easy_handle]["error buffer"])
+        this.SetOpt("ERRORBUFFER"
+            ,   this.easyHandleMap[easy_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE))
 
         this.SetOpt("ACCEPT_ENCODING","",easy_handle)    ;enables compressed transfers without affecting input headers
         ; this.SetOpt("SSH_COMPRESSION",1,easy_handle)    ;enables compressed transfers without affecting input headers
@@ -104,7 +104,7 @@ class LibQurl {
 
 
         this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
-        this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
+        ; this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
 
         return easy_handle
     }
@@ -243,9 +243,9 @@ class LibQurl {
         If (Type(inEasyHandles) = "Integer")
             inEasyHandles := [inEasyHandles]
         for k,v in (Type(inEasyHandles)!="Object"?inEasyHandles:inEasyHandles.OwnProps()) { ;itemize Objects if required
+            this._fallbackWrite(v)
             this.AddEasyToMulti(v,multi_handle)
         }
-        
     }
     Async(multi_handle?){
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
@@ -272,6 +272,8 @@ class LibQurl {
         If IsSet(multi_handle) {
             this.RemoveEasyFromMulti(easy_handle,multi_handle)
         }
+
+        this._fallbackWrite(easy_handle)
 
         If ret := this._Perform(easy_handle?)
             this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_perform",ret,this.easyHandleMap[easy_handle]["error buffer"])
@@ -568,11 +570,18 @@ class LibQurl {
     AddEasyToMulti(easy_handle?,multi_handle?){ ;auto-invoked during EasyInit()
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+
         ret := this._curl_multi_add_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
         this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
         ; this.multiHandleMap["pending_callbacks"].push(easy_handle)
         return ret
+    }
+    _fallbackWrite(easy_handle){
+        static checkTypes := ["WRITE","HEADER"]
+        for k,v in checkTypes
+        If !this.easyHandleMap[easy_handle]["options"].Has(v "DATA")
+            this.%v%ToMem(,easy_handle)
     }
     RemoveEasyFromMulti(easy_handle?,multi_handle?) {
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
