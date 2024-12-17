@@ -289,7 +289,7 @@ _curl_getdate(datestring) {   ;untested   https://curl.se/libcurl/c/curl_getdate
     static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
     return DllCall(curl_getdate
         ,   "AStr", datestring
-        ,   "UInt", "") ;not used, pass a NULL
+        ,   "UInt", 0) ;not used, pass a NULL
 }
 _curl_global_cleanup() {  ;untested   https://curl.se/libcurl/c/curl_global_cleanup.html
     static curl_global_cleanup := this._getDllAddress(this.curlDLLpath,"curl_global_cleanup") 
@@ -502,5 +502,3 @@ _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_me
         , "Int", easy_handle
         , "Ptr")
 }
-
-

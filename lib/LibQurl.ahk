@@ -686,6 +686,13 @@ class LibQurl {
         return out
     }
 
+    GetDate(dateString){
+        ret := this._curl_getdate(dateString)
+        ; msgbox ret
+
+        return ret
+    }
+
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
@@ -1842,7 +1849,7 @@ class LibQurl {
         static curl_getdate := this._getDllAddress(this.curlDLLpath,"curl_getdate") 
         return DllCall(curl_getdate
             ,   "AStr", datestring
-            ,   "UInt", "") ;not used, pass a NULL
+            ,   "UInt", 0) ;not used, pass a NULL
     }
     _curl_global_cleanup() {  ;untested   https://curl.se/libcurl/c/curl_global_cleanup.html
         static curl_global_cleanup := this._getDllAddress(this.curlDLLpath,"curl_global_cleanup") 

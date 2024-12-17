@@ -1,0 +1,2 @@
+vcpkg remove curl
+vcpkg install curl[brotli,c-ares,gnutls,gsasl,http2,idn,idn2,ldap,mbedtls,non-http,openssl,psl,schannel,ssh,ssl,sspi,tool,websockets,winidn,wolfssl,zstd]:x64-windows --overlay-ports=C:\Projects\LibQurl\overlays\openssl --x-install-root=C:\Projects\LibQurl\bin --recurse

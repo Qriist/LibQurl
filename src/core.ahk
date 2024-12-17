@@ -691,6 +691,13 @@ class LibQurl {
         return out
     }
 
+    GetDate(dateString){
+        ret := this._curl_getdate(dateString)
+        ; msgbox ret
+
+        return ret
+    }
+
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
