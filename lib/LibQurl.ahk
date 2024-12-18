@@ -142,7 +142,10 @@ class LibQurl {
         }
 
         this.easyHandleMap[easy_handle]["options"][option] := parameter
-        return this._curl_easy_setopt(easy_handle,option,parameter,debug?)
+
+        if ret := this._curl_easy_setopt(easy_handle,option,parameter,debug?)
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_setopt",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+        return ret
     }
     MultiSetOpt(option,parameter,multi_handle?){
         multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
@@ -276,7 +279,7 @@ class LibQurl {
         this._fallbackWrite(easy_handle)
 
         If ret := this._Perform(easy_handle?)
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_perform",ret,this.easyHandleMap[easy_handle]["error buffer"])
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_perform",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
         ; MsgBox ret
         return ret
@@ -298,7 +301,9 @@ class LibQurl {
                 throw ValueError("Unknown object type passed to RawSend: " Type(outgoing))
         }
         sent := 0
-        this._curl_easy_send(easy_handle,outBuffer,outBuffer.size,&sent)
+        if ret := this._curl_easy_send(easy_handle,outBuffer,outBuffer.size,&sent)
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_send",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+
         return sent
     }
     RawReceive(easy_handle?){
@@ -308,7 +313,9 @@ class LibQurl {
         got := 0
         offset := 0
         loop {
-            ret := curl._curl_easy_recv(easy_handle,replyBuffer,replyBuffer.size,&got)
+            if ret := curl._curl_easy_recv(easy_handle,replyBuffer,replyBuffer.size,&got)
+                this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+
             offsetPtr := retBuffer.ptr + got
 
             ;append data to buffer if any was received
@@ -393,15 +400,24 @@ class LibQurl {
 
     Pause(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        return this._curl_easy_pause(easy_handle,PauseMode := 5)
+
+        if ret := this._curl_easy_pause(easy_handle,PauseMode := 5)
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_pause",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+        return ret
     }
     UnPause(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        return this._curl_easy_pause(easy_handle,PauseMode := 0)
+        
+        if ret := this._curl_easy_pause(easy_handle,PauseMode := 0)
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_pause",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+        return ret
     }
     Upkeep(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        return this._curl_easy_upkeep(easy_handle)
+
+        if ret := this._curl_easy_upkeep(easy_handle)
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_upkeep",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+        return ret
     }
     ; UrlEscape(){
     ;     ;todo - write a Unicode-aware string escaper
@@ -599,7 +615,8 @@ class LibQurl {
     }
     GetInfo(infoOption,curl_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        result := this._curl_easy_getinfo(easy_handle,infoOption,&info := 0)
+        if ret := this._curl_easy_getinfo(easy_handle,infoOption,&info := 0)
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_getinfo",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
         switch this.constants["CURLINFO"][infoOption]["infoType"] {
             case "STRING":
@@ -641,6 +658,7 @@ class LibQurl {
         static c := this.constants["CURLH_ORIGINS"]
         origin ??= c["HEADER"]
 
+        ;todo - add CURLHcode handling
         ret := this._curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0)
         If curl_header
             return this.struct.curl_header(curl_header)["value"]
@@ -700,6 +718,7 @@ class LibQurl {
 
         ;gets the pointer array
         ret := this._curl_multi_get_handles(multi_handle)
+        
 
         ;walk the pointer array
         out := []
@@ -941,13 +960,13 @@ class LibQurl {
         }
     }
     
-    _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValue := 0,errorBuffer?){
+    _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValue := 0,errorBuffer?,relevant_handle?){
         if !incomingValue
             return 0
     
         ;prune rolling array if required
-        If (this.caughtErrors.length = this.keepLastNumErrors)
-            this.caughtErrors.RemoveAt(1)   ;remove the oldest
+        ; If (this.caughtErrors.length = this.keepLastNumErrors)
+        ;     this.caughtErrors.RemoveAt(1)   ;remove the oldest
     
         thisError := Map()
         thisError["timestamp"] := A_NowUTC
@@ -958,9 +977,11 @@ class LibQurl {
         
         thisError["invoked curl function"] := invokedCurlFunction
         thisError["error code"] := incomingValue
-        thisError["error buffer"] := StrGet(errorBuffer,"UTF-8")
-        thisError["error string"] := this.GetErrorString(incomingValue)
-    
+        thisError["error string1"] := this.GetErrorString(incomingValue)
+        thisError["error string2"] := StrGet(errorBuffer,"UTF-8")
+        ; msgbox this.PrintObj(this.easyHandleMap["options"])
+        if (curlErrorCodeFamily = "Curlcode")
+            thisError["options snapshot"] := this._DeepClone(this.easyHandleMap[relevant_handle]["options"])
         this.caughtErrors.push(thisError)
     
         msgbox this.PrintObj(this.caughtErrors)

@@ -198,13 +198,13 @@ _DeepClone(obj) {    ;https://github.com/thqby/ahk2_lib/blob/master/deepclone.ah
     }
 }
 
-_ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValue := 0,errorBuffer?){
+_ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValue := 0,errorBuffer?,relevant_handle?){
     if !incomingValue
         return 0
 
     ;prune rolling array if required
-    If (this.caughtErrors.length = this.keepLastNumErrors)
-        this.caughtErrors.RemoveAt(1)   ;remove the oldest
+    ; If (this.caughtErrors.length = this.keepLastNumErrors)
+    ;     this.caughtErrors.RemoveAt(1)   ;remove the oldest
 
     thisError := Map()
     thisError["timestamp"] := A_NowUTC
@@ -215,9 +215,11 @@ _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValu
     
     thisError["invoked curl function"] := invokedCurlFunction
     thisError["error code"] := incomingValue
-    thisError["error buffer"] := StrGet(errorBuffer,"UTF-8")
-    thisError["error string"] := this.GetErrorString(incomingValue)
-
+    thisError["error string1"] := this.GetErrorString(incomingValue)
+    thisError["error string2"] := StrGet(errorBuffer,"UTF-8")
+    ; msgbox this.PrintObj(this.easyHandleMap["options"])
+    if (curlErrorCodeFamily = "Curlcode")
+        thisError["options snapshot"] := this._DeepClone(this.easyHandleMap[relevant_handle]["options"])
     this.caughtErrors.push(thisError)
 
     msgbox this.PrintObj(this.caughtErrors)

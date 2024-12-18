@@ -9,12 +9,15 @@ setCookie := "https://httpbin.org/cookies/set?"  ;append key=value
 
 
 curl.SetOpt("URL",setCookie "stab=tidbit")
-curl.SetOpt("URL","http://google.com")
+; curl.SetOpt("URL","https://google.com")
 
 ; test := Buffer(256)
-
+; msgbox curl.PrintObj(curl.easyHandleMap)
 ; curl.SetOpt("ERRORBUFFER",test)
 curl.Sync()
+; msgbox curl.PrintObj(curl.easyHandleMap)
+; msgbox curl.PrintObj(curl.caughtErrors)
+
 ; StrGet(test,"utf-8")
-; msgbox curl.PrintObj(curl.GetVersionInfo())
+msgbox curl.PrintObj(curl.GetVersionInfo())
 msgbox curl.GetLastBody()
