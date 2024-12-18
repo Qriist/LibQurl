@@ -202,39 +202,29 @@ _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValu
     if !incomingValue
         return 0
 
-    ;prune rolling array if required
-    ; If (this.caughtErrors.length = this.keepLastNumErrors)
-    ;     this.caughtErrors.RemoveAt(1)   ;remove the oldest
-
     thisError := Map()
     thisError["timestamp"] := A_NowUTC
     
     callingMethod := StrReplace(callingMethod,"LibQurl.Prototype.")
     thisError["invoked LibQurl method"] := callingMethod
-    thisError["error family"] := curlErrorCodeFamily
-    
     thisError["invoked curl function"] := invokedCurlFunction
+
+    thisError["error family"] := curlErrorCodeFamily
     thisError["error code"] := incomingValue
-    thisError["error string1"] := this.GetErrorString(incomingValue)
-    thisError["error string2"] := StrGet(errorBuffer,"UTF-8")
-    ; msgbox this.PrintObj(this.easyHandleMap["options"])
-    if (curlErrorCodeFamily = "Curlcode")
-        thisError["options snapshot"] := this._DeepClone(this.easyHandleMap[relevant_handle]["options"])
+
+    switch curlErrorCodeFamily, "Off" {
+        case "CURLcode":
+            thisError["error string1"] := this.GetErrorString(incomingValue)
+            thisError["error string2"] := StrGet(errorBuffer,"UTF-8")
+            thisError["options snapshot"] := this._DeepClone(this.easyHandleMap[relevant_handle]["options"])
+            ;todo - gather nested CURLE_PROXY struct
+        case "CURLMcode":
+        case "CURLSHcode":
+        case "CURLUcode":
+        case "CURLHcode":
+    }
+
     this.caughtErrors.push(thisError)
-
-    msgbox this.PrintObj(this.caughtErrors)
-    ; thisError["Error Code Type"] := 
-    ; If (curlErrorCodeType = "Curlcode") {
-
-    ; } else if (curlErrorCodeType = "Curlmcode") {
-
-    ; } else if (curlErrorCodeType = "Curlshcode") {
-
-    ; } else if (curlErrorCodeType = "Curlucode") {
-
-    ; } else if (curlErrorCodeType = "Curlhcode") {
-
-    ; }
 }
 
 ; Returns a Buffer object containing the string.
