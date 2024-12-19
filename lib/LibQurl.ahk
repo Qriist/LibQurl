@@ -3,6 +3,7 @@
 class LibQurl {
     ;core functionality
     __New(dllPath?,requestedSSLprovider?) {
+        ;prepare interface maps
         this.easyHandleMap := Map()
         this.easyHandleMap[0] := []
         this.urlHandleMap := Map()
@@ -11,6 +12,9 @@ class LibQurl {
         this.multiHandleMap[0] := []
         this.multiHandleMap["pending_callbacks"] := []
         this.multiHandleMap["running_callbacks"] := []
+        this.shareHandleMap := Map()
+        this.shareHandleMap[0] := []
+
         this.unassociatedEasyHandles := Map()
         static curlDLLhandle := ""
         static curlDLLpath := ""
@@ -59,6 +63,7 @@ class LibQurl {
         this._declareConstants()
         this._buildOptMap()
         this.mOpt := this.constants["CURLMoption"]
+        this.sOpt := this.constants["CURLSHoption"]
         ; msgbox this.PrintObj(this.mopt)
         this.VersionInfo := this.GetVersionInfo()
         this.UrlInit()
@@ -737,12 +742,55 @@ class LibQurl {
         return ret
     }
 
-    ShareInit() {
+    ShareInit(){
+        share_handle := this._curl_share_init()
+        this.shareHandleMap[0].push(share_handle) ;shareHandleMap[0][-1] is a dynamic reference to the last created share_handle
+        this.shareHandleMap[share_handle] := Map()
+        this.shareHandleMap[share_handle]["options"] := Map()
+        this.shareHandleMap[share_handle]["associatedEasyHandles"] := Map()
+        return share_handle
+    }
+    AddEasyToShare(easy_handle?,share_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        share_handle ??= this.shareHandleMap[0][-1] ;defaults to the last created share_handle
 
+        if ret := this.SetOpt("SHARE",share_handle,easy_handle)
+            this._ErrorHierarchy(A_ThisFunc,"CURLSHcode",share_handle)
+
+        this.easyHandleMap[easy_handle]["associated_share_handle"] := share_handle
+        this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
+        return ret
+    }
+    RemoveEasyFromShare(easy_handle?,share_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        share_handle ??= this.shareHandleMap[0][-1] ;defaults to the last created share_handle
+
+    }
+    ShareCleanup(share_handle?){
+        share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle
+        if ret := this._curl_share_cleanup(share_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_cleanup",ret,,share_handle)
+        return ret
     }
 
 
+    ShareSetOpt(option,parameter,share_handle?){
+        share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle
 
+        If this.sOpt.Has(option){
+            ;nothing to be done
+        } else if InStr(option,"CURLSHOPT_") && this.sOpt.Has(StrReplace("CURLSHOPT_",option)){
+            option := StrReplace("CURLSHOPT_",option)
+        } else {
+            throw ValueError("Problem in 'curl_share_setopt'! Unknown option: " option, -1, this.curlDLLpath)
+        }
+        
+        parameter := this.constants["curl_lock"][parameter]
+        ; this.shareHandleMap[share_handle]["options"][option] := parameter
+
+
+        return this._curl_share_setopt(share_handle,option,parameter)
+    }
 
 
     ; WriteToNone() {
@@ -974,19 +1022,41 @@ class LibQurl {
         thisError["error family"] := curlErrorCodeFamily
         thisError["error code"] := incomingValue
     
+        thisError["options snapshot"] := []
+    
         switch curlErrorCodeFamily, "Off" {
             case "CURLcode":
                 thisError["error string1"] := this.GetErrorString(incomingValue)
                 thisError["error string2"] := StrGet(errorBuffer,"UTF-8")
-                thisError["options snapshot"] := this._DeepClone(this.easyHandleMap[relevant_handle]["options"])
+                thisError["options snapshot"].push(this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
                 ;todo - gather nested CURLE_PROXY struct
             case "CURLMcode":
             case "CURLSHcode":
+                thisError["error string"] := this.GetErrorString(incomingValue)
+                thisError["options snapshot"].push(this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
             case "CURLUcode":
             case "CURLHcode":
         }
     
         this.caughtErrors.push(thisError)
+    }
+    _ErrorHierarchy(callingMethod,curlErrorCodeFamily,relevant_handle?){
+        callingMethod := StrReplace(callingMethod,"LibQurl.Prototype.")
+    
+        thisError := this.caughtErrors[-1]
+        thisError["invoked LibQurl method"] := callingMethod "\" thisError["invoked LibQurl method"]
+    
+        switch curlErrorCodeFamily, "Off" {
+            case "CURLcode":
+                thisError["options snapshot"].InsertAt(1,this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
+                ;todo - gather nested CURLE_PROXY struct
+            case "CURLMcode":
+                thisError["options snapshot"].InsertAt(1,this._DeepClone(this.multiHandleMap[relevant_handle]["options"]))
+            case "CURLSHcode":
+                thisError["options snapshot"].InsertAt(1,this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
+            case "CURLUcode":
+            case "CURLHcode":
+        }
     }
     
     ; Returns a Buffer object containing the string.
@@ -1611,6 +1681,55 @@ class LibQurl {
         c["MAX_CONCURRENT_STREAMS"]         := bindOffsets(offsetGroup, 16, "LONG")
         c["LASTENTRY"]                      := unset
     
+        this.constants["CURLSHcode"] := c := Map()
+        c.CaseSense := 0
+        c["OK"] := 0
+        c["BAD_OPTION"] := 1
+        c["IN_USE"] := 2
+        c["INVALID"] := 3
+        c["NOMEM"] := 4
+        c["NOT_BUILT_IN"] := 5
+        c["LAST"] := 6
+    
+        this.constants["CURLOPTTYPE_share"] := o := Map()   
+        o.CaseSense := 0
+        o["LONG"] := Map("offset",0,"shareType","LONG","dllType","Int")  ;good
+        ; o["OBJECTPOINT"] := Map("offset",10000,"multiType","LONG","dllType","Int*")  ;good
+        ; o["FUNCTIONPOINT"] := Map("offset",20000,"multiType","LONG","dllType","Int*")  ;good
+        ; o["OFF_T"] := Map("offset",30000,"multiType","LONG","dllType","Int*")  ;good
+        ; o["BLOB"] := Map("offset",40000,"multiType","LONG","dllType","Int*")  ;good
+    
+        offsetGroup := "CURLOPTTYPE_share"    
+        this.constants["CURLSHoption"] := c := Map()
+        c.CaseSense := 0
+        c["NONE"] := bindOffsets(offsetGroup, 0, "LONG")
+        c["SHARE"] := bindOffsets(offsetGroup, 1, "LONG")
+        c["UNSHARE"] := bindOffsets(offsetGroup, 2, "LONG")
+        c["LOCKFUNC"] := bindOffsets(offsetGroup, 3, "LONG")
+        c["UNLOCKFUNC"] := bindOffsets(offsetGroup, 4, "LONG")
+        c["USERDATA"] := bindOffsets(offsetGroup, 5, "LONG")
+        c["LAST"] := unset
+    
+        ;combines curl_lock_data + curl_lock_access
+        this.constants["curl_lock"] := c := Map()
+        c.CaseSense := 0
+        ;curl_lock_data
+        c["NONE"] := 0
+        c["SHARE"] := 1
+        c["COOKIE"] := 2
+        c["DNS"] := 3
+        c["SSL_SESSION"] := 4
+        c["CONNECT"] := 5
+        c["PSL"] := 6
+        c["HSTS"] := 7
+        c["LAST"] := unset
+        ;curl_lock_access
+        c["NONE"] := 0
+        c["SHARED"] := 1
+        c["SINGLE"] := 2
+        c["LAST"] := unset
+    
+    
         
             ; todo with the error handlers
         ; this.constants["CURLHcode"] := c := Map()  
@@ -2087,16 +2206,16 @@ class LibQurl {
         return DllCall(curl_share_cleanup
                 ,   "Int", share_handle)
     }
-    _curl_share_init() {    ;untested   https://curl.se/libcurl/c/curl_share_init.html
+    _curl_share_init() {    ;https://curl.se/libcurl/c/curl_share_init.html
         static curl_share_init := this._getDllAddress(this.curlDLLpath,"curl_share_init") 
         return DllCall(curl_share_init
                 ,   "Ptr")
     }
     _curl_share_setopt(share_handle,option,parameter) { ;untested   https://curl.se/libcurl/c/curl_share_setopt.html
         return DllCall(this.curlDLLpath "\curl_share_setopt"
-            ,   "Int", share_handle
-            ,   "Int", option
-            ,   paramType?, parameter)   ;TODO - build share opt map
+        ,   "Int", share_handle
+        ,   "Int", this.sOpt[option]["id"]
+        ,   this.sOpt[option]["dllType"], parameter)   ;TODO - build share opt map
     }
     _curl_share_strerror(errornum) {    ;untested   https://curl.se/libcurl/c/curl_share_strerror.html
         static curl_share_setopt := this._getDllAddress(this.curlDLLpath,"curl_share_setopt") 

@@ -4,20 +4,34 @@
 SetWorkingDir(A_ScriptDir "\..")
 curl := LibQurl(A_ScriptDir "\..\bin\libcurl.dll")
 
-curl.SetOpt("COOKIEFILE","")
-setCookie := "https://httpbin.org/cookies/set?"  ;append key=value
+; msgbox curl.PrintObj(curl.sopt)
+easyA := curl.Init()
+easyB := curl.Init()
+
+cookie := "https://httpbin.org/cookies"
+setCookie := cookie "/set?" ;append key=value
+
+;control for result without cookie
+curl.SetOpt("URL",cookie,easyA)
+curl.Sync(easyA)
 
 
-curl.SetOpt("URL",setCookie "tidbit=is%20a%20cookie")
-; curl.SetOpt("URL","https://google.com")
+;prepare the share_handle
+;must be done before getting the cookie
+share_handle := curl.ShareInit()
+curl.ShareSetOpt("SHARE","COOKIE")
+curl.AddEasyToShare(easyA)
+curl.AddEasyToShare(easyB)
 
-; test := Buffer(256)
-; msgbox curl.PrintObj(curl.easyHandleMap)
-; curl.SetOpt("ERRORBUFFER",test)
-curl.Sync()
-; msgbox curl.PrintObj(curl.easyHandleMap)
-msgbox curl.PrintObj(curl.caughtErrors)
+;get a cookie on one handle
+curl.SetOpt("COOKIEFILE","",easyA)
+curl.SetOpt("URL",setCookie "tidbit=is_a_cookie",easyA)
+curl.Sync(easyA)
+; msgbox curl.GetLastBody(,easyA)
 
-; StrGet(test,"utf-8")
-; msgbox curl.PrintObj(curl.GetVersionInfo())
-msgbox curl.GetLastBody()
+
+;see the cookie on the other
+curl.SetOpt("COOKIEFILE","",easyB)
+curl.SetOpt("URL",cookie,easyB)
+curl.Sync(easyB)
+msgbox curl.GetLastBody(,easyB)

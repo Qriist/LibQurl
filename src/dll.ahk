@@ -460,16 +460,16 @@ _curl_share_cleanup(share_handle) { ;untested   https://curl.se/libcurl/c/curl_s
     return DllCall(curl_share_cleanup
             ,   "Int", share_handle)
 }
-_curl_share_init() {    ;untested   https://curl.se/libcurl/c/curl_share_init.html
+_curl_share_init() {    ;https://curl.se/libcurl/c/curl_share_init.html
     static curl_share_init := this._getDllAddress(this.curlDLLpath,"curl_share_init") 
     return DllCall(curl_share_init
             ,   "Ptr")
 }
 _curl_share_setopt(share_handle,option,parameter) { ;untested   https://curl.se/libcurl/c/curl_share_setopt.html
     return DllCall(this.curlDLLpath "\curl_share_setopt"
-        ,   "Int", share_handle
-        ,   "Int", option
-        ,   paramType?, parameter)   ;TODO - build share opt map
+    ,   "Int", share_handle
+    ,   "Int", this.sOpt[option]["id"]
+    ,   this.sOpt[option]["dllType"], parameter)   ;TODO - build share opt map
 }
 _curl_share_strerror(errornum) {    ;untested   https://curl.se/libcurl/c/curl_share_strerror.html
     static curl_share_setopt := this._getDllAddress(this.curlDLLpath,"curl_share_setopt") 

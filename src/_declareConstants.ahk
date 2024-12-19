@@ -169,6 +169,55 @@ _declareConstants(){
     c["MAX_CONCURRENT_STREAMS"]         := bindOffsets(offsetGroup, 16, "LONG")
     c["LASTENTRY"]                      := unset
 
+    this.constants["CURLSHcode"] := c := Map()
+    c.CaseSense := 0
+    c["OK"] := 0
+    c["BAD_OPTION"] := 1
+    c["IN_USE"] := 2
+    c["INVALID"] := 3
+    c["NOMEM"] := 4
+    c["NOT_BUILT_IN"] := 5
+    c["LAST"] := 6
+
+    this.constants["CURLOPTTYPE_share"] := o := Map()   
+    o.CaseSense := 0
+    o["LONG"] := Map("offset",0,"shareType","LONG","dllType","Int")  ;good
+    ; o["OBJECTPOINT"] := Map("offset",10000,"multiType","LONG","dllType","Int*")  ;good
+    ; o["FUNCTIONPOINT"] := Map("offset",20000,"multiType","LONG","dllType","Int*")  ;good
+    ; o["OFF_T"] := Map("offset",30000,"multiType","LONG","dllType","Int*")  ;good
+    ; o["BLOB"] := Map("offset",40000,"multiType","LONG","dllType","Int*")  ;good
+
+    offsetGroup := "CURLOPTTYPE_share"    
+    this.constants["CURLSHoption"] := c := Map()
+    c.CaseSense := 0
+    c["NONE"] := bindOffsets(offsetGroup, 0, "LONG")
+    c["SHARE"] := bindOffsets(offsetGroup, 1, "LONG")
+    c["UNSHARE"] := bindOffsets(offsetGroup, 2, "LONG")
+    c["LOCKFUNC"] := bindOffsets(offsetGroup, 3, "LONG")
+    c["UNLOCKFUNC"] := bindOffsets(offsetGroup, 4, "LONG")
+    c["USERDATA"] := bindOffsets(offsetGroup, 5, "LONG")
+    c["LAST"] := unset
+
+    ;combines curl_lock_data + curl_lock_access
+    this.constants["curl_lock"] := c := Map()
+    c.CaseSense := 0
+    ;curl_lock_data
+    c["NONE"] := 0
+    c["SHARE"] := 1
+    c["COOKIE"] := 2
+    c["DNS"] := 3
+    c["SSL_SESSION"] := 4
+    c["CONNECT"] := 5
+    c["PSL"] := 6
+    c["HSTS"] := 7
+    c["LAST"] := unset
+    ;curl_lock_access
+    c["NONE"] := 0
+    c["SHARED"] := 1
+    c["SINGLE"] := 2
+    c["LAST"] := unset
+
+
     
         ; todo with the error handlers
     ; this.constants["CURLHcode"] := c := Map()  

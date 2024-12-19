@@ -8,6 +8,7 @@
 class LibQurl {
     ;core functionality
     __New(dllPath?,requestedSSLprovider?) {
+        ;prepare interface maps
         this.easyHandleMap := Map()
         this.easyHandleMap[0] := []
         this.urlHandleMap := Map()
@@ -16,6 +17,9 @@ class LibQurl {
         this.multiHandleMap[0] := []
         this.multiHandleMap["pending_callbacks"] := []
         this.multiHandleMap["running_callbacks"] := []
+        this.shareHandleMap := Map()
+        this.shareHandleMap[0] := []
+
         this.unassociatedEasyHandles := Map()
         static curlDLLhandle := ""
         static curlDLLpath := ""
@@ -64,6 +68,7 @@ class LibQurl {
         this._declareConstants()
         this._buildOptMap()
         this.mOpt := this.constants["CURLMoption"]
+        this.sOpt := this.constants["CURLSHoption"]
         ; msgbox this.PrintObj(this.mopt)
         this.VersionInfo := this.GetVersionInfo()
         this.UrlInit()
@@ -742,12 +747,55 @@ class LibQurl {
         return ret
     }
 
-    ShareInit() {
+    ShareInit(){
+        share_handle := this._curl_share_init()
+        this.shareHandleMap[0].push(share_handle) ;shareHandleMap[0][-1] is a dynamic reference to the last created share_handle
+        this.shareHandleMap[share_handle] := Map()
+        this.shareHandleMap[share_handle]["options"] := Map()
+        this.shareHandleMap[share_handle]["associatedEasyHandles"] := Map()
+        return share_handle
+    }
+    AddEasyToShare(easy_handle?,share_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        share_handle ??= this.shareHandleMap[0][-1] ;defaults to the last created share_handle
 
+        if ret := this.SetOpt("SHARE",share_handle,easy_handle)
+            this._ErrorHierarchy(A_ThisFunc,"CURLSHcode",share_handle)
+
+        this.easyHandleMap[easy_handle]["associated_share_handle"] := share_handle
+        this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
+        return ret
+    }
+    RemoveEasyFromShare(easy_handle?,share_handle?){
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        share_handle ??= this.shareHandleMap[0][-1] ;defaults to the last created share_handle
+
+    }
+    ShareCleanup(share_handle?){
+        share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle
+        if ret := this._curl_share_cleanup(share_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_cleanup",ret,,share_handle)
+        return ret
     }
 
 
+    ShareSetOpt(option,parameter,share_handle?){
+        share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle
 
+        If this.sOpt.Has(option){
+            ;nothing to be done
+        } else if InStr(option,"CURLSHOPT_") && this.sOpt.Has(StrReplace("CURLSHOPT_",option)){
+            option := StrReplace("CURLSHOPT_",option)
+        } else {
+            throw ValueError("Problem in 'curl_share_setopt'! Unknown option: " option, -1, this.curlDLLpath)
+        }
+        
+        parameter := this.constants["curl_lock"][parameter]
+        ; this.shareHandleMap[share_handle]["options"][option] := parameter
+
+
+        return this._curl_share_setopt(share_handle,option,parameter)
+    }
 
 
     ; WriteToNone() {

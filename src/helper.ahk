@@ -212,19 +212,41 @@ _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValu
     thisError["error family"] := curlErrorCodeFamily
     thisError["error code"] := incomingValue
 
+    thisError["options snapshot"] := []
+
     switch curlErrorCodeFamily, "Off" {
         case "CURLcode":
             thisError["error string1"] := this.GetErrorString(incomingValue)
             thisError["error string2"] := StrGet(errorBuffer,"UTF-8")
-            thisError["options snapshot"] := this._DeepClone(this.easyHandleMap[relevant_handle]["options"])
+            thisError["options snapshot"].push(this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
             ;todo - gather nested CURLE_PROXY struct
         case "CURLMcode":
         case "CURLSHcode":
+            thisError["error string"] := this.GetErrorString(incomingValue)
+            thisError["options snapshot"].push(this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
         case "CURLUcode":
         case "CURLHcode":
     }
 
     this.caughtErrors.push(thisError)
+}
+_ErrorHierarchy(callingMethod,curlErrorCodeFamily,relevant_handle?){
+    callingMethod := StrReplace(callingMethod,"LibQurl.Prototype.")
+
+    thisError := this.caughtErrors[-1]
+    thisError["invoked LibQurl method"] := callingMethod "\" thisError["invoked LibQurl method"]
+
+    switch curlErrorCodeFamily, "Off" {
+        case "CURLcode":
+            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
+            ;todo - gather nested CURLE_PROXY struct
+        case "CURLMcode":
+            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.multiHandleMap[relevant_handle]["options"]))
+        case "CURLSHcode":
+            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
+        case "CURLUcode":
+        case "CURLHcode":
+    }
 }
 
 ; Returns a Buffer object containing the string.
