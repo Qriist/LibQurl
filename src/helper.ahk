@@ -222,7 +222,7 @@ _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValu
             ;todo - gather nested CURLE_PROXY struct
         case "CURLMcode":
         case "CURLSHcode":
-            thisError["error string"] := this.GetErrorString(incomingValue)
+            thisError["error string"] := this.GetShareErrorString(incomingValue)
             thisError["options snapshot"].push(this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
         case "CURLUcode":
         case "CURLHcode":

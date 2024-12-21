@@ -777,7 +777,9 @@ class LibQurl {
             this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_cleanup",ret,,share_handle)
         return ret
     }
-
+    GetShareErrorString(incomingValue){
+        return StrGet(this._curl_share_strerror(incomingValue),"UTF-8")
+    }
 
     ShareSetOpt(option,parameter,share_handle?){
         share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle
@@ -793,8 +795,9 @@ class LibQurl {
         parameter := this.constants["curl_lock"][parameter]
         ; this.shareHandleMap[share_handle]["options"][option] := parameter
 
-
-        return this._curl_share_setopt(share_handle,option,parameter)
+        if ret := this._curl_share_setopt(share_handle,option,parameter)
+            this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_setopt",ret,this.shareHandleMap[share_handle]["error buffer"],share_handle)
+        return ret
     }
 
 

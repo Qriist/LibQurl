@@ -772,7 +772,9 @@ class LibQurl {
             this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_cleanup",ret,,share_handle)
         return ret
     }
-
+    GetShareErrorString(incomingValue){
+        return StrGet(this._curl_share_strerror(incomingValue),"UTF-8")
+    }
 
     ShareSetOpt(option,parameter,share_handle?){
         share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle
@@ -788,8 +790,9 @@ class LibQurl {
         parameter := this.constants["curl_lock"][parameter]
         ; this.shareHandleMap[share_handle]["options"][option] := parameter
 
-
-        return this._curl_share_setopt(share_handle,option,parameter)
+        if ret := this._curl_share_setopt(share_handle,option,parameter)
+            this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_setopt",ret,this.shareHandleMap[share_handle]["error buffer"],share_handle)
+        return ret
     }
 
 
@@ -1032,7 +1035,7 @@ class LibQurl {
                 ;todo - gather nested CURLE_PROXY struct
             case "CURLMcode":
             case "CURLSHcode":
-                thisError["error string"] := this.GetErrorString(incomingValue)
+                thisError["error string"] := this.GetShareErrorString(incomingValue)
                 thisError["options snapshot"].push(this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
             case "CURLUcode":
             case "CURLHcode":
@@ -1962,6 +1965,28 @@ class LibQurl {
             ,   "Int", errornum
             ,   "Ptr")
     }
+    _curl_share_cleanup(share_handle) { ;https://curl.se/libcurl/c/curl_share_cleanup.html
+        static curl_share_cleanup := this._getDllAddress(this.curlDLLpath,"curl_share_cleanup") 
+        return DllCall(curl_share_cleanup
+                ,   "Int", share_handle)
+    }
+    _curl_share_init() {    ;https://curl.se/libcurl/c/curl_share_init.html
+        static curl_share_init := this._getDllAddress(this.curlDLLpath,"curl_share_init") 
+        return DllCall(curl_share_init
+                ,   "Ptr")
+    }
+    _curl_share_setopt(share_handle,option,parameter) { ;https://curl.se/libcurl/c/curl_share_setopt.html
+        return DllCall(this.curlDLLpath "\curl_share_setopt"
+        ,   "Int", share_handle
+        ,   "Int", this.sOpt[option]["id"]
+        ,   this.sOpt[option]["dllType"], parameter)   ;TODO - build share opt map
+    }
+    _curl_share_strerror(errornum) {    ;https://curl.se/libcurl/c/curl_share_strerror.html
+        static curl_share_setopt := this._getDllAddress(this.curlDLLpath,"curl_share_strerror") 
+        return DllCall(curl_share_setopt
+            ,   "Int", errornum
+            ,   "Ptr")
+    }
     _curl_slist_append(ptrSList,strArrayItem) { ;https://curl.se/libcurl/c/curl_slist_append.html
         static curl_slist_append := this._getDllAddress(this.curlDLLpath,"curl_slist_append") 
         return DllCall(curl_slist_append
@@ -2199,28 +2224,6 @@ class LibQurl {
         return DllCall(curl_pushheader_bynum
             ,   "Ptr", headerStruct
             ,   "Int", num
-            ,   "Ptr")
-    }
-    _curl_share_cleanup(share_handle) { ;untested   https://curl.se/libcurl/c/curl_share_cleanup.html
-        static curl_share_cleanup := this._getDllAddress(this.curlDLLpath,"curl_share_cleanup") 
-        return DllCall(curl_share_cleanup
-                ,   "Int", share_handle)
-    }
-    _curl_share_init() {    ;https://curl.se/libcurl/c/curl_share_init.html
-        static curl_share_init := this._getDllAddress(this.curlDLLpath,"curl_share_init") 
-        return DllCall(curl_share_init
-                ,   "Ptr")
-    }
-    _curl_share_setopt(share_handle,option,parameter) { ;untested   https://curl.se/libcurl/c/curl_share_setopt.html
-        return DllCall(this.curlDLLpath "\curl_share_setopt"
-        ,   "Int", share_handle
-        ,   "Int", this.sOpt[option]["id"]
-        ,   this.sOpt[option]["dllType"], parameter)   ;TODO - build share opt map
-    }
-    _curl_share_strerror(errornum) {    ;untested   https://curl.se/libcurl/c/curl_share_strerror.html
-        static curl_share_setopt := this._getDllAddress(this.curlDLLpath,"curl_share_setopt") 
-        return DllCall(curl_share_setopt
-            ,   "Int", errornum
             ,   "Ptr")
     }
     _curl_ws_recv(easy_handle,buffer,buflen,&recv,&meta) {   ;untested   https://curl.se/libcurl/c/curl_ws_recv.html
