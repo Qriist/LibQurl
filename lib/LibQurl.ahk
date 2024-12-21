@@ -736,10 +736,12 @@ class LibQurl {
         return out
     }
 
-    GetDate(dateString){
+    GetDate(dateString,returnEpoch?){
         ret := this._curl_getdate(dateString)
 
-        return ret
+        if returnEpoch ??= 0
+            return ret
+        return DateAdd(1970, ret, 'S')
     }
 
     ShareInit(){
@@ -771,7 +773,6 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["associated_share_handle"] := unset
         this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := unset
         return ret
-
     }
     ShareCleanup(share_handle?){
         share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle
