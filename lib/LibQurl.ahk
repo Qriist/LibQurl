@@ -765,6 +765,13 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
         share_handle ??= this.shareHandleMap[0][-1] ;defaults to the last created share_handle
 
+        if ret := this.SetOpt("SHARE",0,easy_handle)
+            this._ErrorHierarchy(A_ThisFunc,"CURLSHcode",share_handle)
+
+        this.easyHandleMap[easy_handle]["associated_share_handle"] := unset
+        this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := unset
+        return ret
+
     }
     ShareCleanup(share_handle?){
         share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle

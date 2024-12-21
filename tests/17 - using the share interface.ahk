@@ -32,3 +32,5 @@ curl.SetOpt("COOKIEFILE","",easyB)
 curl.SetOpt("URL",cookieUrl,easyB)
 curl.Sync(easyB)
 FileOpen(A_ScriptDir "\17.results.txt","w").Write(curl.GetLastBody(,easyB))
+
+
