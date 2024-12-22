@@ -394,7 +394,6 @@ LibCurl_Examples_A_Global.ahk
 libcrypto-1_1.dll
 libcrypto-1_1-x64.dll
 example_1_httpget.htm
-curl-ca-bundle.crt
 curl-8.6.0_1-win64-mingw.zip
 dump.html
 lib/curl.exe
