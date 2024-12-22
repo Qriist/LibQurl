@@ -35,90 +35,6 @@ class LibQurl {
         this._register(dllPath?,requestedSSLprovider?)
         Critical "Off"
     }
-
-    _register(dllPath?,requestedSSLprovider?) {
-        ;todo - make dll auto-load feature more robust
-        ;determine where the dll will load from
-        if !FileExist(dllPath)
-            dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
-        if !FileExist(dllPath)
-            throw ValueError("libcurl DLL not found!", -1, dllPath)
-
-        ;save the current working dir so we can safely load the DLL
-        oldWorkingDir := A_WorkingDir
-        SplitPath(dllPath,,&dllDir)
-        SetWorkingDir(dllDir)
-
-        ;load the DLL into resident memory
-        this.curlDLLpath := dllpath
-        this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")
-
-        ;restore the user's intended workingDir
-        A_WorkingDir := oldWorkingDir
-        
-        ;continue loading
-        this._configureSSL(requestedSSLprovider?)   
-        this._curl_global_init()
-        OnExit (*) => this._globalCleanup()
-        this._declareConstants()
-        this._buildOptMap()
-        this.mOpt := this.constants["CURLMoption"]
-        this.sOpt := this.constants["CURLSHoption"]
-        ; msgbox this.PrintObj(this.mopt)
-        this.VersionInfo := this.GetVersionInfo()
-        this.UrlInit()
-        this.MultiInit()
-
-        ;these should be run directly back-to-back
-        this.Init(), this._autoUpdateCertFile()
-        return
-    }
-    _autoUpdateCertFile(){
-        SplitPath(this.curlDLLpath,,&dlldir)
-        this.crt := crt := dlldir "\curl-ca-bundle.crt"
-
-        ;update the default easy_handle provided by __New()
-        ;otherwise it would have no SSL file
-        this.SetOpt("CAINFO",crt)
-
-        ; don't try to update for at least 90 days
-        If (DateDiff(A_Now,FileGetTime(crt),"Days") < 90)
-            return
-
-        etagf := dlldir "\curl-ca-bundle.etag"
-        If FileExist(etagf){
-            ;don't try to update within 1 day of last attempt
-            If (DateDiff(A_Now,FileGetTime(etagf),"Days") < 1)
-                return
-            
-            etagv := FileOpen(etagf,"r").Read()
-        }
-        
-        ;set the etag value if possible
-        this.SetHeaders(Map("If-None-Match",etagv??=""))
-
-        url := "curl.se/ca/cacert.pem"
-        this.SetOpt("URL","https://" url)
-        this.Sync()
-        
-        switch this.GetInfo("RESPONSE_CODE") {
-            case 304:   ;have the latest bundle
-                ;update the etag timestamp
-                FileSetTime(A_Now,etagf)
-                return
-            case 200:   ;there's an updatable bundle
-                ; save the cert bundle + etag
-                FileOpen(crt,"w").Write(this.GetLastBody())
-                etagv := this.InspectHeader("ETag")
-                FileOpen(etagf,"w").Write(etagv)
-
-                ;provide a clean handle to the class
-                this.Cleanup()
-                return
-            default:    ;something else happened, do nothing
-                return
-        }
-    }
     Init(){
         easy_handle := this._curl_easy_init()
         this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][-1] is a dynamic reference to the last created easy_handle
@@ -140,7 +56,7 @@ class LibQurl {
         this.SetOpt("MAXREDIRS",30,easy_handle)    ;limits redirects to 30 (matches recent curl default)
 
 
-        ;try to auto-load curl's cert bundle
+        ;auto-load curl's cert bundle
         ;can still be set per easy_handle
         this.SetOpt("CAINFO",this.crt??="",easy_handle)
 
@@ -1246,6 +1162,89 @@ class LibQurl {
     }
     _globalCleanup(){   ;this should be called when shutting down LibQurl
         this._curl_global_cleanup()
+    }
+    _register(dllPath?,requestedSSLprovider?) {
+        ;todo - make dll auto-load feature more robust
+        ;determine where the dll will load from
+        if !FileExist(dllPath)
+            dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
+        if !FileExist(dllPath)
+            throw ValueError("libcurl DLL not found!", -1, dllPath)
+    
+        ;save the current working dir so we can safely load the DLL
+        oldWorkingDir := A_WorkingDir
+        SplitPath(dllPath,,&dllDir)
+        SetWorkingDir(dllDir)
+    
+        ;load the DLL into resident memory
+        this.curlDLLpath := dllpath
+        this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")
+    
+        ;restore the user's intended workingDir
+        A_WorkingDir := oldWorkingDir
+        
+        ;continue loading
+        this._configureSSL(requestedSSLprovider?)   
+        this._curl_global_init()
+        OnExit (*) => this._globalCleanup()
+        this._declareConstants()
+        this._buildOptMap()
+        this.mOpt := this.constants["CURLMoption"]
+        this.sOpt := this.constants["CURLSHoption"]
+        ; msgbox this.PrintObj(this.mopt)
+        this.VersionInfo := this.GetVersionInfo()
+        this.UrlInit()
+        this.MultiInit()
+    
+        ;these should be run directly back-to-back
+        this.Init(), this._autoUpdateCertFile()
+        return
+    }
+    _autoUpdateCertFile(){
+        SplitPath(this.curlDLLpath,,&dlldir)
+        this.crt := crt := dlldir "\curl-ca-bundle.crt"
+    
+        ;update the default easy_handle provided by __New()
+        ;otherwise it would have no SSL file
+        this.SetOpt("CAINFO",crt)
+    
+        ; don't try to update for at least 90 days
+        If (DateDiff(A_Now,FileGetTime(crt),"Days") < 90)
+            return
+    
+        etagf := dlldir "\curl-ca-bundle.etag"
+        If FileExist(etagf){
+            ;don't try to update within 1 day of last attempt
+            If (DateDiff(A_Now,FileGetTime(etagf),"Days") < 1)
+                return
+    
+            etagv := FileOpen(etagf,"r").Read()
+        }
+        
+        ;set the etag value if possible
+        this.SetHeaders(Map("If-None-Match",etagv??=""))
+    
+        url := "curl.se/ca/cacert.pem"
+        this.SetOpt("URL","https://" url)
+        this.Sync()
+        
+        switch this.GetInfo("RESPONSE_CODE") {
+            case 304:   ;have the latest bundle
+                ;update the etag timestamp
+                FileSetTime(A_Now,etagf)
+                return
+            case 200:   ;there's an updatable bundle
+                ; save the cert bundle + etag
+                FileOpen(crt,"w").Write(this.GetLastBody())
+                etagv := this.InspectHeader("ETag")
+                FileOpen(etagf,"w").Write(etagv)
+    
+                ;provide a clean handle to the class
+                this.Cleanup()
+                return
+            default:    ;something else happened, do nothing
+                return
+        }
     }
 
     class _struct {
