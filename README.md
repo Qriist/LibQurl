@@ -14,7 +14,7 @@ Much work has been done to abstract away the need for a full understanding of cu
 - You can manually send and receive protocol-level raw data.
 - Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris). (This is the recommended installation method!)
 
-<sup><sub>*Around 50 dll functions were added in an "untested" state and are clearly marked as such. Among these, there are almost certainly some instances of providing the wrong data type in the DllCall. *Caveat emptor* until checked off on the function list below. Most common functions are already properly wrapped.</sup></sub>
+<sup><sub>*Around 25 dll functions were added in an "untested" state and are clearly marked as such. Among these, there are almost certainly some instances of providing the wrong data type in the DllCall. *Caveat emptor* until checked off on the function list below. Most common functions are already properly wrapped.</sup></sub>
 
 ## Roadmap
 - [X] Establish basic communication with the DLL
@@ -25,13 +25,11 @@ Much work has been done to abstract away the need for a full understanding of cu
 - [ ] Externally unify the Easy, Multi, and Multi_Socket calls (if possible!)
 
 ## Random to-do list, in no real order
-- auto-updating the cert bundle
 - add handling for Opts with scaffolding during the batch SetOpts
 - gather and clean the SetOpts after a handle finishes downloading
 - investigate POST mode differences (probably when I wrap the mime API)
 - build the read/progress/debug callbacks
 - write an "output to null" callback function for more safely reseting file writes (currently resets to memory output)
-- build the share opt map
 - create callback that reads POSTed file incrementally (currently read entirely into memory before uploading)
 - add the other origin types to GetAllHeaders
   
@@ -58,7 +56,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_strerror            |                              |
 | &check;    | curl_easy_upkeep              |                              |
 | &check;    | curl_free                     |                              |
-|            | curl_getdate                  |                              |
+| &check;    | curl_getdate                  |                              |
 |            | curl_global_cleanup           |                              |
 | &check;    | curl_global_init              | only default mode for now    |
 |            | curl_global_init_mem          |                              |
@@ -77,25 +75,25 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_mime_type                |                              |
 | &check;    | curl_multi_add_handle         | called with .ReadySync()     |
 |            | curl_multi_assign             |                              |
-|            | curl_multi_cleanup            |                              |
+| &check;    | curl_multi_cleanup            |                              |
 |            | curl_multi_fdset              |                              |
 | &check;    | curl_multi_info_read          |                              |
 | &check;    | curl_multi_init               |                              |
 | &check;    | curl_multi_perform            | called with .Async()         |
 | &check;    | curl_multi_remove_handle      |                              |
-|            | curl_multi_setopt             |                              |
+| &check;    | curl_multi_setopt             |                              |
 |            | curl_multi_socket_action      |                              |
-|            | curl_multi_strerror           |                              |
+| &check;    | curl_multi_strerror           |                              |
 |            | curl_multi_timeout            |                              |
 |            | curl_multi_poll               |                              |
 |            | curl_multi_wait               |                              |
 |            | curl_multi_wakeup             |                              |
 |            | curl_pushheader_byname        |                              |
 |            | curl_pushheader_bynum         |                              |
-|            | curl_share_cleanup            |                              |
-|            | curl_share_init               |                              |
-|            | curl_share_setopt             |                              |
-|            | curl_share_strerror           |                              |
+| &check;    | curl_share_cleanup            |                              |
+| &check;    | curl_share_init               |                              |
+| &check;    | curl_share_setopt             |                              |
+| &check;    | curl_share_strerror           |                              |
 | &check;    | curl_slist_append             |                              |
 | &check;    | curl_slist_free_all           |                              |
 | &check;    | curl_url                      |                              |
