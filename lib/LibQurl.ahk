@@ -1943,6 +1943,10 @@ class LibQurl {
             ,   "AStr", datestring
             ,   "UInt", 0) ;not used, pass a NULL
     }
+    _curl_global_cleanup() {  ;https://curl.se/libcurl/c/curl_global_cleanup.html
+        static curl_global_cleanup := this._getDllAddress(this.curlDLLpath,"curl_global_cleanup") 
+        DllCall(curl_global_cleanup)    ;no return value
+    }
     _curl_global_init() {   ;https://curl.se/libcurl/c/curl_global_init.html
         ;can't find the various flag values so it's locked to the default "everything" mode for now - prolly okay
         static curl_global_init := this._getDllAddress(this.curlDLLpath,"curl_global_init") 
@@ -2111,12 +2115,6 @@ class LibQurl {
     }
     
     ; all dll calls below this line haven't been fully tested
-    
-    _curl_global_cleanup() {  ;untested   https://curl.se/libcurl/c/curl_global_cleanup.html
-        static curl_global_cleanup := this._getDllAddress(this.curlDLLpath,"curl_global_cleanup") 
-        DllCall(curl_global_cleanup)    ;no return value
-    }
-    ;_curl_global_init
     
     ; _curl_global_init_mem(flags,curl_malloc_callback,curl_free_callback,curl_realloc_callback,curl_strdup_callback,curl_calloc_callback) {   ;untested   https://curl.se/libcurl/c/curl_global_init_mem.html
         ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
