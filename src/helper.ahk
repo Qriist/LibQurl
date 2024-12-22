@@ -415,7 +415,8 @@ _register(dllPath?,requestedSSLprovider?) {
     this.VersionInfo := this.GetVersionInfo()
     this.UrlInit()
     this.MultiInit()
-
+    this.ShareInit()
+    
     ;these should be run directly back-to-back
     this.Init(), this._autoUpdateCertFile()
     return
