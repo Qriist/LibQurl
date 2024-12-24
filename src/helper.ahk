@@ -255,7 +255,7 @@ _StrBuf(str, encoding := "cp0")
     ; Calculate required size and allocate a buffer.
     buf := Buffer(StrPut(str, encoding))
     ; Copy or convert the string.
-    StrPut(str, buf, encoding)
+    StrPut(str, buf,, encoding)
     return buf
 }
 
@@ -394,8 +394,9 @@ _register(dllPath?,requestedSSLprovider?) {
     ;save the current working dir so we can safely load the DLL
     oldWorkingDir := A_WorkingDir
     SplitPath(dllPath,,&dllDir)
+    this.dllDir := dllDir
     SetWorkingDir(dllDir)
-
+    
     ;load the DLL into resident memory
     this.curlDLLpath := dllpath
     this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")
@@ -466,4 +467,28 @@ _autoUpdateCertFile(){
         default:    ;something else happened, do nothing
             return
     }
+}
+_GetFilePathFromFileObject(FileObject) {
+    static GetFinalPathNameByHandleW := DllCall("Kernel32\GetProcAddress", "Ptr", DllCall("Kernel32\GetModuleHandle", "Str", "Kernel32", "Ptr"), "AStr", "GetFinalPathNameByHandleW", "Ptr")
+
+    ; if !FileObject
+        ; throw Error("Invalid file handle")
+
+    ; Initialize a buffer to receive the file path
+    static bufSize := 65536    ;64kb to accomodate long path names in UTF-16
+    buf := Buffer(bufSize)
+
+    ; Call GetFinalPathNameByHandleW
+    len := DllCall(GetFinalPathNameByHandleW
+        ,   "Ptr", FileObject.handle       ; File handle
+        ,   "Ptr", buf         ; Buffer to receive the path
+        ,   "UInt", bufSize    ; Size of the buffer (in wchar_t units)
+        ,   "UInt", 0          ; Flags (0 for default behavior)
+        ,   "UInt")            ; Return length of the file path
+
+    if (len == 0 || len > bufSize)
+        throw Error("Failed to retrieve file path or insufficient buffer size", A_LastError)
+
+    ; Return the result as a string
+    return StrGet(buf, "UTF-16")
 }

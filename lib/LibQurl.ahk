@@ -1,5 +1,6 @@
 #requires Autohotkey v2.1-alpha.9
 #Include "*i <Aris\G33kDude\cJson>"
+#include "*i <Aris/SKAN/RunCMD>" ; SKAN/RunCMD@9a8392d
 class LibQurl {
     ;core functionality
     __New(dllPath?,requestedSSLprovider?) {
@@ -14,7 +15,11 @@ class LibQurl {
         this.multiHandleMap["running_callbacks"] := []
         this.shareHandleMap := Map()
         this.shareHandleMap[0] := []
-
+        this.mimeHandleMap := Map()
+        this.mimeHandleMap[0] := []
+        this.mimePartMap := Map()
+        this.mimePartMap[0] := []
+        
         this.unassociatedEasyHandles := Map()
         static curlDLLhandle := ""
         static curlDLLpath := ""
@@ -30,7 +35,7 @@ class LibQurl {
         this.keepLastNumErrors := 1000
         this.CURL_ERROR_SIZE := 256
 
-        ;safely prepare curl's initial enviornment
+        ;safely prepare curl's initial environment
         Critical "On"
         this._register(dllPath?,requestedSSLprovider?)
         Critical "Off"
@@ -69,7 +74,10 @@ class LibQurl {
 
         this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
         ; this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
-
+        
+        this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;null until set
+        this.easyHandleMap[easy_handle]["associated_mime_handles"] := Map()
+        
         return easy_handle
     }
     EasyInit(multi_handle?){ ;just a clarifying alias for Init()
@@ -763,6 +771,98 @@ class LibQurl {
     }
 
 
+    MimeInit(easy_handle?) {    ;curl requires associating mime_handles to an easy_handle
+        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        mime_handle := this._curl_mime_init(easy_handle)
+
+        this.mimeHandleMap[0].push(mime_handle)
+        this.mimeHandleMap[mime_handle] := Map()
+        this.mimeHandleMap[mime_handle]["associated_easy_handle"] := easy_handle
+        this.mimeHandleMap[mime_handle]["associated_mime_parts"] := Map()
+        
+        this.easyHandleMap[easy_handle]["active_mime_handle"] := mime_handle
+        this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := 1
+        this.SetOpt("MIMEPOST",mime_handle,easy_handle)
+
+        return mime_handle
+    }
+    MimeAddPart(mime_handle?){
+        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+
+        mime_part := this._curl_mime_addpart(mime_handle)
+        this.mimeHandleMap[mime_handle]["associated_mime_parts"][mime_part] := 1
+        return mime_part
+    }
+    MimePartName(mime_part,partName){
+        this._curl_mime_name(mime_part,partName)
+    }
+    MimePartData(mime_part,partContent){
+        switch Type(partContent) {
+            case "String","Integer":
+                utf8buf := this._StrBuf(partContent,"UTF-8")
+                this._curl_mime_data(mime_part,utf8buf,-1)
+            case "Object","Array","Map":
+                buf := this._StrBuf(json.dump(partContent),"UTF-8")
+                this._curl_mime_data(mime_part,buf,buf.size)
+            case "File":
+                filePath := this._GetFilePathFromFileObject(filePath)
+                this._curl_mime_filedata(mime_part,filePath)
+            case "Buffer":
+                this._curl_mime_data(mime_part,partContent,partContent.size)
+            Default:
+                throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
+        }
+        
+    }
+    MimePartType(mime_part,partContent?,override?){
+        If IsSet(override?)
+            return this._curl_mime_type(mime_part,override)
+        ;todo - properly incorporate libmagic
+        randNum := A_NowUTC Random()
+        randFile := this.dllDir "\" randNum
+        switch Type(partContent) {
+            case "String","Integer":
+                FileOpen(randFile,"w").Write(partContent)
+                mime_type := magic(randFile)
+                FileDelete(randFile)
+                this._curl_mime_type(mime_part,mime_type)
+            case "Object","Array","Map":
+                FileOpen(randFile,"w").Write(json.dump(partContent))
+                mime_type := magic(randFile)
+                FileDelete(randFile)
+                this._curl_mime_type(mime_part,mime_type)
+            case "File":
+                filePath := this._GetFilePathFromFileObject(partContent)
+                mime_type := magic(filePath)
+                this._curl_mime_type(mime_part,mime_type)
+            case "Buffer":
+                FileOpen(randFile,"w").RawWrite(partContent)
+                mime_type := magic(randFile)
+                FileDelete(randFile)
+                this._curl_mime_type(mime_part,mime_type)
+            Default:
+                throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
+        }
+        magic(inFile){
+            static magicexe := this.dllDir "\file.exe" A_Space
+                .   "-m " this.dllDir "\magic.mgc" A_Space
+                .   "-b --mime-type " A_Space
+            return RunCMD(magicexe Chr(34) inFile Chr(34))
+        }
+    }
+    AttachMimePart(partName,partContent,mime_handle?){
+        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+        
+        ;todo - establish mime_part relationships
+        mime_part := this.MimeAddPart(mime_handle)
+
+        this.MimePartName(mime_part,partName)
+        this.MimePartData(mime_part,partContent)
+        this.MimePartType(mime_part,partContent)
+
+        return mime_part
+    }
+
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
@@ -1174,8 +1274,9 @@ class LibQurl {
         ;save the current working dir so we can safely load the DLL
         oldWorkingDir := A_WorkingDir
         SplitPath(dllPath,,&dllDir)
+        this.dllDir := dllDir
         SetWorkingDir(dllDir)
-    
+        
         ;load the DLL into resident memory
         this.curlDLLpath := dllpath
         this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")
@@ -1246,6 +1347,30 @@ class LibQurl {
             default:    ;something else happened, do nothing
                 return
         }
+    }
+    _GetFilePathFromFileObject(FileObject) {
+        static GetFinalPathNameByHandleW := DllCall("Kernel32\GetProcAddress", "Ptr", DllCall("Kernel32\GetModuleHandle", "Str", "Kernel32", "Ptr"), "AStr", "GetFinalPathNameByHandleW", "Ptr")
+    
+        ; if !FileObject
+            ; throw Error("Invalid file handle")
+    
+        ; Initialize a buffer to receive the file path
+        static bufSize := 65536    ;64kb to accomodate long path names in UTF-16
+        buf := Buffer(bufSize)
+    
+        ; Call GetFinalPathNameByHandleW
+        len := DllCall(GetFinalPathNameByHandleW
+            ,   "Ptr", FileObject.handle       ; File handle
+            ,   "Ptr", buf         ; Buffer to receive the path
+            ,   "UInt", bufSize    ; Size of the buffer (in wchar_t units)
+            ,   "UInt", 0          ; Flags (0 for default behavior)
+            ,   "UInt")            ; Return length of the file path
+    
+        if (len == 0 || len > bufSize)
+            throw Error("Failed to retrieve file path or insufficient buffer size", A_LastError)
+    
+        ; Return the result as a string
+        return StrGet(buf, "UTF-16")
     }
 
     class _struct {
