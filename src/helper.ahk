@@ -322,7 +322,7 @@ _findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installatio
     loop files (packageDir "\LibQurl@*") , "D"{
         LQdir := packageDir "\" A_LoopFileName
     }
-    return LQdir "\bin\libcurl-x64.dll"
+    return LQdir "\bin\libcurl.dll"
 }
 
 ; _findDLLfromAris_hash(){ ;dynamically finds the dll from a versioned Aris installation

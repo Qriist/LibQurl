@@ -374,7 +374,6 @@ class LibQurl {
 
         return this._curl_multi_cleanup(multi_handle)
     }
-
     Pause(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
@@ -808,9 +807,9 @@ class LibQurl {
                 this._curl_mime_data(mime_part,utf8buf,-1)
             case "Object","Array","Map":
                 buf := this._StrBuf(json.dump(partContent),"UTF-8")
-                this._curl_mime_data(mime_part,buf,buf.size)
+                this._curl_mime_data(mime_part,buf,buf.size-1)
             case "File":
-                filePath := this._GetFilePathFromFileObject(filePath)
+                filePath := this._GetFilePathFromFileObject(partContent)
                 this._curl_mime_filedata(mime_part,filePath)
             case "Buffer":
                 this._curl_mime_data(mime_part,partContent,partContent.size)
@@ -866,6 +865,28 @@ class LibQurl {
         this.MimePartType(mime_part,partContent)
 
         return mime_part
+    }
+    MimeCleanup(mime_handle?){
+        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+        
+        ;break easy_handle association
+        easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
+        if (this.easyHandleMap[easy_handle]["active_mime_handle"] = mime_handle){
+            this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;don't want to auto-revert for the user
+        }
+        this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := unset
+        
+        ;stop tracking the mime_handle
+        this.mimeHandleMap.Delete(mime_handle)
+        for k,v in this.mimeHandleMap[0] {
+            if (v = mime_handle){
+                this.mimeHandleMap[0].RemoveAt(k)
+                break
+            }
+        }
+
+        ;delete the mime_handle
+        this._curl_mime_free(mime_handle)
     }
 
     ; WriteToNone() {

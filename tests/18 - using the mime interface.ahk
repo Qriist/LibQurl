@@ -5,55 +5,43 @@
 SetWorkingDir(A_ScriptDir "\..")
 curl := LibQurl(A_ScriptDir "\..\bin\libcurl.dll")
 
-easy_handle := curl.Init()
-
-mime_handle := curl.MimeInit(easy_handle)
-
-curl.AttachMimePart("sketch","pad",mime_handle)
-
 curl.SetOpt("URL","https://httpbin.org/anything")
-curl.sync()
 
-msgbox curl.GetLastBody()
-ExitApp
-test := FileOpen(A_ScriptDir "\07.binary.upload.zip","r")
-MsgBox _GetFilePathFromFileObject(test)
+/*
+    MimeInit() creates the mime_handle. Per curl's design, all mime_handles are 
+    associated with an easy_handle at creation time. 
+*/
+curl.MimeInit()
 
+/*
+    AttachMimePart() will:
+    1) initialize the part
+    2) give the part a name
+    3) auto-determine the mime type
 
-_GetFilePathFromFileObject(FileObject) {
-    static GetFinalPathNameByHandleW := DllCall("Kernel32\GetProcAddress", "Ptr", DllCall("Kernel32\GetModuleHandle", "Str", "Kernel32", "Ptr"), "AStr", "GetFinalPathNameByHandleW", "Ptr")
+    While these are sufficient for most cases, the method will also
+    return the mime_part in the event you need to do other operations
+*/
 
-    ; if !FileObject
-        ; throw Error("Invalid file handle")
+;attach a simple form part from normal AHK entities
+curl.AttachMimePart("String","abc")
+curl.AttachMimePart("Integer",123)
+curl.AttachMimePart("Object",{a:"b"})
+curl.AttachMimePart("Map",Map("a","b"))
+curl.AttachMimePart("Array",["a","b"])
+curl.AttachMimePart("Buffer",Buffer(100,255))
 
-    ; Initialize a buffer to receive the file path
-    static bufSize := 65536    ;64kb to accomodate long path names in UTF-16
-    buf := Buffer(bufSize)
+;attach a regular existing file by passing a FileObject
+curl.AttachMimePart("upload abc",FileOpen(A_ScriptDir "\18.binary.upload.zip","r"))
 
-    ; Call GetFinalPathNameByHandleW
-    len := DllCall(GetFinalPathNameByHandleW
-        ,   "Ptr", FileObject.handle       ; File handle
-        ,   "Ptr", buf         ; Buffer to receive the path
-        ,   "UInt", bufSize    ; Size of the buffer (in wchar_t units)
-        ,   "UInt", 0          ; Flags (0 for default behavior)
-        ,   "UInt")            ; Return length of the file path
+;attach from a write-only file that the script created
+outFile := FileOpen(A_ScriptDir "\18.text.upload.txt","w")
+outFile.write(JSON.Dump(Map("Hello","World")))
+curl.AttachMimePart("upload 123",outFile)
 
-    if (len == 0 || len > bufSize)
-        throw Error("Failed to retrieve file path or insufficient buffer size", A_LastError)
+curl.Sync()
 
-    ; Return the result as a string
-    return StrGet(buf, "UTF-16")
-}
+FileOpen(A_ScriptDir "\18.results.txt","w").Write(curl.GetLastBody())
 
-;ts\LibQurl\bin\file.exe"
-; magic_cmd := " -m magic.mgc -b --mime-type "
-
-; testfile := A_ScriptDir "\..\bin\icudt74.dll"
-
-; start := A_NowUTC
-; msgbox RunCMD(magic magic_cmd Chr(34) testfile Chr(34),"C:\Projects\LibQurl\bin")
-; end := A_NowUTC
-
-; msgbox start "`n" end
-
-
+;Only pass the mime_handle, mime_parts get culled automatically
+curl.MimeCleanup()

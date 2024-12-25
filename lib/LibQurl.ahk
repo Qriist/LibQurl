@@ -369,7 +369,6 @@ class LibQurl {
 
         return this._curl_multi_cleanup(multi_handle)
     }
-
     Pause(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
 
@@ -803,9 +802,9 @@ class LibQurl {
                 this._curl_mime_data(mime_part,utf8buf,-1)
             case "Object","Array","Map":
                 buf := this._StrBuf(json.dump(partContent),"UTF-8")
-                this._curl_mime_data(mime_part,buf,buf.size)
+                this._curl_mime_data(mime_part,buf,buf.size-1)
             case "File":
-                filePath := this._GetFilePathFromFileObject(filePath)
+                filePath := this._GetFilePathFromFileObject(partContent)
                 this._curl_mime_filedata(mime_part,filePath)
             case "Buffer":
                 this._curl_mime_data(mime_part,partContent,partContent.size)
@@ -861,6 +860,28 @@ class LibQurl {
         this.MimePartType(mime_part,partContent)
 
         return mime_part
+    }
+    MimeCleanup(mime_handle?){
+        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+        
+        ;break easy_handle association
+        easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
+        if (this.easyHandleMap[easy_handle]["active_mime_handle"] = mime_handle){
+            this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;don't want to auto-revert for the user
+        }
+        this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := unset
+        
+        ;stop tracking the mime_handle
+        this.mimeHandleMap.Delete(mime_handle)
+        for k,v in this.mimeHandleMap[0] {
+            if (v = mime_handle){
+                this.mimeHandleMap[0].RemoveAt(k)
+                break
+            }
+        }
+
+        ;delete the mime_handle
+        this._curl_mime_free(mime_handle)
     }
 
     ; WriteToNone() {
@@ -1135,7 +1156,7 @@ class LibQurl {
         ; Calculate required size and allocate a buffer.
         buf := Buffer(StrPut(str, encoding))
         ; Copy or convert the string.
-        StrPut(str, buf, encoding)
+        StrPut(str, buf,, encoding)
         return buf
     }
     
@@ -1202,7 +1223,7 @@ class LibQurl {
         loop files (packageDir "\LibQurl@*") , "D"{
             LQdir := packageDir "\" A_LoopFileName
         }
-        return LQdir "\bin\libcurl-x64.dll"
+        return LQdir "\bin\libcurl.dll"
     }
     
     ; _findDLLfromAris_hash(){ ;dynamically finds the dll from a versioned Aris installation
@@ -2088,6 +2109,42 @@ class LibQurl {
             ,   "AStr", name
             ,   "Ptr*", &avail := 0)
     }
+    _curl_mime_addpart(mime_handle) { ;https://curl.se/libcurl/c/curl_mime_addpart.html
+        static curl_mime_addpart := this._getDllAddress(this.curlDLLpath,"curl_mime_addpart") 
+        return DllCall(curl_mime_addpart
+                ,   "Int", mime_handle)
+    }
+    _curl_mime_data(mime_handle,data,datasize) { ;https://curl.se/libcurl/c/curl_mime_data.html
+        static curl_mime_data := this._getDllAddress(this.curlDLLpath,"curl_mime_data") 
+        return DllCall(curl_mime_data
+            ,   "Int", mime_handle
+            ,   "Ptr", data
+            ,   "Int", datasize)
+    }
+    _curl_mime_filedata(mime_handle,filename) {    ;https://curl.se/libcurl/c/curl_mime_filedata.html
+        static curl_mime_filedata := this._getDllAddress(this.curlDLLpath,"curl_mime_filedata") 
+        return DllCall(curl_mime_filedata
+            ,   "Int", mime_handle
+            ,   "AStr", filename)
+    }
+    _curl_mime_init(easy_handle) {  ;https://curl.se/libcurl/c/curl_mime_init.html
+        /*  use the mime interface in place of the following depreciated functions:
+            curl_formadd
+            curl_formfree
+            curl_formget
+        */
+        static curl_mime_init := this._getDllAddress(this.curlDLLpath,"curl_mime_init") 
+        return DllCall(curl_mime_init
+            ,   "Int", easy_handle
+            ,   "Ptr")
+    }
+    _curl_mime_type(mime_part,mimetype) {   ;https://curl.se/libcurl/c/curl_mime_type.html
+        static curl_mime_type := this._getDllAddress(this.curlDLLpath,"curl_mime_type") 
+        return DllCall(curl_mime_type
+            ,   "Int", mime_part
+            ,   "AStr", mimetype)
+    }
+    
     _curl_multi_add_handle(multi_handle, easy_handle) { ;https://curl.se/libcurl/c/curl_multi_add_handle.html
         static curl_multi_add_handle := this._getDllAddress(this.curlDLLpath,"curl_multi_add_handle") 
         return DllCall(curl_multi_add_handle
@@ -2251,18 +2308,6 @@ class LibQurl {
         return DllCall(curl_global_trace
             ,   "AStr", config)
     }
-    _curl_mime_addpart(mime_handle) { ;untested   https://curl.se/libcurl/c/curl_mime_addpart.html
-        static curl_mime_addpart := this._getDllAddress(this.curlDLLpath,"curl_mime_addpart") 
-        return DllCall(curl_mime_addpart
-                ,   "Int", mime_handle)
-    }
-    _curl_mime_data(mime_handle,data,datasize) { ;untested   https://curl.se/libcurl/c/curl_mime_data.html
-        static curl_mime_data := this._getDllAddress(this.curlDLLpath,"curl_mime_data") 
-        return DllCall(curl_mime_data
-            ,   "Int", mime_handle
-            ,   "Ptr", data
-            ,   "Int", datasize)
-    }
     _curl_mime_data_cb(mime_handle,datasize,readfunc,seekfunc,freefunc,arg) {  ;untested   https://curl.se/libcurl/c/curl_mime_data_cb.html
         static curl_mime_data_cb := this._getDllAddress(this.curlDLLpath,"curl_mime_data_cb") 
         return DllCall(curl_mime_data_cb
@@ -2278,12 +2323,6 @@ class LibQurl {
         return DllCall(curl_mime_encoder
             ,   "Int", mime_handle
             ,   "AStr", encoding)
-    }
-    _curl_mime_filedata(mime_handle,filename) {    ;untested   https://curl.se/libcurl/c/curl_mime_filedata.html
-        static curl_mime_filedata := this._getDllAddress(this.curlDLLpath,"curl_mime_filedata") 
-        return DllCall(curl_mime_filedata
-            ,   "Int", mime_handle
-            ,   "AStr", filename)
     }
     _curl_mime_filename(mime_handle,filename) { ;untested   https://curl.se/libcurl/c/curl_mime_filename.html
         static curl_mime_filename := this._getDllAddress(this.curlDLLpath,"curl_mime_filename") 
@@ -2303,18 +2342,7 @@ class LibQurl {
             ,   "Int", headers
             ,   "Int", take_ownership)
     }
-    _curl_mime_init(easy_handle) {  ;untested   https://curl.se/libcurl/c/curl_mime_init.html
-        /*  use the mime interface in place of the following depreciated functions:
-            curl_formadd
-            curl_formfree
-            curl_formget
-        */
-        static curl_mime_init := this._getDllAddress(this.curlDLLpath,"curl_mime_init") 
-        return DllCall(curl_mime_init
-            ,   "Int", easy_handle
-            ,   "Ptr")
-    }
-    _curl_mime_name(mime_handle,name) { ;untested   https://curl.se/libcurl/c/curl_mime_name.html
+    _curl_mime_name(mime_handle,name) { ;https://curl.se/libcurl/c/curl_mime_name.html
         static curl_mime_name := this._getDllAddress(this.curlDLLpath,"curl_mime_name") 
         return DllCall(curl_mime_name
             ,   "Int", mime_handle
@@ -2325,12 +2353,6 @@ class LibQurl {
         return DllCall(curl_mime_subparts
             ,   "Int", mime_handle
             ,   "Int", mime_part)
-    }
-    _curl_mime_type(mime_part,mimetype) {   ;untested   https://curl.se/libcurl/c/curl_mime_type.html
-        static curl_mime_type := this._getDllAddress(this.curlDLLpath,"curl_mime_type") 
-        return DllCall(curl_mime_type
-            ,   "Int", mime_part
-            ,   "AStr", mimetype)
     }
     
     _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html

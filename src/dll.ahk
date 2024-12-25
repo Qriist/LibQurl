@@ -163,6 +163,42 @@ _curl_global_sslset(id,name,&avail := 0) {  ;https://curl.se/libcurl/c/curl_glob
         ,   "AStr", name
         ,   "Ptr*", &avail := 0)
 }
+_curl_mime_addpart(mime_handle) { ;https://curl.se/libcurl/c/curl_mime_addpart.html
+    static curl_mime_addpart := this._getDllAddress(this.curlDLLpath,"curl_mime_addpart") 
+    return DllCall(curl_mime_addpart
+            ,   "Int", mime_handle)
+}
+_curl_mime_data(mime_handle,data,datasize) { ;https://curl.se/libcurl/c/curl_mime_data.html
+    static curl_mime_data := this._getDllAddress(this.curlDLLpath,"curl_mime_data") 
+    return DllCall(curl_mime_data
+        ,   "Int", mime_handle
+        ,   "Ptr", data
+        ,   "Int", datasize)
+}
+_curl_mime_filedata(mime_handle,filename) {    ;https://curl.se/libcurl/c/curl_mime_filedata.html
+    static curl_mime_filedata := this._getDllAddress(this.curlDLLpath,"curl_mime_filedata") 
+    return DllCall(curl_mime_filedata
+        ,   "Int", mime_handle
+        ,   "AStr", filename)
+}
+_curl_mime_init(easy_handle) {  ;https://curl.se/libcurl/c/curl_mime_init.html
+    /*  use the mime interface in place of the following depreciated functions:
+        curl_formadd
+        curl_formfree
+        curl_formget
+    */
+    static curl_mime_init := this._getDllAddress(this.curlDLLpath,"curl_mime_init") 
+    return DllCall(curl_mime_init
+        ,   "Int", easy_handle
+        ,   "Ptr")
+}
+_curl_mime_type(mime_part,mimetype) {   ;https://curl.se/libcurl/c/curl_mime_type.html
+    static curl_mime_type := this._getDllAddress(this.curlDLLpath,"curl_mime_type") 
+    return DllCall(curl_mime_type
+        ,   "Int", mime_part
+        ,   "AStr", mimetype)
+}
+
 _curl_multi_add_handle(multi_handle, easy_handle) { ;https://curl.se/libcurl/c/curl_multi_add_handle.html
     static curl_multi_add_handle := this._getDllAddress(this.curlDLLpath,"curl_multi_add_handle") 
     return DllCall(curl_multi_add_handle
@@ -326,18 +362,6 @@ _curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_
     return DllCall(curl_global_trace
         ,   "AStr", config)
 }
-_curl_mime_addpart(mime_handle) { ;untested   https://curl.se/libcurl/c/curl_mime_addpart.html
-    static curl_mime_addpart := this._getDllAddress(this.curlDLLpath,"curl_mime_addpart") 
-    return DllCall(curl_mime_addpart
-            ,   "Int", mime_handle)
-}
-_curl_mime_data(mime_handle,data,datasize) { ;untested   https://curl.se/libcurl/c/curl_mime_data.html
-    static curl_mime_data := this._getDllAddress(this.curlDLLpath,"curl_mime_data") 
-    return DllCall(curl_mime_data
-        ,   "Int", mime_handle
-        ,   "Ptr", data
-        ,   "Int", datasize)
-}
 _curl_mime_data_cb(mime_handle,datasize,readfunc,seekfunc,freefunc,arg) {  ;untested   https://curl.se/libcurl/c/curl_mime_data_cb.html
     static curl_mime_data_cb := this._getDllAddress(this.curlDLLpath,"curl_mime_data_cb") 
     return DllCall(curl_mime_data_cb
@@ -353,12 +377,6 @@ _curl_mime_encoder(mime_handle,encoding) {  ;untested   https://curl.se/libcurl/
     return DllCall(curl_mime_encoder
         ,   "Int", mime_handle
         ,   "AStr", encoding)
-}
-_curl_mime_filedata(mime_handle,filename) {    ;untested   https://curl.se/libcurl/c/curl_mime_filedata.html
-    static curl_mime_filedata := this._getDllAddress(this.curlDLLpath,"curl_mime_filedata") 
-    return DllCall(curl_mime_filedata
-        ,   "Int", mime_handle
-        ,   "AStr", filename)
 }
 _curl_mime_filename(mime_handle,filename) { ;untested   https://curl.se/libcurl/c/curl_mime_filename.html
     static curl_mime_filename := this._getDllAddress(this.curlDLLpath,"curl_mime_filename") 
@@ -378,18 +396,7 @@ _curl_mime_headers(mime_handle,headers,take_ownership) {    ;untested   https://
         ,   "Int", headers
         ,   "Int", take_ownership)
 }
-_curl_mime_init(easy_handle) {  ;untested   https://curl.se/libcurl/c/curl_mime_init.html
-    /*  use the mime interface in place of the following depreciated functions:
-        curl_formadd
-        curl_formfree
-        curl_formget
-    */
-    static curl_mime_init := this._getDllAddress(this.curlDLLpath,"curl_mime_init") 
-    return DllCall(curl_mime_init
-        ,   "Int", easy_handle
-        ,   "Ptr")
-}
-_curl_mime_name(mime_handle,name) { ;untested   https://curl.se/libcurl/c/curl_mime_name.html
+_curl_mime_name(mime_handle,name) { ;https://curl.se/libcurl/c/curl_mime_name.html
     static curl_mime_name := this._getDllAddress(this.curlDLLpath,"curl_mime_name") 
     return DllCall(curl_mime_name
         ,   "Int", mime_handle
@@ -400,12 +407,6 @@ _curl_mime_subparts(mime_handle,mime_part) {  ;untested   https://curl.se/libcur
     return DllCall(curl_mime_subparts
         ,   "Int", mime_handle
         ,   "Int", mime_part)
-}
-_curl_mime_type(mime_part,mimetype) {   ;untested   https://curl.se/libcurl/c/curl_mime_type.html
-    static curl_mime_type := this._getDllAddress(this.curlDLLpath,"curl_mime_type") 
-    return DllCall(curl_mime_type
-        ,   "Int", mime_part
-        ,   "AStr", mimetype)
 }
 
 _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html
