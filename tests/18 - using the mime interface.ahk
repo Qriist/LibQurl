@@ -1,7 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
-#Include %a_scriptdir%\..\lib\Aris\G33kDude\cjson.ahk
-#Include %a_scriptdir%\..\lib\Aris\SKAN\RunCMD.ahk
+#Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
 curl := LibQurl(A_ScriptDir "\..\bin\libcurl.dll")
 

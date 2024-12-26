@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
-#Include %a_scriptdir%\..\lib\Aris\G33kDude\cjson.ahk
+#Include %a_scriptdir%\..\lib\Aris\packages.ahk
 
 /*
     SSL *has* to be selected before anything else gets set in curl.

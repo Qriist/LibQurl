@@ -1,7 +1,7 @@
 ﻿#Requires AutoHotkey v2.0
 #Include "%A_ScriptDir%"
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
-#Include %a_scriptdir%\..\lib\Aris\G33kDude\cjson.ahk
+#Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
 curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
 NormalDownload := curl.Init()
