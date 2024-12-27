@@ -492,3 +492,30 @@ _GetFilePathFromFileObject(FileObject) {
     ; Return the result as a string
     return StrGet(buf, "UTF-16")
 }
+_formatHeaders(headersObject){
+        ; Pass an array of "Header: value" strings OR a Map of the same.
+        ; Use empty value ("Header: ") to disable internally used header.
+        ; Use semicolon ("Header;") to add the header with no value.
+        switch Type(headersObject) {
+            case "Map","Object":
+                headersArray := []
+                for k,v in this._Enum(headersObject){
+                    switch {
+                        case v="":    ;diabled
+                            headersArray.Push(k ": ")
+                        case v=";":   ;empty
+                            headersArray.Push(k ";")
+                        default:
+                            headersArray.Push(k ": " v)
+                    }
+            }
+            case "Array":
+                headersArray := headersObject
+        }
+        return headersArray
+}
+_Enum(inObj){   ;simplify rolling over objects
+    If (Type(inObj) = "Object")
+        return inObj.OwnProps()
+    return inobj
+}

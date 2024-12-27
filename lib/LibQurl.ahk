@@ -397,27 +397,10 @@ class LibQurl {
 
     ; }
 
-	SetHeaders(headersArrayOrMap,easy_handle?) {    ;Sets custom HTTP headers for request.
+	SetHeaders(headersObject,easy_handle?) {    ;Sets custom HTTP headers for request.
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-
-        ; Pass an array of "Header: value" strings OR a Map of the same.
-        ; Use empty value ("Header: ") to disable internally used header.
-        ; Use semicolon ("Header;") to add the header with no value.
-        if (Type(headersArrayOrMap)="Map"){
-            headersArray := []
-            for k,v in headersArrayOrMap{
-                switch v {
-                    case "":    ;diabled
-                        headersArray.Push(k ": ")
-                    case ";":   ;empty
-                        headersArray.Push(k ";")
-                    default:
-                        headersArray.Push(k ": " v)
-                }
-            }
-        } else {
-            headersArray := headersArrayOrMap
-        }
+        
+        headersArray := this._formatHeaders(headersObject)
         headersPtr := this._ArrayToSList(headersArray)
 		Return this.SetOpt("HTTPHEADER", headersPtr,easy_handle?)
 	}
@@ -896,6 +879,34 @@ class LibQurl {
         return ret
     }
 
+    AttachMimeAsPart(partName,mime_to_embed,mime_handle?){
+        ;this attaches an entire other mime_handle to the given mime_part
+        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+        
+        ;prevent attempting to nest the mime_handle within itself
+        if (mime_to_embed = mime_handle)
+            return
+
+        
+        mime_part := this.AttachMimePart(partName,"",mime_handle)
+        ret := this._curl_mime_subparts(mime_part,mime_to_embed)
+
+        ;stop tracking the mime_handle
+        this.mimeHandleMap.Delete(mime_handle)
+        for k,v in this.mimeHandleMap[0] {
+            if (v = mime_handle){
+                this.mimeHandleMap[0].RemoveAt(k)
+                break
+            }
+        }
+
+        return mime_part
+    }
+	SetMimePartHeaders(mime_part,headersObject) {    ;Sets custom HTTP headers for request.
+        headersArray := this._formatHeaders(headersObject)
+        headersPtr := this._ArrayToSList(headersArray)
+		Return this._curl_mime_headers(mime_part,headersPtr,1)
+	}
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
@@ -1404,6 +1415,33 @@ class LibQurl {
     
         ; Return the result as a string
         return StrGet(buf, "UTF-16")
+    }
+    _formatHeaders(headersObject){
+            ; Pass an array of "Header: value" strings OR a Map of the same.
+            ; Use empty value ("Header: ") to disable internally used header.
+            ; Use semicolon ("Header;") to add the header with no value.
+            switch Type(headersObject) {
+                case "Map","Object":
+                    headersArray := []
+                    for k,v in this._Enum(headersObject){
+                        switch {
+                            case v="":    ;diabled
+                                headersArray.Push(k ": ")
+                            case v=";":   ;empty
+                                headersArray.Push(k ";")
+                            default:
+                                headersArray.Push(k ": " v)
+                        }
+                }
+                case "Array":
+                    headersArray := headersObject
+            }
+            return headersArray
+    }
+    _Enum(inObj){   ;simplify rolling over objects
+        If (Type(inObj) = "Object")
+            return inObj.OwnProps()
+        return inobj
     }
 
     class _struct {
@@ -2352,18 +2390,18 @@ class LibQurl {
             ,   "Int", mime_part
             ,   "AStr", filename)
     }
-    _curl_mime_headers(mime_handle,headers,take_ownership) {    ;untested   https://curl.se/libcurl/c/curl_mime_headers.html
+    _curl_mime_headers(mime_part,headers,take_ownership) {    ;untested   https://curl.se/libcurl/c/curl_mime_headers.html
         static curl_mime_headers := this._getDllAddress(this.curlDLLpath,"curl_mime_headers") 
         return DllCall(curl_mime_headers
-            ,   "Int", mime_handle
+            ,   "Int", mime_part
             ,   "Int", headers
             ,   "Int", take_ownership)
     }
-    _curl_mime_subparts(mime_handle,mime_part) {  ;untested   https://curl.se/libcurl/c/curl_mime_subparts.html
+    _curl_mime_subparts(mime_part,mime_handle) {  ;untested   https://curl.se/libcurl/c/curl_mime_subparts.html
         static curl_mime_subparts := this._getDllAddress(this.curlDLLpath,"curl_mime_subparts") 
         return DllCall(curl_mime_subparts
-            ,   "Int", mime_handle
-            ,   "Int", mime_part)
+            ,   "Int", mime_part
+            ,   "Int", mime_handle)
     }
     
     _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html

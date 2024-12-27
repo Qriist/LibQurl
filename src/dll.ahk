@@ -394,18 +394,18 @@ _curl_mime_filename(mime_part,filename) { ;untested   https://curl.se/libcurl/c/
         ,   "Int", mime_part
         ,   "AStr", filename)
 }
-_curl_mime_headers(mime_handle,headers,take_ownership) {    ;untested   https://curl.se/libcurl/c/curl_mime_headers.html
+_curl_mime_headers(mime_part,headers,take_ownership) {    ;untested   https://curl.se/libcurl/c/curl_mime_headers.html
     static curl_mime_headers := this._getDllAddress(this.curlDLLpath,"curl_mime_headers") 
     return DllCall(curl_mime_headers
-        ,   "Int", mime_handle
+        ,   "Int", mime_part
         ,   "Int", headers
         ,   "Int", take_ownership)
 }
-_curl_mime_subparts(mime_handle,mime_part) {  ;untested   https://curl.se/libcurl/c/curl_mime_subparts.html
+_curl_mime_subparts(mime_part,mime_handle) {  ;untested   https://curl.se/libcurl/c/curl_mime_subparts.html
     static curl_mime_subparts := this._getDllAddress(this.curlDLLpath,"curl_mime_subparts") 
     return DllCall(curl_mime_subparts
-        ,   "Int", mime_handle
-        ,   "Int", mime_part)
+        ,   "Int", mime_part
+        ,   "Int", mime_handle)
 }
 
 _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html

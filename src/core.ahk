@@ -402,27 +402,10 @@ class LibQurl {
 
     ; }
 
-	SetHeaders(headersArrayOrMap,easy_handle?) {    ;Sets custom HTTP headers for request.
+	SetHeaders(headersObject,easy_handle?) {    ;Sets custom HTTP headers for request.
         easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-
-        ; Pass an array of "Header: value" strings OR a Map of the same.
-        ; Use empty value ("Header: ") to disable internally used header.
-        ; Use semicolon ("Header;") to add the header with no value.
-        if (Type(headersArrayOrMap)="Map"){
-            headersArray := []
-            for k,v in headersArrayOrMap{
-                switch v {
-                    case "":    ;diabled
-                        headersArray.Push(k ": ")
-                    case ";":   ;empty
-                        headersArray.Push(k ";")
-                    default:
-                        headersArray.Push(k ": " v)
-                }
-            }
-        } else {
-            headersArray := headersArrayOrMap
-        }
+        
+        headersArray := this._formatHeaders(headersObject)
         headersPtr := this._ArrayToSList(headersArray)
 		Return this.SetOpt("HTTPHEADER", headersPtr,easy_handle?)
 	}
@@ -901,6 +884,34 @@ class LibQurl {
         return ret
     }
 
+    AttachMimeAsPart(partName,mime_to_embed,mime_handle?){
+        ;this attaches an entire other mime_handle to the given mime_part
+        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+        
+        ;prevent attempting to nest the mime_handle within itself
+        if (mime_to_embed = mime_handle)
+            return
+
+        
+        mime_part := this.AttachMimePart(partName,"",mime_handle)
+        ret := this._curl_mime_subparts(mime_part,mime_to_embed)
+
+        ;stop tracking the mime_handle
+        this.mimeHandleMap.Delete(mime_handle)
+        for k,v in this.mimeHandleMap[0] {
+            if (v = mime_handle){
+                this.mimeHandleMap[0].RemoveAt(k)
+                break
+            }
+        }
+
+        return mime_part
+    }
+	SetMimePartHeaders(mime_part,headersObject) {    ;Sets custom HTTP headers for request.
+        headersArray := this._formatHeaders(headersObject)
+        headersPtr := this._ArrayToSList(headersArray)
+		Return this._curl_mime_headers(mime_part,headersPtr,1)
+	}
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
