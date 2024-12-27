@@ -765,8 +765,9 @@ class LibQurl {
         this.mimeHandleMap[0].push(mime_handle)
         this.mimeHandleMap[mime_handle] := Map()
         this.mimeHandleMap[mime_handle]["associated_easy_handle"] := easy_handle
+        this.mimeHandleMap[mime_handle]["associated_easy_handle"]
         this.mimeHandleMap[mime_handle]["associated_mime_parts"] := Map()
-        
+
         this.easyHandleMap[easy_handle]["active_mime_handle"] := mime_handle
         this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := 1
         this.SetOpt("MIMEPOST",mime_handle,easy_handle)
@@ -892,15 +893,15 @@ class LibQurl {
         if (mime_to_embed = mime_handle)
             return
 
-        
         mime_part := this.AttachMimePart(partName,"",mime_handle)
         ret := this._curl_mime_subparts(mime_part,mime_to_embed)
 
         ;stop tracking the mime_handle
-        this.mimeHandleMap.Delete(mime_handle)
+        
+        this.mimeHandleMap.Delete(mime_to_embed)
         for k,v in this.mimeHandleMap[0] {
-            if (v = mime_handle){
-                this.mimeHandleMap[0].RemoveAt(k)
+            if (v = mime_to_embed){
+                this.mimeHandleMap[0].RemoveAt(a_index)
                 break
             }
         }
