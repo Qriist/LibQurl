@@ -61,18 +61,18 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_global_init              | only default mode for now    |
 |            | curl_global_init_mem          |                              |
 | &check;    | curl_global_sslset            |                              |
-|            | curl_mime_addpart             |                              |
-|            | curl_mime_data                |                              |
+| &check;    | curl_mime_addpart             |                              |
+| &check;    | curl_mime_data                |                              |
 |            | curl_mime_data_cb             |                              |
-|            | curl_mime_encoder             |                              |
-|            | curl_mime_filedata            |                              |
-|            | curl_mime_filename            |                              |
-|            | curl_mime_free                |                              |
-|            | curl_mime_headers             |                              |
-|            | curl_mime_init                |                              |
-|            | curl_mime_name                |                              |
-|            | curl_mime_subparts            |                              |
-|            | curl_mime_type                |                              |
+| &check;    | curl_mime_encoder             |                              |
+| &check;    | curl_mime_filedata            |                              |
+| &check;    | curl_mime_filename            |                              |
+| &check;    | curl_mime_free                |                              |
+| &check;    | curl_mime_headers             |                              |
+| &check;    | curl_mime_init                |                              |
+| &check;    | curl_mime_name                |                              |
+| &check;    | curl_mime_subparts            |                              |
+| &check;    | curl_mime_type                |                              |
 | &check;    | curl_multi_add_handle         | called with .ReadySync()     |
 |            | curl_multi_assign             |                              |
 | &check;    | curl_multi_cleanup            |                              |
