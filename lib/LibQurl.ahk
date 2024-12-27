@@ -883,6 +883,14 @@ class LibQurl {
         ;delete the mime_handle
         this._curl_mime_free(mime_handle)
     }
+    MimeEncoder(mime_part,encoding := ""){
+        ret := this._curl_mime_encoder(mime_part,encoding)
+        return ret
+    }
+    MimeTreatPartAsFile(mime_part,filename := ""){
+        ret := this._curl_mime_filename(mime_part,filename)
+        return ret
+    }
 
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
@@ -2138,13 +2146,23 @@ class LibQurl {
             ,   "Int", easy_handle
             ,   "Ptr")
     }
+    _curl_mime_free(mime_handle) {  ;https://curl.se/libcurl/c/curl_mime_free.html
+        static curl_mime_free := this._getDllAddress(this.curlDLLpath,"curl_mime_free") 
+        return DllCall(curl_mime_free
+            ,   "Int", mime_handle)
+    }
+    _curl_mime_name(mime_handle,name) { ;https://curl.se/libcurl/c/curl_mime_name.html
+        static curl_mime_name := this._getDllAddress(this.curlDLLpath,"curl_mime_name") 
+        return DllCall(curl_mime_name
+            ,   "Int", mime_handle
+            ,   "AStr", name)
+    }
     _curl_mime_type(mime_part,mimetype) {   ;https://curl.se/libcurl/c/curl_mime_type.html
         static curl_mime_type := this._getDllAddress(this.curlDLLpath,"curl_mime_type") 
         return DllCall(curl_mime_type
             ,   "Int", mime_part
             ,   "AStr", mimetype)
     }
-    
     _curl_multi_add_handle(multi_handle, easy_handle) { ;https://curl.se/libcurl/c/curl_multi_add_handle.html
         static curl_multi_add_handle := this._getDllAddress(this.curlDLLpath,"curl_multi_add_handle") 
         return DllCall(curl_multi_add_handle
@@ -2318,22 +2336,17 @@ class LibQurl {
             ,   "Ptr", freefunc
             ,   "Ptr", arg)
     }
-    _curl_mime_encoder(mime_handle,encoding) {  ;untested   https://curl.se/libcurl/c/curl_mime_encoder.html
+    _curl_mime_encoder(mime_part,encoding) {  ;untested   https://curl.se/libcurl/c/curl_mime_encoder.html
         static curl_mime_encoder := this._getDllAddress(this.curlDLLpath,"curl_mime_encoder") 
         return DllCall(curl_mime_encoder
-            ,   "Int", mime_handle
+            ,   "Int", mime_part
             ,   "AStr", encoding)
     }
-    _curl_mime_filename(mime_handle,filename) { ;untested   https://curl.se/libcurl/c/curl_mime_filename.html
+    _curl_mime_filename(mime_part,filename) { ;untested   https://curl.se/libcurl/c/curl_mime_filename.html
         static curl_mime_filename := this._getDllAddress(this.curlDLLpath,"curl_mime_filename") 
         return DllCall(curl_mime_filename
-            ,   "Int", mime_handle
+            ,   "Int", mime_part
             ,   "AStr", filename)
-    }
-    _curl_mime_free(mime_handle) {  ;untested   https://curl.se/libcurl/c/curl_mime_free.html
-        static curl_mime_free := this._getDllAddress(this.curlDLLpath,"curl_mime_free") 
-        return DllCall(curl_mime_free
-            ,   "Int", mime_handle)
     }
     _curl_mime_headers(mime_handle,headers,take_ownership) {    ;untested   https://curl.se/libcurl/c/curl_mime_headers.html
         static curl_mime_headers := this._getDllAddress(this.curlDLLpath,"curl_mime_headers") 
@@ -2341,12 +2354,6 @@ class LibQurl {
             ,   "Int", mime_handle
             ,   "Int", headers
             ,   "Int", take_ownership)
-    }
-    _curl_mime_name(mime_handle,name) { ;https://curl.se/libcurl/c/curl_mime_name.html
-        static curl_mime_name := this._getDllAddress(this.curlDLLpath,"curl_mime_name") 
-        return DllCall(curl_mime_name
-            ,   "Int", mime_handle
-            ,   "AStr", name)
     }
     _curl_mime_subparts(mime_handle,mime_part) {  ;untested   https://curl.se/libcurl/c/curl_mime_subparts.html
         static curl_mime_subparts := this._getDllAddress(this.curlDLLpath,"curl_mime_subparts") 
