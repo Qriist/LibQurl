@@ -888,7 +888,8 @@ class LibQurl {
         ;delete the mime_handle
         this._curl_mime_free(mime_handle)
     }
-    MimeEncoder(mime_part,encoding := ""){
+    MimePartEncoder(mime_part,encoding := ""){
+        ;I honestly have no idea how to use this.
         ret := this._curl_mime_encoder(mime_part,encoding)
         return ret
     }

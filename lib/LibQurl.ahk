@@ -883,11 +883,15 @@ class LibQurl {
         ;delete the mime_handle
         this._curl_mime_free(mime_handle)
     }
-    MimeEncoder(mime_part,encoding := ""){
+    MimePartEncoder(mime_part,encoding := ""){
+        ;I honestly have no idea how to use this.
         ret := this._curl_mime_encoder(mime_part,encoding)
         return ret
     }
     MimeTreatPartAsFile(mime_part,filename := ""){
+        ;Used to have the remote server treat a mime_part as a file
+        ;Not required when Attaching FileObjects as curl does it internally.
+        ;Pass an empty filename string to disable this mode for this mime_part, even for real files.
         ret := this._curl_mime_filename(mime_part,filename)
         return ret
     }
