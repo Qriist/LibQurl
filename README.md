@@ -32,6 +32,7 @@ Much work has been done to abstract away the need for a full understanding of cu
 - write an "output to null" callback function for more safely reseting file writes (currently resets to memory output)
 - create callback that reads POSTed file incrementally (currently read entirely into memory before uploading)
 - add the other origin types to GetAllHeaders
+- implement libmagic instead of file.exe
   
 <details><summary>Implemented Functions</summary>
 https://curl.se/libcurl/c/allfuncs.html
