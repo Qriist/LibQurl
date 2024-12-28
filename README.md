@@ -11,6 +11,7 @@ Much work has been done to abstract away the need for a full understanding of cu
 - Numerous simultaneous curl handles are supported, as is the multi interface. All options are remembered per-handle.
 - The ability to download a file directly into RAM without touching the disk - very useful when working with APIs.
 - Effortless POSTing of data from almost any source, be it a String, Integer, Object, Array, Map, Buffer, or even a FileObject.
+- Similarly effortless building of complex MIME forms, with the same smart source handling.
 - You can manually send and receive protocol-level raw data.
 - Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris). (This is the recommended installation method!)
 
@@ -27,7 +28,6 @@ Much work has been done to abstract away the need for a full understanding of cu
 ## Random to-do list, in no real order
 - add handling for Opts with scaffolding during the batch SetOpts
 - gather and clean the SetOpts after a handle finishes downloading
-- investigate POST mode differences (probably when I wrap the mime API)
 - build the read/progress/debug callbacks
 - write an "output to null" callback function for more safely reseting file writes (currently resets to memory output)
 - create callback that reads POSTed file incrementally (currently read entirely into memory before uploading)
