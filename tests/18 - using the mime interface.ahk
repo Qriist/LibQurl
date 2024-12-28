@@ -15,12 +15,12 @@ mime_handle := curl.MimeInit()
 
 /*
     AttachMimePart() will:
-    1) initialize the part
-    2) give the part a name
+    1) initialize the mime_part
+    2) give the mime_part a name
     3) auto-determine the mime type
 
     While these are sufficient for most cases, the method will also
-    return the mime_part in the event you need to do other operations
+    return the mime_part pointer in the event you need to do other operations
 */
 
 ;attach a simple form part from normal AHK entities
