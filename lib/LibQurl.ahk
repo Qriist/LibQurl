@@ -1081,7 +1081,7 @@ class LibQurl {
             ptrTemp := this._curl_slist_append(ptrSList,strArray[A_Index])
             
             If (ptrTemp == 0) {
-                Curl._FreeSList(ptrSList)
+                this._FreeSList(ptrSList)
                 Return 0
             }
             ptrSList := ptrTemp
