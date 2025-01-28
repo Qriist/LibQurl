@@ -285,7 +285,7 @@ class LibQurl {
         got := 0
         offset := 0
         loop {
-            if ret := curl._curl_easy_recv(easy_handle,replyBuffer,replyBuffer.size,&got)
+            if ret := this._curl_easy_recv(easy_handle,replyBuffer,replyBuffer.size,&got)
                 this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
             offsetPtr := retBuffer.ptr + got

@@ -2,7 +2,7 @@
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
-curl := LibQurl(A_ScriptDir "\..\bin\libcurl.dll")
+curl := LibQurl()
 easy_handle := curl.Init()
 url := "https://database.lichess.org/standard/lichess_db_standard_rated_2013-09.pgn.zst"
 curl.SetOpt("URL",url,easy_handle)
