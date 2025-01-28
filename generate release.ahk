@@ -28,7 +28,7 @@ DirCreate(releaseDir)
 DirCreate(releaseDir "\lib")
 DirCreate(releaseDir "\bin")
 
-libSrc := ["helper","storage","_struct","dll"]  ;corresponds to each src file
+libSrc := ["helper","storage","_struct","dll","_declareConstants"]  ;corresponds to each src file
 core := FileOpen(A_ScriptDir "\src\core.ahk","r").Read()
 core := stripHeader(core)
 

@@ -316,9 +316,12 @@ _performCleanup(easy_handle){
 ;     return NumGet(liPerformanceCount, 0, "Int64")
 ; }
 _findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installation
-    If !FileExist(A_ScriptDir "\lib\Aris\Qriist\LibQurl.ahk")
-        return unset
-    packageDir := A_ScriptDir "\lib\Aris\Qriist"
+    If DirExist(A_ScriptDir "\lib\Aris\Qriist") ;"top level" install
+        packageDir := A_ScriptDir "\lib\Aris\Qriist"
+    else if DirExist(A_ScriptDir "\..\lib\Aris\Qriist") ;script one level down
+        packageDir := A_ScriptDir "\..\lib\Aris\Qriist"
+    else
+        return ""
     loop files (packageDir "\LibQurl@*") , "D"{
         LQdir := packageDir "\" A_LoopFileName
     }
@@ -386,8 +389,12 @@ _globalCleanup(){   ;this should be called when shutting down LibQurl
 _register(dllPath?,requestedSSLprovider?) {
     ;todo - make dll auto-load feature more robust
     ;determine where the dll will load from
-    if !FileExist(dllPath)
+    if !FileExist(dllPath ??= "")
         dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
+    if !FileExist(dllPath)
+        dllPath := A_ScriptDir "\bin\libcurl.dll"   ;"top level" script
+    if !FileExist(dllPath)
+        dllPath := A_ScriptDir "\..\bin\libcurl.dll" ;script one level down (AKA test folder)
     if !FileExist(dllPath)
         throw ValueError("libcurl DLL not found!", -1, dllPath)
 

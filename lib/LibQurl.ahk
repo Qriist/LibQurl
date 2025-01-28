@@ -908,6 +908,24 @@ class LibQurl {
         headersPtr := this._ArrayToSList(headersArray)
 		Return this._curl_mime_headers(mime_part,headersPtr,1)
 	}
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
@@ -1241,9 +1259,12 @@ class LibQurl {
     ;     return NumGet(liPerformanceCount, 0, "Int64")
     ; }
     _findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installation
-        If !FileExist(A_ScriptDir "\lib\Aris\Qriist\LibQurl.ahk")
-            return unset
-        packageDir := A_ScriptDir "\lib\Aris\Qriist"
+        If DirExist(A_ScriptDir "\lib\Aris\Qriist") ;"top level" install
+            packageDir := A_ScriptDir "\lib\Aris\Qriist"
+        else if DirExist(A_ScriptDir "\..\lib\Aris\Qriist") ;script one level down
+            packageDir := A_ScriptDir "\..\lib\Aris\Qriist"
+        else
+            return ""
         loop files (packageDir "\LibQurl@*") , "D"{
             LQdir := packageDir "\" A_LoopFileName
         }
@@ -1311,8 +1332,12 @@ class LibQurl {
     _register(dllPath?,requestedSSLprovider?) {
         ;todo - make dll auto-load feature more robust
         ;determine where the dll will load from
-        if !FileExist(dllPath)
+        if !FileExist(dllPath ??= "")
             dllPath := this._findDLLfromAris()  ;will try to fallback on the installed package directory
+        if !FileExist(dllPath)
+            dllPath := A_ScriptDir "\bin\libcurl.dll"   ;"top level" script
+        if !FileExist(dllPath)
+            dllPath := A_ScriptDir "\..\bin\libcurl.dll" ;script one level down (AKA test folder)
         if !FileExist(dllPath)
             throw ValueError("libcurl DLL not found!", -1, dllPath)
     
@@ -2442,16 +2467,16 @@ class LibQurl {
             ,   "Ptr", extra_fds
             ,   "UInt", extra_nfds
             ,   "Int", timeout_ms
-            ,   "Ptr", &numfds)
+            ,   "int*", &numfds)
     }
-    _curl_multi_wait(multi_handle, extra_fds, extra_nfds, timeout_ms, numfds) {    ;untested   https://curl.se/libcurl/c/curl_multi_wait.html
+    _curl_multi_wait(multi_handle, extra_fds, extra_nfds, timeout_ms, &numfds) {    ;untested   https://curl.se/libcurl/c/curl_multi_wait.html
         static curl_multi_wait := this._getDllAddress(this.curlDLLpath,"curl_multi_wait") 
         return DllCall(curl_multi_wait
             ,   "Ptr", multi_handle
             ,   "Ptr", extra_fds
             ,   "UInt", extra_nfds
             ,   "Int", timeout_ms
-            ,   "Ptr", numfds)
+            ,   "int*", &numfds)
     }
     _curl_multi_wakeup(multi_handle) {  ;untested   https://curl.se/libcurl/c/curl_multi_wakeup.html
         static curl_multi_wakeup := this._getDllAddress(this.curlDLLpath,"curl_multi_wakeup") 

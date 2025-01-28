@@ -913,6 +913,24 @@ class LibQurl {
         headersPtr := this._ArrayToSList(headersArray)
 		Return this._curl_mime_headers(mime_part,headersPtr,1)
 	}
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }

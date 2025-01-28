@@ -445,16 +445,16 @@ _curl_multi_poll(multi_handle,extra_fds,extra_nfds,timeout_ms,&numfds) {    ;unt
         ,   "Ptr", extra_fds
         ,   "UInt", extra_nfds
         ,   "Int", timeout_ms
-        ,   "Ptr", &numfds)
+        ,   "int*", &numfds)
 }
-_curl_multi_wait(multi_handle, extra_fds, extra_nfds, timeout_ms, numfds) {    ;untested   https://curl.se/libcurl/c/curl_multi_wait.html
+_curl_multi_wait(multi_handle, extra_fds, extra_nfds, timeout_ms, &numfds) {    ;untested   https://curl.se/libcurl/c/curl_multi_wait.html
     static curl_multi_wait := this._getDllAddress(this.curlDLLpath,"curl_multi_wait") 
     return DllCall(curl_multi_wait
         ,   "Ptr", multi_handle
         ,   "Ptr", extra_fds
         ,   "UInt", extra_nfds
         ,   "Int", timeout_ms
-        ,   "Ptr", numfds)
+        ,   "int*", &numfds)
 }
 _curl_multi_wakeup(multi_handle) {  ;untested   https://curl.se/libcurl/c/curl_multi_wakeup.html
     static curl_multi_wakeup := this._getDllAddress(this.curlDLLpath,"curl_multi_wakeup") 
