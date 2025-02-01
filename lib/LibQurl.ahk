@@ -1716,7 +1716,7 @@ class LibQurl {
             }
     
             Close() {
-                
+                this.writeObj["writeTo"].Size := this._dataSize ;truncates the buffer to the final output size
                 ; this.easyHandleMap[this.easy_handle]["lastHeaders"] := this.writeObj["writeTo"]
                 ; msgbox strget(this.writeObj["writeTo"],"UTF-8")
             }
