@@ -77,11 +77,11 @@ class LibQurl {
         
         this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;null until set
         this.easyHandleMap[easy_handle]["associated_mime_handles"] := Map()
-        
+
         return easy_handle
     }
-    EasyInit(multi_handle?){ ;just a clarifying alias for Init()
-        return this.Init(multi_handle?)
+    EasyInit(){ ;just a clarifying alias for Init()
+        return this.Init()
     }
     ListHandles(){
         ;returns a plaintext listing of all handles
