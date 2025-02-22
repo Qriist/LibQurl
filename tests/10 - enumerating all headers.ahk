@@ -4,7 +4,7 @@
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
 curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
-easy_handle := curl.Init()
+
 curl.WriteToMem()    ;don't care about the body content
 
 ;using httpbin to force a redirect so we have multiple header indices 

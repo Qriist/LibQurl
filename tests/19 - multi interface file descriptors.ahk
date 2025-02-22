@@ -9,8 +9,8 @@ curl.SetOpt("URL",url,easy_handle)
 
 
 multi_handle := curl.MultiInit()
-curl.ReadyAsync(easy_handle)
-curl.Async()
+curl.ReadyAsync(easy_handle,multi_handle)
+curl.Async(multi_handle)
 timeout_ms := 250
 extra_fds := 1
 extra_nfds := 0

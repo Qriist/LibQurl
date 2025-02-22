@@ -35,7 +35,7 @@ curl.SetOpt("URL",Download_,easy_), curl.WriteToFile(A_ScriptDir "\09.easy_.pgn.
 
 ;can also add the easy_handles in batch as an array of values
 easyHandles := [easy1,easy2,easyA,easyB,easy_]
-curl.ReadyAsync(easyHandles)    ;multi_handle param not required *here* as it defaults to the last created
+curl.ReadyAsync(easyHandles,first_multi_handle)    ;multi_handle param not required *here* as it defaults to the last created
 
 ;download a priority file synchronously, automatically removing it from the multipool if needed
 curl.Sync(easy_)
