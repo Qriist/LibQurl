@@ -42,7 +42,7 @@ class LibQurl {
     }
     Init(){
         easy_handle := this._curl_easy_init()
-        this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][-1] is a dynamic reference to the last created easy_handle
+        this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][1] is a dynamic reference to the first created easy_handle
         this.easyHandleMap[easy_handle] := Map() 
 
         If !this.easyHandleMap[easy_handle]
@@ -100,7 +100,7 @@ class LibQurl {
 
     }
     SetOpt(option,parameter,easy_handle?,debug?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
         ;todo - move the EasyOpts to the standardized Constants array
         If this.Opt.Has(option){    ;determine if the option is known
@@ -120,7 +120,7 @@ class LibQurl {
         return ret
     }
     MultiSetOpt(option,parameter,multi_handle?){
-        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
         If this.mOpt.Has(option){
             ;nothing to be done
@@ -134,7 +134,7 @@ class LibQurl {
         return this._curl_multi_setopt(multi_handle,option,parameter)
     }
     SetOpts(optionMap,&optErrMap?,easy_handle?){  ;for setting multiple options at once
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         optErrMap := Map()
         optErrVal := 0
         ;TODO - add handling for Opts with scaffolding
@@ -147,7 +147,7 @@ class LibQurl {
         return optErrVal    ;any non-zero value means you should check the optErrMap
     }
     ListOpts(easy_handle?){  ;returns human-readable printout of the given easy_handle's set options
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         ret := "These are the options that have been set for this easy_handle:`n"
         for k,v in this.easyHandleMap[easy_handle]["options"]{
                 if (v!="")
@@ -167,7 +167,7 @@ class LibQurl {
         return StrGet(this._curl_multi_strerror(errornum),"UTF-8")
     }
 	HeaderToMem(maxCapacity := 0, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
 		this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity := 65536, dataSize?, &passedHandleMap, "header", easy_handle)
         
@@ -179,7 +179,7 @@ class LibQurl {
 
 
     WriteToMem(maxCapacity := 0, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "body", easy_handle)
         ; this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Ptr := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
@@ -191,7 +191,7 @@ class LibQurl {
 	}
 
 	HeaderToFile(filename, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "header", "w", easy_handle)
 
@@ -202,7 +202,7 @@ class LibQurl {
 	}
 
     WriteToFile(filename, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "body", "w", easy_handle)
 
@@ -212,8 +212,8 @@ class LibQurl {
         Return
     }
     ReadyAsync(inEasyHandles?,multi_handle?){    ;Add any number of easy_handles to the multi pool. Accepts integers or object.
-        inEasyHandles ??= this.easyHandleMap[0][-1] ;defaults to the last created easy_handle
-        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        inEasyHandles ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
         If (Type(inEasyHandles) = "Integer")
             inEasyHandles := [inEasyHandles]
@@ -223,7 +223,7 @@ class LibQurl {
         }
     }
     Async(multi_handle?){
-        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
         ;tell curl to process the downloads
         retCode := this._curl_multi_perform(multi_handle,&still_running)
@@ -242,7 +242,7 @@ class LibQurl {
         return still_running
     }
     Sync(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         multi_handle := this.easyHandleMap[easy_handle]["associated_multi_handle"]? ;Intentionally does NOT default
         If IsSet(multi_handle) {
             this.RemoveEasyFromMulti(easy_handle,multi_handle)
@@ -257,7 +257,7 @@ class LibQurl {
         return ret
     }
     RawSend(outgoing,easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
         switch Type(outgoing) {
             case "String","Integer":
@@ -279,7 +279,7 @@ class LibQurl {
         return sent
     }
     RawReceive(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         retBuffer := Buffer(0)   ;makes no assumptions on incoming size
         replyBuffer := Buffer(32 * 1024 * 1024)    ;allocates 32mb for wash loop, same as curl
         got := 0
@@ -306,7 +306,7 @@ class LibQurl {
     }
 
     GetLastHeaders(returnAsEncoding := "UTF-8",easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         lastHeaders := this.easyHandleMap[easy_handle]["lastHeaders"]
         if ((returnAsEncoding = "Object") && IsObject(lastHeaders))
         || ((returnAsEncoding = "File") && (Type(lastHeaders) = "File"))
@@ -317,7 +317,7 @@ class LibQurl {
             :StrGet(lastHeaders,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
     }
     GetLastBody(returnAsEncoding := "UTF-8",easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         lastBody := this.easyHandleMap[easy_handle]["lastBody"]
         if ((returnAsEncoding = "Object") && IsObject(lastBody))
         || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
@@ -329,7 +329,7 @@ class LibQurl {
     }
 
     Cleanup(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         for k,v in this.easyHandleMap[easy_handle]["callbacks"]
             if IsInteger(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
                 CallbackFree(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
@@ -358,7 +358,7 @@ class LibQurl {
     MultiCleanup(multi_handle?){
         ;Gracefully closes a multi_handle *plus* all associated easy_handles.
         ;Any easy_handles you want to keep should be manually removed prior.
-        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
         
         ;Process the associated easy_handles first
         for k,v in this.MultiGetHandles(){
@@ -370,21 +370,21 @@ class LibQurl {
         return this._curl_multi_cleanup(multi_handle)
     }
     Pause(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
         if ret := this._curl_easy_pause(easy_handle,PauseMode := 5)
             this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_pause",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         return ret
     }
     UnPause(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         
         if ret := this._curl_easy_pause(easy_handle,PauseMode := 0)
             this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_pause",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         return ret
     }
     Upkeep(easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
         if ret := this._curl_easy_upkeep(easy_handle)
             this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_upkeep",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
@@ -398,14 +398,14 @@ class LibQurl {
     ; }
 
 	SetHeaders(headersObject,easy_handle?) {    ;Sets custom HTTP headers for request.
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         
         headersArray := this._formatHeaders(headersObject)
         headersPtr := this._ArrayToSList(headersArray)
 		Return this.SetOpt("HTTPHEADER", headersPtr,easy_handle?)
 	}
 
-    SetPost(sourceData,handle?){    ;properly encapsulates data to be POSTed
+    SetPost(sourceData,easy_handle?){    ;properly encapsulates data to be POSTed
         ;you can pass:
         ;   -normal text/numbers
         ;   -a File object to upload as binary
@@ -414,7 +414,7 @@ class LibQurl {
         ;NOTE: the file is currently read completely into memory before being sent
         ;todo - create callback that reads POSTed file incrementally
 
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
 
         switch Type(sourceData) {
@@ -444,7 +444,15 @@ class LibQurl {
             todo - investigate if there's a need to differentiate between them.
         */
     }
-
+    ClearPost(easy_handle?){    ;clears any lingering POST data
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        this.SetOpt("HTTPPOST",0,easy_handle)
+        this.SetOpt("HTTPGET",1,easy_handle)
+        this.SetOpt("POSTFIELDS",0,easy_handle)
+        this.SetOpt("POSTFIELDSIZE",0,easy_handle)
+        this.SetOpt("POSTFIELDSIZE_LARGE",0,easy_handle)
+        this.easyHandleMap[easy_handle]["postData"] := unset
+    }
 
     ;Base64 operations
     StringToBase64(String, Encoding := "UTF-8")
@@ -466,14 +474,14 @@ class LibQurl {
 
     UrlInit(){
         url_handle := this._curl_url()
-        this.urlHandleMap[0].push(url_handle) ;urlHandleMap[0][-1] is a dynamic reference to the last created url_handle
+        this.urlHandleMap[0].push(url_handle) ;urlHandleMap[0][1] is a dynamic reference to the first created url_handle
         this.urlHandleMap[url_handle] := Map() 
         this.urlHandleMap[url_handle]["url_handle"] := url_handle
         this.urlHandleMap[url_handle]["timestamp"] := A_NowUTC
         return url_handle
     }
     UrlCleanup(url_handle?){
-        url_handle ??= (this.urlHandleMap[0][-1])   ;defaults to the last created url_handle
+        url_handle ??= (this.urlHandleMap[0][1])   ;defaults to the first created url_handle
         this._curl_url_cleanup(url_handle)
         this.urlHandleMap.Delete(url_handle)
         for k,v in this.urlHandleMap[0] {
@@ -486,7 +494,7 @@ class LibQurl {
             this.UrlInit()
     }
     DupeUrl(url_handle?){
-        url_handle ??= this.urlHandleMap[0][-1]   ;defaults to the last created url_handle
+        url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
         newUrl := this._curl_url_dup(url_handle)
         this.urlHandleMap[0].push(newUrl)
         this.urlHandleMap[newUrl] := this._DeepClone(this.urlHandleMap[url_handle])
@@ -494,7 +502,7 @@ class LibQurl {
     }
 
     UrlSet(part,content,flags := [],url_handle?){
-        url_handle ??= this.urlHandleMap[0][-1]   ;defaults to the last created url_handle
+        url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
 
         flagBitmask := 0
         for k,v in flags
@@ -504,7 +512,7 @@ class LibQurl {
         return this._curl_url_set(url_handle,partConstant,content,flagBitmask)
     }
     UrlGet(part,flags := [], url_handle?){
-        url_handle ??= this.urlHandleMap[0][-1]   ;defaults to the last created url_handle
+        url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
 
         flagBitmask := 0
         for k,v in flags
@@ -518,7 +526,7 @@ class LibQurl {
     }
 
     MultiInfoRead(multi_handle?){
-        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
         retObj := []
         while (retCode := this._curl_multi_info_read(multi_handle,&msgsInQueue)) {
             retObj.push(this.struct.curl_CURLMsg(retCode))
@@ -531,15 +539,15 @@ class LibQurl {
 
     MultiInit(){    ;auto-invoked during register()
         multi_handle := this._curl_multi_init()
-        this.multiHandleMap[0].push(multi_handle) ;multiHandleMap[0][-1] is a dynamic reference to the last created multi_handle
+        this.multiHandleMap[0].push(multi_handle) ;multiHandleMap[0][1] is a dynamic reference to the last created multi_handle
         this.multiHandleMap[multi_handle] := Map()
         this.multiHandleMap[multi_handle]["options"] := Map()
         this.multiHandleMap[multi_handle]["associatedEasyHandles"] := Map()
         return multi_handle
     }
     AddEasyToMulti(easy_handle?,multi_handle?){ ;auto-invoked during EasyInit()
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
         ret := this._curl_multi_add_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
@@ -554,8 +562,8 @@ class LibQurl {
             this.%v%ToMem(,easy_handle)
     }
     RemoveEasyFromMulti(easy_handle?,multi_handle?) {
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
         ret := this._curl_multi_remove_handle(multi_handle,easy_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := unset
         this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := unset
@@ -568,7 +576,7 @@ class LibQurl {
         }
     }
     GetInfo(infoOption,curl_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         if ret := this._curl_easy_getinfo(easy_handle,infoOption,&info := 0)
             this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_getinfo",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
@@ -582,7 +590,7 @@ class LibQurl {
         }
     }
     GetAllHeaders(easy_handle?) {   ;use GetLastHeaders() unless you need to examine the headers from a redirect
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         static c := this.constants["CURLH_ORIGINS"]
         
         redirects := this.GetInfo("REDIRECT_COUNT")
@@ -608,7 +616,7 @@ class LibQurl {
         return retObj
     }
     InspectHeader(name,index := 0, origin?,request := -1,easy_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         static c := this.constants["CURLH_ORIGINS"]
         origin ??= c["HEADER"]
 
@@ -646,7 +654,7 @@ class LibQurl {
         ;I was unable to figure out why. It was probably something stupid. 
         ;Regardless, Init() is called instead.
         ;The end result is the same as long as you haven't bypassed SetOpt/etc.
-        old_easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        old_easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         new_easy_handle := this.Init()
 
         ;filter file/header writing callback functions as those got setup in Init
@@ -668,7 +676,7 @@ class LibQurl {
     MultiGetHandles(multi_handle?){
         ;Returns array of all easy_handles in the multi_handle.
         ;This matches the multiHandleMap unless you've bypassed class methods.
-        multi_handle ??= this.multiHandleMap[0][-1] ;defaults to the last created multi_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
         ;gets the pointer array
         ret := this._curl_multi_get_handles(multi_handle)
@@ -695,15 +703,15 @@ class LibQurl {
 
     ShareInit(){
         share_handle := this._curl_share_init()
-        this.shareHandleMap[0].push(share_handle) ;shareHandleMap[0][-1] is a dynamic reference to the last created share_handle
+        this.shareHandleMap[0].push(share_handle) ;shareHandleMap[0][1] is a dynamic reference to the first created share_handle
         this.shareHandleMap[share_handle] := Map()
         this.shareHandleMap[share_handle]["options"] := Map()
         this.shareHandleMap[share_handle]["associatedEasyHandles"] := Map()
         return share_handle
     }
     AddEasyToShare(easy_handle?,share_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        share_handle ??= this.shareHandleMap[0][-1] ;defaults to the last created share_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
 
         if ret := this.SetOpt("SHARE",share_handle,easy_handle)
             this._ErrorHierarchy(A_ThisFunc,"CURLSHcode",share_handle)
@@ -713,8 +721,8 @@ class LibQurl {
         return ret
     }
     RemoveEasyFromShare(easy_handle?,share_handle?){
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
-        share_handle ??= this.shareHandleMap[0][-1] ;defaults to the last created share_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
 
         if ret := this.SetOpt("SHARE",0,easy_handle)
             this._ErrorHierarchy(A_ThisFunc,"CURLSHcode",share_handle)
@@ -724,7 +732,7 @@ class LibQurl {
         return ret
     }
     ShareCleanup(share_handle?){
-        share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle
+        share_handle := this.shareHandleMap[0][1]   ;defaults to the first created share_handle
         if ret := this._curl_share_cleanup(share_handle)
             this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_cleanup",ret,,share_handle)
         return ret
@@ -734,7 +742,7 @@ class LibQurl {
     }
 
     ShareSetOpt(option,parameter,share_handle?){
-        share_handle := this.shareHandleMap[0][-1]   ;defaults to the last created share_handle
+        share_handle := this.shareHandleMap[0][1]   ;defaults to the first created share_handle
 
         If this.sOpt.Has(option){
             ;nothing to be done
@@ -754,7 +762,7 @@ class LibQurl {
 
 
     MimeInit(easy_handle?) {    ;curl requires associating mime_handles to an easy_handle
-        easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         mime_handle := this._curl_mime_init(easy_handle)
 
         this.mimeHandleMap[0].push(mime_handle)
@@ -770,7 +778,7 @@ class LibQurl {
         return mime_handle
     }
     MimeAddPart(mime_handle?){
-        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
 
         mime_part := this._curl_mime_addpart(mime_handle)
         this.mimeHandleMap[mime_handle]["associated_mime_parts"][mime_part] := 1
@@ -834,7 +842,7 @@ class LibQurl {
         }
     }
     AttachMimePart(partName,partContent,mime_handle?){
-        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
         
         ;todo - establish mime_part relationships
         mime_part := this.MimeAddPart(mime_handle)
@@ -846,7 +854,7 @@ class LibQurl {
         return mime_part
     }
     MimeCleanup(mime_handle?){
-        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
         
         ;break easy_handle association
         easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
@@ -882,7 +890,7 @@ class LibQurl {
 
     AttachMimeAsPart(partName,mime_to_embed,mime_handle?){
         ;this attaches an entire other mime_handle to the given mime_part
-        mime_handle ??= this.mimeHandleMap[0][-1]   ;defaults to the last created mime_handle
+        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
         
         ;prevent attempting to nest the mime_handle within itself
         if (mime_to_embed = mime_handle)
