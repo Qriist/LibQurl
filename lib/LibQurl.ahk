@@ -1688,12 +1688,10 @@ class LibQurl {
     
                 If !IsSet(maxCapacity) || (maxCapacity = 0)
                    maxCapacity := 50*1024**2  ; 50 Mb
-                    ; maxCapacity := 1000  ; 50 Mb
     
                 maxCapacity := Max(maxCapacity, dataSize)
-                ; msgbox maxCapacity
                 this.writeObj["maxCapacity"] := maxCapacity
-                this.writeObj["writeTo"] := Buffer(maxCapacity)
+                this.writeObj["writeTo"] := Buffer(0)
     
                 ; msgbox "New " ObjPtr(this.writeObj["writeTo"])
                 ; MsgBox maxCapacity "`n" this.writeObj["writeTo"].Ptr
@@ -1744,7 +1742,8 @@ class LibQurl {
             ; }
     
             RawWrite(srcDataPtr, srcDataSize) {
-                Offset := this._dataPtr
+                Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
+                this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
                 DllCall("ntdll\memcpy"
                     , "Ptr" , this.writeObj["writeTo"].Ptr + Offset
                     , "Ptr" , srcDataPtr+0

@@ -6,6 +6,7 @@ curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
 
 url := "https://www.titsandasses.org"
 ; url := "https://www.google.com"
+
 curl.SetOpt("URL",url)
 curl.HeaderToMem()
 curl.WriteToMem()
@@ -18,4 +19,4 @@ lastError := curl.Sync()
 ;     .   curl.GetLastBody()
 
 FileOpen(A_ScriptDir "\03.headers.txt","w").Write(curl.GetLastHeaders())
-FileOpen(A_ScriptDir "\03.body.html","w").Write(curl.GetLastBody())
+FileOpen(A_ScriptDir "\03.body.html","w").RawWrite(curl.GetLastBody())
