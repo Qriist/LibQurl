@@ -1,7 +1,7 @@
 #requires Autohotkey v2.1-alpha.9
 #Include "*i <Aris\G33kDude\cJson>"
 #include "*i <Aris/SKAN/RunCMD>" ; SKAN/RunCMD@9a8392d
-; #include "*i <Aris/Qriist/libmagic>" ; github:Qriist/libmagic@v0.80.0 --main Lib\libmagic.ahk
+#include "*i <Aris/Qriist/libmagic>" ; github:Qriist/libmagic@v0.80.0 --main Lib\libmagic.ahk
 class LibQurl {
     ;core functionality
     __New(dllPath?,requestedSSLprovider?) {
@@ -39,6 +39,7 @@ class LibQurl {
         ;safely prepare curl's initial environment
         Critical "On"
         this._register(dllPath?,requestedSSLprovider?)
+        this.magic := libmagic()
         Critical "Off"
     }
     Init(){
@@ -809,37 +810,22 @@ class LibQurl {
     MimePartType(mime_part,partContent?,override?){
         If IsSet(override?)
             return this._curl_mime_type(mime_part,override)
-        ;todo - properly incorporate libmagic
-        randNum := A_NowUTC Random()
-        randFile := this.dllDir "\" randNum
+        
         switch Type(partContent) {
             case "String","Integer":
-                FileOpen(randFile,"w").Write(partContent)
-                mime_type := magic(randFile)
-                FileDelete(randFile)
+                mime_type := this.magic.mime(this._StrBuf(mime_part))
                 this._curl_mime_type(mime_part,mime_type)
             case "Object","Array","Map":
-                FileOpen(randFile,"w").Write(json.dump(partContent))
-                mime_type := magic(randFile)
-                FileDelete(randFile)
+                mime_type := this.magic.mime(this._StrBuf(json.dump(partContent)))
                 this._curl_mime_type(mime_part,mime_type)
             case "File":
-                filePath := this._GetFilePathFromFileObject(partContent)
-                mime_type := magic(filePath)
+                mime_type := this.magic.mime(partContent)
                 this._curl_mime_type(mime_part,mime_type)
             case "Buffer":
-                FileOpen(randFile,"w").RawWrite(partContent)
-                mime_type := magic(randFile)
-                FileDelete(randFile)
+                mime_type := this.magic.mime(mime_part)
                 this._curl_mime_type(mime_part,mime_type)
             Default:
                 throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
-        }
-        magic(inFile){
-            static magicexe := this.dllDir "\file.exe" A_Space
-                .   "-m " this.dllDir "\magic.mgc" A_Space
-                .   "-b --mime-type " A_Space
-            return RunCMD(magicexe Chr(34) inFile Chr(34))
         }
     }
     AttachMimePart(partName,partContent,mime_handle?){
