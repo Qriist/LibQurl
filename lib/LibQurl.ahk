@@ -810,13 +810,13 @@ class LibQurl {
     MimePartType(mime_part,partContent?,override?){
         If IsSet(override?)
             return this._curl_mime_type(mime_part,override)
-        
+
         switch Type(partContent) {
             case "String","Integer":
-                mime_type := this.magic.mime(this._StrBuf(mime_part))
+                mime_type := this.magic.mime(mime_part)
                 this._curl_mime_type(mime_part,mime_type)
             case "Object","Array","Map":
-                mime_type := this.magic.mime(this._StrBuf(json.dump(partContent)))
+                mime_type := this.magic.mime(json.dump(partContent))
                 this._curl_mime_type(mime_part,mime_type)
             case "File":
                 mime_type := this.magic.mime(partContent)
