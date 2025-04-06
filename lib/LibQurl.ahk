@@ -2408,6 +2408,13 @@ class LibQurl {
         ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
         ; return DllCall(curl_global_init_mem
     ; }
+    _curl_getenv(name){    ;untested    https://curl.se/libcurl/c/curl_getenv.html
+        static curl_getenv := this._getDllAddress(this.curlDLLpath, "curl_getenv") 
+        return DllCall(curl_getenv
+            ,   "AStr", name
+            ,   "Cdecl Ptr")
+    }
+    
     _curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_trace.html
         static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 
         return DllCall(curl_global_trace
@@ -2439,6 +2446,14 @@ class LibQurl {
             ,   "Ptr", exc_fd_set
             ,   "Int", max_fd)
     }
+    _curl_multi_socket(multi_handle, sockfd, running_handles){    ;untested https://curl.se/libcurl/c/curl_multi_socket.html
+        static curl_multi_socket := this._getDllAddress(this.curlDLLpath, "curl_multi_socket") 
+        return DllCall(curl_multi_socket
+            ,   "Ptr", multi_handle
+            ,   "Int", sockfd
+            ,   "Ptr", running_handles
+            ,   "Cdecl Int")
+    }
     
     _curl_multi_socket_action(multi_handle,sockfd,ev_bitmask,running_handles) {   ;untested   https://curl.se/libcurl/c/curl_multi_socket_action.html
         static _curl_multi_socket_action := this._getDllAddress(this.curlDLLpath,"_curl_multi_socket_action") 
@@ -2448,6 +2463,14 @@ class LibQurl {
             ,   "Int", ev_bitmask
             ,   "Int", running_handles)
     }
+    _curl_multi_socket_all(multi_handle, running_handles){    ;untested https://curl.se/libcurl/c/curl_multi_socket_all.html
+        static curl_multi_socket_all := this._getDllAddress(this.curlDLLpath, "curl_multi_socket_all") 
+        return DllCall(curl_multi_socket_all
+            ,   "Ptr", multi_handle
+            ,   "Ptr", running_handles
+            ,   "Cdecl Int")
+    }
+    
     _curl_multi_timeout(multi_handle,timeout) { ;untested   https://curl.se/libcurl/c/curl_multi_timeout.html
         static curl_multi_timeout := this._getDllAddress(this.curlDLLpath,"curl_multi_timeout") 
         return DllCall(curl_multi_timeout
@@ -2472,6 +2495,16 @@ class LibQurl {
             ,   "Int", timeout_ms
             ,   "int*", &numfds)
     }
+    _curl_multi_waitfds(multi, ufds, size, fd_count){    ;untested  https://curl.se/libcurl/c/curl_multi_waitfds.html
+        static curl_multi_waitfds := this._getDllAddress(this.curlDLLpath, "curl_multi_waitfds") 
+        return DllCall(curl_multi_waitfds
+            ,   "Ptr", multi
+            ,   "Ptr", ufds
+            ,   "UInt", size
+            ,   "Ptr", fd_count
+            ,   "Cdecl Int")
+    }
+    
     _curl_multi_wakeup(multi_handle) {  ;untested   https://curl.se/libcurl/c/curl_multi_wakeup.html
         static curl_multi_wakeup := this._getDllAddress(this.curlDLLpath,"curl_multi_wakeup") 
         return DllCall(curl_multi_wakeup
@@ -2510,6 +2543,22 @@ class LibQurl {
             ,   "Int", fragsize
             ,   "UInt", flags)
     }
+    _curl_strequal(str1, str2){    ;untested    https://curl.se/libcurl/c/curl_strequal.html
+        static curl_strequal := this._getDllAddress(this.curlDLLpath, "curl_strequal") 
+        return DllCall(curl_strequal
+            ,   "AStr", str1
+            ,   "AStr", str2
+            ,   "Cdecl Int")
+    }
+    _curl_strnequal(str1, str2, length){    ;untested   https://curl.se/libcurl/c/curl_strnequal.html
+        static curl_strnequal := this._getDllAddress(this.curlDLLpath, "curl_strnequal") 
+        return DllCall(curl_strnequal
+            ,   "AStr", str1
+            ,   "AStr", str2
+            ,   "Ptr", length
+            ,   "Cdecl Int")
+    }
+    
     _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
         static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 
         return DllCall(curl_ws_meta

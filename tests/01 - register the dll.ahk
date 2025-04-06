@@ -2,8 +2,8 @@
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
-; curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
-curl := LibQurl()
+curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
+;curl := LibQurl()
 outMap := Map()
 outMap["Opts"] := curl.opt
 outMap["OptById"] := curl.optById

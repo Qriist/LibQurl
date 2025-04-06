@@ -43,22 +43,19 @@ curl.Sync()
 
 FileOpen(A_ScriptDir "\18.resultsA.txt","w").Write(curl.GetLastBody())
 
-
-;we can't nest mime_handles that were already used in a transfer
-mime_handle_to_nest := curl.MimeInit()
+;attach a few more things to make our nested mime distinct
 curl.AttachMimePart("String","abc")
 curl.AttachMimePart("Integer",123)
 curl.AttachMimePart("Object",{a:"b"})
 
 mime2 := curl.MimeInit()
-curl.AttachMimeAsPart("this is a nested mime",mime_handle_to_nest,mime2)
+curl.AttachMimeAsPart("this is a nested mime",mime_handle,mime2)
 curl.Sync()
 
 FileOpen(A_ScriptDir "\18.resultsB.txt","w").Write(curl.GetLastBody())
 
-;Only pass the mime_handle, mime_parts get culled automatically
-curl.MimeCleanup(mime_handle)
+;Only pass root mime_handles, mime_parts get culled automatically
 curl.MimeCleanup(mime2)
 
 ;do not pass mime_handles that were attached as parts
-; curl.MimeCleanup(mime_handle_to_nest)
+; curl.MimeCleanup(mime_handle)
