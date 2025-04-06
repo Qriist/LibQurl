@@ -2446,16 +2446,8 @@ class LibQurl {
             ,   "Ptr", exc_fd_set
             ,   "Int", max_fd)
     }
-    _curl_multi_socket(multi_handle, sockfd, running_handles){    ;untested https://curl.se/libcurl/c/curl_multi_socket.html
-        static curl_multi_socket := this._getDllAddress(this.curlDLLpath, "curl_multi_socket") 
-        return DllCall(curl_multi_socket
-            ,   "Ptr", multi_handle
-            ,   "Int", sockfd
-            ,   "Ptr", running_handles
-            ,   "Cdecl Int")
-    }
-    
     _curl_multi_socket_action(multi_handle,sockfd,ev_bitmask,running_handles) {   ;untested   https://curl.se/libcurl/c/curl_multi_socket_action.html
+        ;use this function with ev_bitmask=0 instead of the deprecated curl_multi_socket
         static _curl_multi_socket_action := this._getDllAddress(this.curlDLLpath,"_curl_multi_socket_action") 
         return DllCall(_curl_multi_socket_action
             ,   "Int", multi_handle
