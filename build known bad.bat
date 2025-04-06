@@ -23,7 +23,7 @@ cd /d "%VCPKG_ROOT%" || (
 )
 @echo off
 git pull 
-powershell.exe -NoProfile -ExecutionPolicy Bypass "& {& \"%~dp0scripts\bootstrap.ps1\" %*}"
+powershell.exe -NoProfile -ExecutionPolicy Bypass "& {& \""%VCPKG_ROOT%"\scripts\bootstrap.ps1\" %*}"
 
 @echo on
 
