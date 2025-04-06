@@ -325,7 +325,21 @@ _curl_slist_free_all(ptrSList) {    ;https://curl.se/libcurl/c/curl_slist_free_a
     return DllCall(curl_slist_free_all
         , "Ptr", ptrSList)
 }
-
+_curl_strequal(str1, str2){    ;untested    https://curl.se/libcurl/c/curl_strequal.html
+    static curl_strequal := this._getDllAddress(this.curlDLLpath, "curl_strequal") 
+    return DllCall(curl_strequal
+        ,   "Str", str1
+        ,   "Str", str2
+        ,   "Cdecl Int")
+}
+_curl_strnequal(str1, str2, length){    ;untested   https://curl.se/libcurl/c/curl_strnequal.html
+    static curl_strnequal := this._getDllAddress(this.curlDLLpath, "curl_strnequal") 
+    return DllCall(curl_strnequal
+        ,   "Str", str1
+        ,   "Str", str2
+        ,   "Ptr", length
+        ,   "Cdecl Int")
+}
 
 
 
@@ -519,21 +533,7 @@ _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;untested   http
         ,   "Int", fragsize
         ,   "UInt", flags)
 }
-_curl_strequal(str1, str2){    ;untested    https://curl.se/libcurl/c/curl_strequal.html
-    static curl_strequal := this._getDllAddress(this.curlDLLpath, "curl_strequal") 
-    return DllCall(curl_strequal
-        ,   "AStr", str1
-        ,   "AStr", str2
-        ,   "Cdecl Int")
-}
-_curl_strnequal(str1, str2, length){    ;untested   https://curl.se/libcurl/c/curl_strnequal.html
-    static curl_strnequal := this._getDllAddress(this.curlDLLpath, "curl_strnequal") 
-    return DllCall(curl_strnequal
-        ,   "AStr", str1
-        ,   "AStr", str2
-        ,   "Ptr", length
-        ,   "Cdecl Int")
-}
+
 
 _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
     static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 

@@ -908,6 +908,12 @@ class LibQurl {
         headersPtr := this._ArrayToSList(headersArray)
 		Return this._curl_mime_headers(mime_part,headersPtr,1)
 	}
+    StrCompare(str1,str2,maxLength?){
+        ;returns 1 on match
+        If IsSet(maxLength?)
+            return this._curl_strnequal(str1,str2,maxLength?)
+        return this._curl_strequal(str1,str2)
+    }
 
     
 

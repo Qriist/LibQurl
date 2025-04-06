@@ -903,6 +903,12 @@ class LibQurl {
         headersPtr := this._ArrayToSList(headersArray)
 		Return this._curl_mime_headers(mime_part,headersPtr,1)
 	}
+    StrCompare(str1,str2,maxLength?){
+        ;returns 1 on match
+        If IsSet(maxLength?)
+            return this._curl_strnequal(str1,str2,maxLength?)
+        return this._curl_strequal(str1,str2)
+    }
 
     
 
@@ -2341,7 +2347,21 @@ class LibQurl {
         return DllCall(curl_slist_free_all
             , "Ptr", ptrSList)
     }
-    
+    _curl_strequal(str1, str2){    ;untested    https://curl.se/libcurl/c/curl_strequal.html
+        static curl_strequal := this._getDllAddress(this.curlDLLpath, "curl_strequal") 
+        return DllCall(curl_strequal
+            ,   "Str", str1
+            ,   "Str", str2
+            ,   "Cdecl Int")
+    }
+    _curl_strnequal(str1, str2, length){    ;untested   https://curl.se/libcurl/c/curl_strnequal.html
+        static curl_strnequal := this._getDllAddress(this.curlDLLpath, "curl_strnequal") 
+        return DllCall(curl_strnequal
+            ,   "Str", str1
+            ,   "Str", str2
+            ,   "Ptr", length
+            ,   "Cdecl Int")
+    }
     
     
     
@@ -2535,21 +2555,7 @@ class LibQurl {
             ,   "Int", fragsize
             ,   "UInt", flags)
     }
-    _curl_strequal(str1, str2){    ;untested    https://curl.se/libcurl/c/curl_strequal.html
-        static curl_strequal := this._getDllAddress(this.curlDLLpath, "curl_strequal") 
-        return DllCall(curl_strequal
-            ,   "AStr", str1
-            ,   "AStr", str2
-            ,   "Cdecl Int")
-    }
-    _curl_strnequal(str1, str2, length){    ;untested   https://curl.se/libcurl/c/curl_strnequal.html
-        static curl_strnequal := this._getDllAddress(this.curlDLLpath, "curl_strnequal") 
-        return DllCall(curl_strnequal
-            ,   "AStr", str1
-            ,   "AStr", str2
-            ,   "Ptr", length
-            ,   "Cdecl Int")
-    }
+    
     
     _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
         static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 
