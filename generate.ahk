@@ -8,7 +8,7 @@ core := FileOpen(A_ScriptDir "\src\core.ahk","r").Read()
 core := stripHeader(core)
 
 ; for k,v in StrSplit(core,"`n","`r") {
-;     RegExMatch(v,'mi)^(#include "\*i (<.+>))"$',&found)
+;     RegExMatch(v,'mi)^(#include "\*i (<.+>))"',&found)
 ;     if IsSet(found) && (Type(found) = "RegExMatchInfo") {
 ;         core := StrReplace(core,found[0],"#Include " found[2])
 ;     }
