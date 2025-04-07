@@ -909,6 +909,14 @@ class LibQurl {
             return this._curl_strnequal(str1,str2,maxLength?)
         return this._curl_strequal(str1,str2)
     }
+    GetEnv(input){  ;gets the specified system variable
+        retPtr := this._curl_getenv(input)
+        if !retPtr
+            return
+        retStr := StrGet(retPtr,"UTF-8")
+        this._curl_free(retPtr)
+        return retStr
+    }
 
     
 
@@ -2166,6 +2174,12 @@ class LibQurl {
             ,   "AStr", datestring
             ,   "UInt", 0) ;not used, pass a NULL
     }
+    _curl_getenv(name){    ;untested    https://curl.se/libcurl/c/curl_getenv.html
+        static curl_getenv := this._getDllAddress(this.curlDLLpath, "curl_getenv") 
+        return DllCall(curl_getenv
+            ,   "AStr", name    ;must be AStr
+            ,   "Cdecl Ptr")
+    }
     _curl_global_cleanup() {  ;https://curl.se/libcurl/c/curl_global_cleanup.html
         static curl_global_cleanup := this._getDllAddress(this.curlDLLpath,"curl_global_cleanup") 
         DllCall(curl_global_cleanup)    ;no return value
@@ -2428,12 +2442,7 @@ class LibQurl {
         ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
         ; return DllCall(curl_global_init_mem
     ; }
-    _curl_getenv(name){    ;untested    https://curl.se/libcurl/c/curl_getenv.html
-        static curl_getenv := this._getDllAddress(this.curlDLLpath, "curl_getenv") 
-        return DllCall(curl_getenv
-            ,   "AStr", name
-            ,   "Cdecl Ptr")
-    }
+    
     
     _curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_trace.html
         static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 

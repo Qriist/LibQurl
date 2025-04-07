@@ -144,6 +144,12 @@ _curl_getdate(datestring) {   ;https://curl.se/libcurl/c/curl_getdate.html
         ,   "AStr", datestring
         ,   "UInt", 0) ;not used, pass a NULL
 }
+_curl_getenv(name){    ;untested    https://curl.se/libcurl/c/curl_getenv.html
+    static curl_getenv := this._getDllAddress(this.curlDLLpath, "curl_getenv") 
+    return DllCall(curl_getenv
+        ,   "AStr", name    ;must be AStr
+        ,   "Cdecl Ptr")
+}
 _curl_global_cleanup() {  ;https://curl.se/libcurl/c/curl_global_cleanup.html
     static curl_global_cleanup := this._getDllAddress(this.curlDLLpath,"curl_global_cleanup") 
     DllCall(curl_global_cleanup)    ;no return value
@@ -406,12 +412,7 @@ _curl_version_info() {  ;https://curl.se/libcurl/c/curl_version_info.html
     ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
     ; return DllCall(curl_global_init_mem
 ; }
-_curl_getenv(name){    ;untested    https://curl.se/libcurl/c/curl_getenv.html
-    static curl_getenv := this._getDllAddress(this.curlDLLpath, "curl_getenv") 
-    return DllCall(curl_getenv
-        ,   "AStr", name
-        ,   "Cdecl Ptr")
-}
+
 
 _curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_trace.html
     static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 

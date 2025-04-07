@@ -14,4 +14,5 @@ for k,v in outMap["easyHandleMap"] {    ;callbacks map doesn't enumerate
         continue
     outMap["easyHandleMap"][k].Delete("callbacks")
 }
+outMap["GetEnv"] := curl.GetEnv("USERPROFILE")
 FileOpen(A_ScriptDir "\01.json","w").Write(json.dump(outMap))

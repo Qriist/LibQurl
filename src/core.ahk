@@ -914,6 +914,14 @@ class LibQurl {
             return this._curl_strnequal(str1,str2,maxLength?)
         return this._curl_strequal(str1,str2)
     }
+    GetEnv(input){  ;gets the specified system variable
+        retPtr := this._curl_getenv(input)
+        if !retPtr
+            return
+        retStr := StrGet(retPtr,"UTF-8")
+        this._curl_free(retPtr)
+        return retStr
+    }
 
     
 
