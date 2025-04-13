@@ -917,6 +917,71 @@ class LibQurl {
         this._curl_free(retPtr)
         return retStr
     }
+    EncodeBase64(input){
+        ;prepare the buffer to convert to base64
+        switch Type(input) {
+            case "String","Integer":
+                sourceBuf := this._StrBuf(input,"UTF-8")
+                sourceBuf.size := StrLen(input)
+            case "Object","Array","Map":
+                inputJson := json.dump(input)
+                sourceBuf := this._StrBuf(inputJson,"UTF-8")
+                sourceBuf.size := StrLen(inputJson)
+            case "File":
+                sourceBuf := Buffer(input.length)  ;create the buffer with the right size
+                input.Seek(0)   ;reset to the start of the file
+                input.RawRead(sourceBuf) ;read the file into the buffer
+            case "Buffer":
+                sourceBuf := input
+            Default:
+                throw ValueError("Unknown object type passed to EncodeBase64: " Type(input))
+        }
+
+        ;calculate required output buffer size
+        DllCall("crypt32\CryptBinaryToString"
+            ,   "Ptr", sourceBuf
+            ,   "UInt", sourceBuf.size
+            ,   "UInt", 0x40000001  ; = base64 without headers + no CRLF
+            ,   "Ptr", 0
+            ,   "Uint*", &nSize := 0)
+        VarSetStrCapacity(&retStr := 0, nSize << 1)
+
+        ;generate the string
+        DllCall("crypt32\CryptBinaryToString"
+            ,   "Ptr", sourceBuf
+            ,   "UInt", sourceBuf.size
+            ,   "UInt", 0x40000001  ; = base64 without headers + no CRLF
+            ,   "Str", retStr
+            ,   "Uint*", &nSize)
+
+        return retStr
+    }
+    DecodeBase64(str,returnBuffer?){
+        ;calculate required output buffer size
+		DllCall("crypt32\CryptStringToBinary"
+            ,   "Str", str
+            ,   "UInt", 0
+            ,   "UInt", 0x00000001
+            ,   "Ptr", 0
+            ,   "Uint*", &SizeOut := 0
+            ,   "Ptr", 0
+            ,   "Ptr", 0)
+
+        ;generate the buffer
+		DllCall("Crypt32\CryptStringToBinary"
+            ,   "Str", str
+            ,   "UInt", 0
+            ,   "UInt", 0x00000001
+            ,   "Ptr", VarOut := Buffer(SizeOut)
+            ,   "Uint*", &SizeOut
+            ,   "Ptr", 0
+            ,   "Ptr", 0)
+
+        if IsSet(returnBuffer)
+            return VarOut
+
+		return StrGet(VarOut,"UTF-8")
+    }
 
     
 
