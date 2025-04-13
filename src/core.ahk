@@ -461,24 +461,6 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["postData"] := unset
     }
 
-    ;Base64 operations
-    StringToBase64(String, Encoding := "UTF-8")
-    {
-        static CRYPT_STRING_BASE64 := 0x00000001
-        static CRYPT_STRING_NOCRLF := 0x40000000
-
-        Binary := Buffer(StrPut(String, Encoding))
-        StrPut(String, Binary, Encoding)
-        if !(DllCall("crypt32\CryptBinaryToStringW", "Ptr", Binary, "UInt", Binary.Size - 1, "UInt", (CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF), "Ptr", 0, "UInt*", &Size := 0))
-            throw OSError()
-
-        Base64 := Buffer(Size << 1, 0)
-        if !(DllCall("crypt32\CryptBinaryToStringW", "Ptr", Binary, "UInt", Binary.Size - 1, "UInt", (CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF), "Ptr", Base64, "UInt*", Size))
-            throw OSError()
-
-        return StrGet(Base64)
-    }
-
     UrlInit(){
         url_handle := this._curl_url()
         this.urlHandleMap[0].push(url_handle) ;urlHandleMap[0][1] is a dynamic reference to the first created url_handle
