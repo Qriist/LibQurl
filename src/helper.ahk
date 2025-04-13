@@ -308,6 +308,9 @@ _performCleanup(easy_handle){
     headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
     lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
     this.easyHandleMap[easy_handle]["lastHeaders"] := lastHeaders
+
+    ;record http status code
+    this.easyHandleMap[easy_handle]["statusCode"] := this.GetInfo("RESPONSE_CODE",easy_handle)
 }
 ; _QueryPerformanceCounter(){
 ;     ; https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter

@@ -334,6 +334,10 @@ class LibQurl {
         return (Type(lastBody)="File"?(lastBody.seek(0,0)=1?"":"") lastBody.read()
             :StrGet(lastBody,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
     }
+    GetLastStatus(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        return this.easyHandleMap[easy_handle]["statusCode"]
+    }
 
     Cleanup(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
