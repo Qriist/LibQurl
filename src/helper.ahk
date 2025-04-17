@@ -50,7 +50,7 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
 }
 
 _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
-    easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+    easy_handle ??= this.easyHandleMap[0][1]   ;defaults to the first created easy_handle
 
     ;todo - read/progress/debug callbacks
 
@@ -269,7 +269,7 @@ _HasVal(inObj,needle){  ;return the first key with a matching input value
     return unset
 }
 _Perform(easy_handle?){
-    easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+    easy_handle ??= this.easyHandleMap[0][1]   ;defaults to the first created easy_handle
 
     ; this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
     ; this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Open()
@@ -338,7 +338,7 @@ _findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installatio
 ; }
 
 _RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle without breaking the connection
-    easy_handle ??= this.easyHandleMap[0][-1]   ;defaults to the last created easy_handle
+    easy_handle ??= this.easyHandleMap[0][1]   ;defaults to the first created easy_handle
     ; this._prepareInitCallbacks(easy_handle)
     ; this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
     this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
