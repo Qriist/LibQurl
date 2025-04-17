@@ -73,7 +73,6 @@ class LibQurl {
             this.easyHandleMap[easy_handle]["callbacks"][v]["CBF"] := ""
         }
 
-
         this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
         ; this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
         
@@ -333,7 +332,7 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         return this.easyHandleMap[easy_handle]["statusCode"]
     }
-    
+
     Cleanup(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         for k,v in this.easyHandleMap[easy_handle]["callbacks"]
@@ -1124,8 +1123,15 @@ class LibQurl {
     
     _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
         dataSize := size * sizeBytes
-        ; msgbox type(this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"])
         Return this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
+    }
+    
+    _progressCallbackFunction(dataPtr, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded, easy_handle){
+        this.easyHandleMap[easy_handle]["progress"]["expectedBytesDownloaded"] := expectedBytesDownloaded
+        this.easyHandleMap[easy_handle]["progress"]["currentBytesDownloaded"] := currentBytesDownloaded
+        this.easyHandleMap[easy_handle]["progress"]["expectedBytesUploaded"] := expectedBytesUploaded
+        this.easyHandleMap[easy_handle]["progress"]["currentBytesUploaded"] := currentBytesUploaded
+        return 0
     }
     
     ; Linked-list

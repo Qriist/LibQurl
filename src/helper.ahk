@@ -121,8 +121,15 @@ _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
 
 _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     dataSize := size * sizeBytes
-    ; msgbox type(this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"])
     Return this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
+}
+
+_progressCallbackFunction(dataPtr, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded, easy_handle){
+    this.easyHandleMap[easy_handle]["progress"]["expectedBytesDownloaded"] := expectedBytesDownloaded
+    this.easyHandleMap[easy_handle]["progress"]["currentBytesDownloaded"] := currentBytesDownloaded
+    this.easyHandleMap[easy_handle]["progress"]["expectedBytesUploaded"] := expectedBytesUploaded
+    this.easyHandleMap[easy_handle]["progress"]["currentBytesUploaded"] := currentBytesUploaded
+    return 0
 }
 
 ; Linked-list

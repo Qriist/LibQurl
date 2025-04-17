@@ -78,7 +78,6 @@ class LibQurl {
             this.easyHandleMap[easy_handle]["callbacks"][v]["CBF"] := ""
         }
 
-
         this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
         ; this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
         
@@ -338,7 +337,7 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         return this.easyHandleMap[easy_handle]["statusCode"]
     }
-    
+
     Cleanup(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         for k,v in this.easyHandleMap[easy_handle]["callbacks"]
