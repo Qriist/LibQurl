@@ -967,8 +967,27 @@ class LibQurl {
 
 		return StrGet(VarOut,"UTF-8")
     }
-
     
+    GetProgress(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        retObj := this._DeepClone(this.easyHandleMap[easy_handle]["callbacks"]["progress"])
+        retObj.delete("CBF")
+        return retObj
+    }
+    DownloadPercent(easy_handle?){  ;convenience method for parsing GetProgress
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        ret := this.GetProgress(easy_handle)
+        if (ret["expectedBytesDownloaded"] = 0)
+            return 0
+        return Round((ret["currentBytesDownloaded"] / ret["expectedBytesDownloaded"]) * 100,2)
+    }
+    UploadPercent(easy_handle?){    ;convenience method for parsing GetProgress
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        ret := this.GetProgress(easy_handle)
+        if (ret["expectedBytesUploaded"] = 0)
+            return 0
+        return Round((ret["currentBytesUploaded"] / ret["expectedBytesUploaded"]) * 100,2)
+    }
 
 
 
