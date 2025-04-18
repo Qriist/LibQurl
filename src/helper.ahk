@@ -97,7 +97,25 @@ _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
             ; this.writeRefs[CBF] += 1
     }
     ; if IsSet(read)
-    ; if IsSet(progress)
+    if IsSet(progress) {
+        this.SetOpt("NOPROGRESS", 0, easy_handle)   ;enables progress meter on this handle
+        
+        CBF := this.easyHandleMap[easy_handle]["callbacks"]["progress"]["CBF"]
+                if IsInteger(CBF){  ;checks if this callback already exists
+            this.writeRefs[CBF] -= 1    ;decrement the reference tracker
+            CallbackFree(CBF)
+            (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
+        }
+
+        this.easyHandleMap[easy_handle]["callbacks"]["progress"]["CBF"] := CBF := CallbackCreate(
+            (easy_handle, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded) =>
+            this._progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded)
+        )
+
+        this.SetOpt("XFERINFODATA",easy_handle,easy_handle)
+        this.SetOpt("XFERINFOFUNCTION",CBF,easy_handle)
+        this.writeRefs[CBF] := 1
+    }
     ; if IsSet(debug)
     
     
@@ -124,11 +142,12 @@ _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     Return this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
 }
 
-_progressCallbackFunction(dataPtr, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded, easy_handle){
-    this.easyHandleMap[easy_handle]["progress"]["expectedBytesDownloaded"] := expectedBytesDownloaded
-    this.easyHandleMap[easy_handle]["progress"]["currentBytesDownloaded"] := currentBytesDownloaded
-    this.easyHandleMap[easy_handle]["progress"]["expectedBytesUploaded"] := expectedBytesUploaded
-    this.easyHandleMap[easy_handle]["progress"]["currentBytesUploaded"] := currentBytesUploaded
+_progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded){
+    progressMap := this.easyHandleMap[easy_handle]["callbacks"]["progress"]
+    progressMap["expectedBytesDownloaded"] := expectedBytesDownloaded
+    progressMap["currentBytesDownloaded"] := currentBytesDownloaded
+    progressMap["expectedBytesUploaded"] := expectedBytesUploaded
+    progressMap["currentBytesUploaded"] := currentBytesUploaded
     return 0
 }
 

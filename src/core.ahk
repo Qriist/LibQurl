@@ -629,7 +629,7 @@ class LibQurl {
                     list .= "`n" this.PrintObj(v,depth-1,indentLevel  "    ")
                 case "Buffer","LibQurl.Storage.MemBuffer":
                     list .= " => [BUFFER] "
-                case "File":
+                case "File","LibQurl.Storage.File":
                     list .= " => [FILE] "
                 Default:
                     list .= " => " v

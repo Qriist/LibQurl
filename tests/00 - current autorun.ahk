@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "01 - register the dll"
+current := "09 - using the multi interface"
 
 clean := ["txt","html","json","zst"]
 for k,v in clean

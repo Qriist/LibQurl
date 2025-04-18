@@ -38,17 +38,18 @@ easyHandles := [easy1,easy2,easyA,easyB,easy_]
 curl.ReadyAsync(easyHandles,first_multi_handle)    ;multi_handle param not required *here* as it defaults to the last created
 
 ;download a priority file synchronously, automatically removing it from the multipool if needed
-curl.Sync(easy_)
+; curl.Sync(easy_)
 
 ;transfer 2 items to a different multi pool
 second_multi_handle := curl.MultiInit()
 curl.SwapMultiPools([easyA,easyB],first_multi_handle,second_multi_handle)
-
+ExitApp
 ;Download from both pools simultaneously
 loop {
     check := 0
     check += curl.Async(first_multi_handle)
     check += curl.Async(second_multi_handle)
+
 } until !check
 
 ;test reusing the handles
