@@ -967,7 +967,7 @@ class LibQurl {
 
 		return StrGet(VarOut,"UTF-8")
     }
-    
+
     GetProgress(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         retObj := this._DeepClone(this.easyHandleMap[easy_handle]["callbacks"]["progress"])
