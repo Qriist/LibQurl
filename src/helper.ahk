@@ -89,14 +89,31 @@ _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
             (dataPtr, size, sizeBytes, userdata) =>
             this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
         )
-        
+
         ;creates or increments the tracking key
         ; If !this.writeRefs.Has(CBF)
             this.writeRefs[CBF] := 1
         ; else
             ; this.writeRefs[CBF] += 1
     }
-    ; if IsSet(read)
+    if IsSet(read) {
+        CBF := this.easyHandleMap[easy_handle]["callbacks"]["read"]["CBF"]
+                if IsInteger(CBF){  ;checks if this callback already exists
+            this.writeRefs[CBF] -= 1    ;decrement the reference tracker
+            CallbackFree(CBF)
+            (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
+        }
+
+        this.easyHandleMap[easy_handle]["callbacks"]["read"]["CBF"] := CBF := CallbackCreate(
+            (buf, size, nitems, userdata) =>
+            this._readCallbackFunction(buf, size, nitems, userdata)
+        )
+
+        this.SetOpt("READDATA",easy_handle,easy_handle)
+        this.SetOpt("READFUNCTION",CBF,easy_handle)
+        this.writeRefs[CBF] := 1
+    }
+    
     if IsSet(progress) {
         this.SetOpt("NOPROGRESS", 0, easy_handle)   ;enables progress meter on this handle
         
@@ -149,6 +166,20 @@ _progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDown
     progressMap["expectedBytesUploaded"] := expectedBytesUploaded
     progressMap["currentBytesUploaded"] := currentBytesUploaded
     return 0
+}
+
+_readCallbackFunction(toBuf, size, nitems, easy_handle){
+    bytes := size * nitems
+    fromBuf := Buffer(bytes)
+    bytesRead := this.easyHandleMap[easy_handle]["postFile"].RawRead(fromBuf,bytes)
+    fromBuf.Size := bytesRead   ;auto-truncates the buffer if needed
+
+    DllCall("RtlMoveMemory"
+            ,   "Ptr", toBuf    ;destination
+            ,   "Ptr", fromBuf  ;source
+            ,   "UPtr", bytesRead)  ;length
+
+    return bytesRead
 }
 
 ; Linked-list

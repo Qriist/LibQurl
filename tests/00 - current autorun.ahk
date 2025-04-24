@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "09 - using the multi interface"
+current := "07 - POST from memory"
 
 clean := ["txt","html","json","zst"]
 for k,v in clean

@@ -78,7 +78,7 @@ class LibQurl {
             this.easyHandleMap[easy_handle]["callbacks"][v]["CBF"] := ""
         }
 
-        this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
+        this._setCallbacks(1,1,,1,,easy_handle) ;don't enable debug by default
         ; this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
         
         this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;null until set
@@ -426,6 +426,7 @@ class LibQurl {
 
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
+        this.easyHandleMap[easy_handle]["postFile"] := unset    ;clears last POST. prolly redundant but eh.
 
         switch Type(sourceData) {
             case "String","Integer":
@@ -433,34 +434,43 @@ class LibQurl {
             case "Object","Array","Map":
                 this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(json.dump(sourceData))
             case "File":
-                this.easyHandleMap[easy_handle]["postData"] := Buffer(sourceData.length)  ;create the buffer with the right size
-                sourceData.RawRead(this.easyHandleMap[easy_handle]["postData"]) ;read the file into the buffer
-                this.SetOpt("POSTFIELDSIZE_LARGE",sourceData.length)
+                this._setCallbacks(,,1,,easy_handle)
+                
+                ;generate an independent file handle
+                sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData),"r")
+                sourceData.Seek(0) ;ensures we're before any BOM (ahk quirk)
+                this.easyHandleMap[easy_handle]["postFile"] := sourceData
+
+                ;mandatory steps if the last POST was non-File
+                this.SetOpt("POSTFIELDS",0,easy_handle)
+                this.SetOpt("POSTFIELDSIZE_LARGE",sourceData.length, easy_handle)
+
+                ;File-specific upload settings
+                this.SetOpt("INFILESIZE_LARGE",sourceData.length, easy_handle)
+                this.SetOpt("POST", 1, easy_handle)
             case "Buffer":
                 this.easyHandleMap[easy_handle]["postData"] := sourceData
-                this.SetOpt("POSTFIELDSIZE_LARGE",sourceData.size)
+                this.SetOpt("POSTFIELDSIZE_LARGE",sourceData.size, easy_handle)
             Default:
                 throw ValueError("Unknown object type passed as POST data: " Type(sourceData))
         }
-        this.SetOpt("POSTFIELDS",this.easyHandleMap[easy_handle]["postData"])
 
-        /*
-            "File" currently uses this method:
-            curl -X POST "https://httpbin.org/post" -H "accept: application/json" --data-binary "@07.binary.upload.zip"
-
-            and currently does not use:
-            curl -X POST "https://httpbin.org/post" -H "accept: application/json" -F "file=@07.binary.upload.zip"
-
-            todo - investigate if there's a need to differentiate between them.
-        */
+        if (Type(sourceData) != "File")
+            this.SetOpt("POSTFIELDS",this.easyHandleMap[easy_handle]["postData"])
     }
     ClearPost(easy_handle?){    ;clears any lingering POST data
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this.SetOpt("HTTPPOST",0,easy_handle)
+        this.SetOpt("MIMEPOST",0,easy_handle)
         this.SetOpt("HTTPGET",1,easy_handle)
+
         this.SetOpt("POSTFIELDS",0,easy_handle)
         this.SetOpt("POSTFIELDSIZE",0,easy_handle)
         this.SetOpt("POSTFIELDSIZE_LARGE",0,easy_handle)
+        this.SetOpt("INFILESIZE",-1,easy_handle)    ;-1 = disabled
+        this.SetOpt("INFILESIZE_LARGE",-1,easy_handle)  ;-1 = disabled
+
+        this.easyHandleMap[easy_handle]["postFile"] := unset
         this.easyHandleMap[easy_handle]["postData"] := unset
     }
 
