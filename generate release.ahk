@@ -19,6 +19,10 @@ else
 If bumped.Result = "Cancel"
     ExitApp
 
+;the build script is simply included whole sale
+;this way it can fail the release script if there's a build failure
+#include %A_ScriptDir%\build.ahk
+
 pkgArr["version"] := "v" bumped.Value
 FileOpen(A_ScriptDir "\package.json","w").Write(JSON.Dump(pkgArr))
 
