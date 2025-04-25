@@ -2007,18 +2007,18 @@ class LibQurl {
     
             RawWrite(srcDataPtr, srcDataSize) {
                 ;initial buffer conditions
-                If (this.writeObj["writeType"] = "magic-memory") 
-                    && (this.writeObj["flushThreshold"] > (this._dataSize + srcDataSize))
-                {
-                    Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
-                    this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
-                    DllCall("ntdll\memcpy"
-                        , "Ptr" , this.writeObj["writeTo"].Ptr + Offset
-                        , "Ptr" , srcDataPtr+0
-                        , "Int" , srcDataSize)
-                    this._dataSize := this._dataPtr += srcDataSize
-                    Return srcDataSize
-                } else if (this.writeObj["writeType"] = "magic-memory"){
+                If (this.writeObj["writeType"] = "magic-memory") {
+                    if (this.writeObj["flushThreshold"] > (this._dataSize + srcDataSize)){
+                        Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
+                        this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
+                        DllCall("ntdll\memcpy"
+                            , "Ptr" , this.writeObj["writeTo"].Ptr + Offset
+                            , "Ptr" , srcDataPtr+0
+                            , "Int" , srcDataSize)
+                        this._dataSize := this._dataPtr += srcDataSize
+                        Return srcDataSize
+                    }
+    
                     ;threshold met, perform one-time flush to disk
                     this.writeObj["writeType"] := "magic-file" 
                     this.writeObj["filename"] := this.writeObj["flushFilename"]
@@ -2029,6 +2029,8 @@ class LibQurl {
                     tempObj := FileOpen(this.writeObj["filename"], this.writeObj["accessMode"] := "w", "CP0")
                     tempObj.RawWrite(this.writeObj["writeTo"])
                     this.writeObj["writeTo"] := tempObj
+                    
+                    ;don't return yet because the incoming data still needs to be written to file
                 }
     
                 this._dataSize := this._dataPtr += srcDataSize
