@@ -1011,7 +1011,22 @@ class LibQurl {
             return 0
         return Round((ret["currentBytesUploaded"] / ret["expectedBytesUploaded"]) * 100,2)
     }
+    
+    WriteToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        passedHandleMap := this.easyHandleMap
 
+        ;predetermine the file to dump to if flushThreshold is reached
+        flushFilename := A_Temp "\LibQurl\" A_NowUTC "." easy_handle
+
+        body := this.easyHandleMap[easy_handle]["callbacks"]["body"]
+        body["storageHandle"] := LibQurl.Storage.Magic(flushFilename, flushThreshold, &passedHandleMap, "body", easy_handle)
+
+        writeHandle := body["storageHandle"].writeObj["writeTo"].ptr
+        this.SetOpt("WRITEDATA",writeHandle,easy_handle)
+        this.SetOpt("WRITEFUNCTION",body["CBF"],easy_handle) 
+        Return
+    }
 
 
 
@@ -1031,21 +1046,7 @@ class LibQurl {
     ; 	Return (this._writeTo := "")
     ; }
 
-    WriteToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        passedHandleMap := this.easyHandleMap
 
-        ;predetermine the file to dump to if flushThreshold is reached
-        flushFilename := A_Temp "\LibQurl\" A_NowUTC "." easy_handle
-
-        body := this.easyHandleMap[easy_handle]["callbacks"]["body"]
-        body["storageHandle"] := LibQurl.Storage.Magic(flushFilename, flushThreshold, &passedHandleMap, "body", easy_handle)
-
-        writeHandle := body["storageHandle"].writeObj["writeTo"].ptr
-        this.SetOpt("WRITEDATA",writeHandle,easy_handle)
-        this.SetOpt("WRITEFUNCTION",body["CBF"],easy_handle) 
-        Return
-    }
 
     ; HeaderToNone() {
     ; 	Return (this._headerTo := "")

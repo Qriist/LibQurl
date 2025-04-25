@@ -217,6 +217,21 @@ class LibQurl {
         this.SetOpt("WRITEFUNCTION",this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"],easy_handle) 
         Return
     }
+    WriteToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        passedHandleMap := this.easyHandleMap
+
+        ;predetermine the file to dump to if flushThreshold is reached
+        flushFilename := A_Temp "\LibQurl\" A_NowUTC "." easy_handle
+
+        body := this.easyHandleMap[easy_handle]["callbacks"]["body"]
+        body["storageHandle"] := LibQurl.Storage.Magic(flushFilename, flushThreshold, &passedHandleMap, "body", easy_handle)
+
+        writeHandle := body["storageHandle"].writeObj["writeTo"].ptr
+        this.SetOpt("WRITEDATA",writeHandle,easy_handle)
+        this.SetOpt("WRITEFUNCTION",body["CBF"],easy_handle) 
+        Return
+    }
     ReadyAsync(inEasyHandles?,multi_handle?){    ;Add any number of easy_handles to the multi pool. Accepts integers or object.
         inEasyHandles ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
@@ -1032,25 +1047,12 @@ class LibQurl {
 
 
 
+
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
 
-    WriteToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        passedHandleMap := this.easyHandleMap
 
-        ;predetermine the file to dump to if flushThreshold is reached
-        flushFilename := A_Temp "\LibQurl\" A_NowUTC "." easy_handle
-
-        body := this.easyHandleMap[easy_handle]["callbacks"]["body"]
-        body["storageHandle"] := LibQurl.Storage.Magic(flushFilename, flushThreshold, &passedHandleMap, "body", easy_handle)
-
-        writeHandle := body["storageHandle"].writeObj["writeTo"].ptr
-        this.SetOpt("WRITEDATA",writeHandle,easy_handle)
-        this.SetOpt("WRITEFUNCTION",body["CBF"],easy_handle) 
-        Return
-    }
 
     ; HeaderToNone() {
     ; 	Return (this._headerTo := "")
