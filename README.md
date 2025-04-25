@@ -28,9 +28,8 @@ Much work has been done to abstract away the need for a full understanding of cu
 ## Random to-do list, in no real order
 - add handling for Opts with scaffolding during the batch SetOpts
 - gather and clean the SetOpts after a handle finishes downloading
-- build the read/debug callbacks
+- build the debug callback
 - write an "output to null" callback function for more safely reseting file writes (currently resets to memory output)
-- create callback that reads POSTed file incrementally (currently read entirely into memory before uploading)
 - add the other origin types to GetAllHeaders
   
 <details><summary>Implemented Functions</summary>
