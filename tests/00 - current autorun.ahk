@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "07 - POST from memory"
+current := "20 - download file to magic"
 
 clean := ["txt","html","json","zst"]
 for k,v in clean

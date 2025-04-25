@@ -358,7 +358,12 @@ _performCleanup(easy_handle){
     this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Close()
     ;accessibly attach body to easy_handle output
     bodyObj := this.easyHandleMap[easy_handle]["callbacks"]["body"]
-    lastBody := (bodyObj["writeType"]="memory"?bodyObj["writeTo"]:FileOpen(bodyObj["filename"],"rw"))
+    switch bodyObj["writeType"] {
+        case "memory", "magic-memory":
+            lastBody := bodyObj["writeTo"]
+        case "file", "magic-file":
+            lastBody := FileOpen(bodyObj["filename"],"rw")
+    }
     this.easyHandleMap[easy_handle]["lastBody"] := lastBody
 
     ;accessibly attach headers to easy_handle output
@@ -444,6 +449,16 @@ _configureSSL(requestedSSLprovider := "WolfSSL"){
     this.selectedSSLprovider := captured[1]
 }
 _globalCleanup(){   ;this should be called when shutting down LibQurl
+    ;delete any flushed magic-files
+    If DirExist(A_Temp "\LibQurl") {
+        ;per easy_handle to avoid stepping on other instances of the class
+        for k,v in this.easyHandleMap[0]
+            FileDelete(A_Temp "\LibQurl\*." v)
+
+        ;attempt to clean the temp folder itself, but silently fail if temp files remain
+        try DirDelete(A_Temp "\LibQurl")
+    }
+    
     this._curl_global_cleanup()
 }
 _register(dllPath?,requestedSSLprovider?) {

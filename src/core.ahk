@@ -325,6 +325,19 @@ class LibQurl {
     GetLastBody(returnAsEncoding := "UTF-8",easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         lastBody := this.easyHandleMap[easy_handle]["lastBody"]
+        ; Switch {
+        ;     case ((returnAsEncoding = "Object") && IsObject(lastBody)):
+        ;         return lastBody
+        ;     case ((returnAsEncoding = "File") && (Type(lastBody) = "File")):
+        ;         return lastBody
+        ;     case ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer")):
+        ;         return lastBody
+        ;     default:
+        ;         RegexMatch(returnAsEncoding,"i)(?:Object|File|Buffer|(\S+))",&f) ;filter object types
+        ;         return (Type(lastBody)="File"?(lastBody.seek(0,0)=1?"":"") lastBody.read()
+        ;             :StrGet(lastBody,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
+        ; }
+
         if ((returnAsEncoding = "Object") && IsObject(lastBody))
         || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
         || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
@@ -1023,16 +1036,21 @@ class LibQurl {
     ; 	Return (this._writeTo := "")
     ; }
 
-    ; WriteToMagic(easy_handle?) {
-    ;     if !IsSet(easy_handle)
-    ;         easy_handle := this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-    ;     ;instanstiate Storage.File
-    ;     passedHandleMap := this.easyHandleMap
-    ;     this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := class_libcurl.Storage.File(filename, &passedHandleMap, "body", "w", easy_handle)
-    ;     this.SetOpt("WRITEDATA",this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"],easy_handle)
-    ;     this.SetOpt("WRITEFUNCTION",this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"],easy_handle) 
-    ;     Return
-    ; }
+    WriteToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        passedHandleMap := this.easyHandleMap
+
+        ;predetermine the file to dump to if flushThreshold is reached
+        flushFilename := A_Temp "\LibQurl\" A_NowUTC "." easy_handle
+
+        body := this.easyHandleMap[easy_handle]["callbacks"]["body"]
+        body["storageHandle"] := LibQurl.Storage.Magic(flushFilename, flushThreshold, &passedHandleMap, "body", easy_handle)
+
+        writeHandle := body["storageHandle"].writeObj["writeTo"].ptr
+        this.SetOpt("WRITEDATA",writeHandle,easy_handle)
+        this.SetOpt("WRITEFUNCTION",body["CBF"],easy_handle) 
+        Return
+    }
 
     ; HeaderToNone() {
     ; 	Return (this._headerTo := "")

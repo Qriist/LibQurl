@@ -198,4 +198,75 @@ Class Storage {
             Return this._dataSize
         }
     }
+
+    Class Magic {
+        ; transparently merges MemBuffer and File modes for an ideal solution to temp files
+        __New(flushFilename, flushThreshold := 50*1024**2, &handleMap?, storageCategory?, easy_handle?) {
+            ;object begins life as a MemBuffer clone
+            this._dataPos  := 0
+            this.easyHandleMap := handleMap
+            easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
+
+            this.easy_handle := easy_handle
+            this.storageCategory := storageCategory
+            this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
+            this.writeObj["writeType"] := "magic-memory"
+
+            this.writeObj["flushThreshold"] := flushThreshold
+            this.writeObj["flushFilename"] := flushFilename
+            this.writeObj["writeTo"] := Buffer(0)
+
+            this.writeObj["curlHandle"] := easy_handle
+            this.writeObj["interimPtr"] := 0
+
+            this._dataSize := 0
+            this._dataMax  := flushThreshold
+            this._dataPtr  := 0 ;ObjGetAddress(this._data)
+        }
+
+        Open() {
+            ; Do nothing
+        }
+
+        Close() {
+            If (this.writeObj["writeType"] = "magic-memory") 
+                this.writeObj["writeTo"].Size := this._dataSize ;truncates the buffer to the final output size
+            else ;magic-file
+                this.writeObj["writeTo"].Close()
+        }
+
+        RawWrite(srcDataPtr, srcDataSize) {
+            ;initial buffer conditions
+            If (this.writeObj["writeType"] = "magic-memory") 
+                && (this.writeObj["flushThreshold"] > (this._dataSize + srcDataSize))
+            {
+                Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
+                this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
+                DllCall("ntdll\memcpy"
+                    , "Ptr" , this.writeObj["writeTo"].Ptr + Offset
+                    , "Ptr" , srcDataPtr+0
+                    , "Int" , srcDataSize)
+                this._dataSize := this._dataPtr += srcDataSize
+                Return srcDataSize
+            } else if (this.writeObj["writeType"] = "magic-memory"){
+                ;threshold met, perform one-time flush to disk
+                this.writeObj["writeType"] := "magic-file" 
+                this.writeObj["filename"] := this.writeObj["flushFilename"]
+                this.writeObj["flushFilename"] := unset
+                SplitPath(this.writeObj["filename"], , &fileDirPath)
+                If fileDirPath
+                    DirCreate fileDirPath
+                tempObj := FileOpen(this.writeObj["filename"], this.writeObj["accessMode"] := "w", "CP0")
+                tempObj.RawWrite(this.writeObj["writeTo"])
+                this.writeObj["writeTo"] := tempObj
+            }
+
+            this._dataSize := this._dataPtr += srcDataSize
+            return this.writeObj["writeTo"].RawWrite(srcDataPtr+0, srcDataSize)
+        }
+
+        Length() {
+            Return this._dataSize
+        }
+    }
 }
