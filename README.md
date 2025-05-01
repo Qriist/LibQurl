@@ -23,7 +23,6 @@ Much work has been done to abstract away the need for a full understanding of cu
 - [ ] Wrap Multi
 - [ ] Wrap Multi_Socket
 - [ ] Wrap misc functions that weren't required by any of the above
-- [ ] Externally unify the Easy, Multi, and Multi_Socket calls (if possible!)
 
 ## Random to-do list, in no real order
 - add handling for Opts with scaffolding during the batch SetOpts

@@ -441,11 +441,8 @@ class LibQurl {
     SetPost(sourceData,easy_handle?){    ;properly encapsulates data to be POSTed
         ;you can pass:
         ;   -normal text/numbers
-        ;   -a File object to upload as binary
+        ;   -a File/Buffer object to upload as binary
         ;   -an Object/Array/Map to dump as JSON
-
-        ;NOTE: the file is currently read completely into memory before being sent
-        ;todo - create callback that reads POSTed file incrementally
 
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
@@ -1027,22 +1024,6 @@ class LibQurl {
         return Round((ret["currentBytesUploaded"] / ret["expectedBytesUploaded"]) * 100,2)
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
@@ -1052,6 +1033,7 @@ class LibQurl {
     ; HeaderToNone() {
     ; 	Return (this._headerTo := "")
     ; }
+    
     _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
         this.Opt.CaseSense := "Off"
         optPtr := 0
@@ -1626,26 +1608,26 @@ class LibQurl {
         return StrGet(buf, "UTF-16")
     }
     _formatHeaders(headersObject){
-            ; Pass an array of "Header: value" strings OR a Map of the same.
-            ; Use empty value ("Header: ") to disable internally used header.
-            ; Use semicolon ("Header;") to add the header with no value.
-            switch Type(headersObject) {
-                case "Map","Object":
-                    headersArray := []
-                    for k,v in this._Enum(headersObject){
-                        switch {
-                            case v="":    ;diabled
-                                headersArray.Push(k ": ")
-                            case v=";":   ;empty
-                                headersArray.Push(k ";")
-                            default:
-                                headersArray.Push(k ": " v)
-                        }
-                }
-                case "Array":
-                    headersArray := headersObject
+        ; Pass an array of "Header: value" strings OR a Map of the same.
+        ; Use empty value ("Header: ") to disable internally used header.
+        ; Use semicolon ("Header;") to add the header with no value.
+        switch Type(headersObject) {
+            case "Map","Object":
+                headersArray := []
+                for k,v in this._Enum(headersObject){
+                    switch {
+                        case v="":    ;diabled
+                            headersArray.Push(k ": ")
+                        case v=";":   ;empty
+                            headersArray.Push(k ";")
+                        default:
+                            headersArray.Push(k ": " v)
+                    }
             }
-            return headersArray
+            case "Array":
+                headersArray := headersObject
+        }
+        return headersArray
     }
     _Enum(inObj){   ;simplify rolling over objects
         If (Type(inObj) = "Object")
@@ -2706,7 +2688,6 @@ class LibQurl {
             ,   "Ptr", freefunc
             ,   "Ptr", arg)
     }
-    
     _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html
         static curl_multi_assign := this._getDllAddress(this.curlDLLpath,"curl_multi_assign") 
         return DllCall(curl_multi_assign
@@ -2738,7 +2719,6 @@ class LibQurl {
             ,   "Ptr", running_handles
             ,   "Cdecl Int")
     }
-    
     _curl_multi_timeout(multi_handle,timeout) { ;untested   https://curl.se/libcurl/c/curl_multi_timeout.html
         static curl_multi_timeout := this._getDllAddress(this.curlDLLpath,"curl_multi_timeout") 
         return DllCall(curl_multi_timeout
@@ -2772,7 +2752,6 @@ class LibQurl {
             ,   "Ptr", fd_count
             ,   "Cdecl Int")
     }
-    
     _curl_multi_wakeup(multi_handle) {  ;untested   https://curl.se/libcurl/c/curl_multi_wakeup.html
         static curl_multi_wakeup := this._getDllAddress(this.curlDLLpath,"curl_multi_wakeup") 
         return DllCall(curl_multi_wakeup
@@ -2811,8 +2790,6 @@ class LibQurl {
             ,   "Int", fragsize
             ,   "UInt", flags)
     }
-    
-    
     _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
         static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 
         return DllCall(curl_ws_meta

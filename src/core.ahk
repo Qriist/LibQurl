@@ -446,11 +446,8 @@ class LibQurl {
     SetPost(sourceData,easy_handle?){    ;properly encapsulates data to be POSTed
         ;you can pass:
         ;   -normal text/numbers
-        ;   -a File object to upload as binary
+        ;   -a File/Buffer object to upload as binary
         ;   -an Object/Array/Map to dump as JSON
-
-        ;NOTE: the file is currently read completely into memory before being sent
-        ;todo - create callback that reads POSTed file incrementally
 
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
@@ -1032,22 +1029,6 @@ class LibQurl {
         return Round((ret["currentBytesUploaded"] / ret["expectedBytesUploaded"]) * 100,2)
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
@@ -1057,6 +1038,7 @@ class LibQurl {
     ; HeaderToNone() {
     ; 	Return (this._headerTo := "")
     ; }
+    
 ;#compile:helper
 ;#compile:_struct
 ;#compile:storage

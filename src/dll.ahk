@@ -429,7 +429,6 @@ _curl_mime_data_cb(mime_handle,datasize,readfunc,seekfunc,freefunc,arg) {  ;unte
         ,   "Ptr", freefunc
         ,   "Ptr", arg)
 }
-
 _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html
     static curl_multi_assign := this._getDllAddress(this.curlDLLpath,"curl_multi_assign") 
     return DllCall(curl_multi_assign
@@ -461,7 +460,6 @@ _curl_multi_socket_all(multi_handle, running_handles){    ;untested https://curl
         ,   "Ptr", running_handles
         ,   "Cdecl Int")
 }
-
 _curl_multi_timeout(multi_handle,timeout) { ;untested   https://curl.se/libcurl/c/curl_multi_timeout.html
     static curl_multi_timeout := this._getDllAddress(this.curlDLLpath,"curl_multi_timeout") 
     return DllCall(curl_multi_timeout
@@ -495,7 +493,6 @@ _curl_multi_waitfds(multi, ufds, size, fd_count){    ;untested  https://curl.se/
         ,   "Ptr", fd_count
         ,   "Cdecl Int")
 }
-
 _curl_multi_wakeup(multi_handle) {  ;untested   https://curl.se/libcurl/c/curl_multi_wakeup.html
     static curl_multi_wakeup := this._getDllAddress(this.curlDLLpath,"curl_multi_wakeup") 
     return DllCall(curl_multi_wakeup
@@ -534,8 +531,6 @@ _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;untested   http
         ,   "Int", fragsize
         ,   "UInt", flags)
 }
-
-
 _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
     static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 
     return DllCall(curl_ws_meta
