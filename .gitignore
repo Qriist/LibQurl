@@ -50,4 +50,5 @@ bin/x64-windows
 curl source
 bin/bin.7z
 build
-auth
+
+release.ahk

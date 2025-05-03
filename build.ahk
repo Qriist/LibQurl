@@ -1,4 +1,5 @@
 ﻿#Requires AutoHotkey v2.0
+
 ;update vcpkg
 RunWait("git pull","C:\dev\vcpkg")
 RunWait("C:\dev\vcpkg\bootstrap-vcpkg.bat","C:\dev\vcpkg")
@@ -24,8 +25,8 @@ If RunWait("vcpkg install " libmagic " --x-install-root=build", A_ScriptDir)
 
 
 ;install all built files
-FileMove(A_ScriptDir "\build\x64-windows\curl\libmagic\bin\*.dll",A_ScriptDir "\bin\",1)
-FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\share\misc\*.mgc",A_ScriptDir "\bin\",1)
-FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\bin\*.dll",A_ScriptDir "\bin\",1)
+FileMove(A_ScriptDir "\build\x64-windows\tools\curl\*.dll",A_ScriptDir "\bin",1)
+FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\share\misc\*.mgc",A_ScriptDir "\bin",1)
+FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\bin\*.dll",A_ScriptDir "\bin",1)
 
 

@@ -928,6 +928,20 @@ class LibQurl {
         headersPtr := this._ArrayToSList(headersArray)
 		Return this._curl_mime_headers(mime_part,headersPtr,1)
 	}
+    GetMimeType(sourceData){ ;Analyzes the input's mimetype without any other operations
+        switch Type(sourceData) {
+            case "String","Integer":
+                return this.magic.mime(sourceData)
+            case "Object","Array","Map":
+                return this.magic.mime(json.dump(sourceData))
+            case "File":
+                return this.magic.mime(sourceData)
+            case "Buffer":
+                return this.magic.mime(sourceData)
+            Default:
+                throw ValueError("Unknown object type passed as mime_part content: " Type(sourceData))
+        }
+    }
     StrCompare(str1,str2,maxLength?){
         ;returns 1 on match
         If IsSet(maxLength?)
@@ -1038,7 +1052,7 @@ class LibQurl {
     ; HeaderToNone() {
     ; 	Return (this._headerTo := "")
     ; }
-    
+
 ;#compile:helper
 ;#compile:_struct
 ;#compile:storage
