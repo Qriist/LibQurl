@@ -1,8 +1,10 @@
 ﻿#Requires AutoHotkey v2.0
+#include "*i <Aris\SKAN\RunCMD>" ; SKAN/RunCMD@9a8392d
 
 ;update vcpkg
-RunWait("git pull","C:\dev\vcpkg")
-RunWait("C:\dev\vcpkg\bootstrap-vcpkg.bat","C:\dev\vcpkg")
+RunCMD("git pull","C:\dev\vcpkg")
+If (!RunCMD.ExitCode)    ;updates vcpkg only on a good git pull
+    RunCMD("C:\dev\vcpkg\bootstrap-vcpkg.bat","C:\dev\vcpkg")
 
 ;clean previous install
 try DirDelete(A_ScriptDir "\build\",1)
