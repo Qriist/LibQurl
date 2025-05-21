@@ -660,7 +660,6 @@ class LibQurl {
             list .= indentLevel "[" k "]"
             Switch Type(v) {
                 case "Map","Array","Object":
-                    ; list .= "`n" this.%self%(v,depth-1,indentLevel  "    ")
                     list .= "`n" this.PrintObj(v,depth-1,indentLevel  "    ")
                 case "Buffer","LibQurl.Storage.MemBuffer":
                     list .= " => [BUFFER] "
@@ -797,7 +796,6 @@ class LibQurl {
         this.mimeHandleMap[0].push(mime_handle)
         this.mimeHandleMap[mime_handle] := Map()
         this.mimeHandleMap[mime_handle]["associated_easy_handle"] := easy_handle
-        this.mimeHandleMap[mime_handle]["associated_easy_handle"]
         this.mimeHandleMap[mime_handle]["associated_mime_parts"] := Map()
 
         this.easyHandleMap[easy_handle]["active_mime_handle"] := mime_handle
