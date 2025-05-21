@@ -666,6 +666,8 @@ class LibQurl {
                     list .= " => [BUFFER] "
                 case "File","LibQurl.Storage.File":
                     list .= " => [FILE] "
+                case "File","LibQurl.Storage.Magic":
+                    list .= " => [MAGIC] "
                 Default:
                     list .= " => " v
             }

@@ -8,6 +8,7 @@
 		"url": "https://github.com/Qriist/LibQurl/issues"
 	},
 	"dependencies": {
+		"Chunjee/adash": "^v0.6.0",
 		"G33kDude/cJson": "^2.0.0",
 		"Qriist/libmagic": "github:Qriist/libmagic@^v0.80.0 --main Lib\\libmagic.ahk",
 		"SKAN/RunCMD": "9a8392d"
