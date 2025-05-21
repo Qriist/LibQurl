@@ -597,7 +597,7 @@ class LibQurl {
             this.AddEasyToMulti(v,newMultiHandle)
         }
     }
-    GetInfo(infoOption,curl_handle?){
+    GetInfo(infoOption,easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         if ret := this._curl_easy_getinfo(easy_handle,infoOption,&info := 0)
             this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_getinfo",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
