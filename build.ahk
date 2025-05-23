@@ -2,7 +2,8 @@
 #include "*i <Aris\SKAN\RunCMD>" ; SKAN/RunCMD@9a8392d
 #include <Aris/Chunjee/adash>
 
-test := adash()
+;keeps processes locked to one window
+DllCall("AllocConsole")
 
 ;update vcpkg
 RunCMD("git pull","C:\dev\vcpkg")
