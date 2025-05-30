@@ -1,16 +1,10 @@
 class_libcurl.zip
 scratch.txt
 scratch.ahk
-libssl-1_1.dll
-libssl-1_1-x64.dll
-libcurl.dll
 LibCurl.ahk
-libcurl-x64.dll
 libcurl-x64.def
 LibCurl_Examples_B_Instance.ahk
 LibCurl_Examples_A_Global.ahk
-libcrypto-1_1.dll
-libcrypto-1_1-x64.dll
 example_1_httpget.htm
 curl-8.6.0_1-win64-mingw.zip
 dump.html
