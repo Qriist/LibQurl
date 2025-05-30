@@ -80,7 +80,8 @@ libmagic := "libmagic[" adash.join(libmagicFeatures) "]"
 If RunWait("vcpkg install " libmagic " --x-install-root=build", A_ScriptDir)
     throw("building libmagic failed")
 
-
+;clear old installed dlls now that the builds have completed
+FileDelete(A_ScriptDir "\bin\*.dll")
 
 ;install all built files
 FileMove(A_ScriptDir "\build\x64-windows\tools\curl\*.dll",A_ScriptDir "\bin",1)
