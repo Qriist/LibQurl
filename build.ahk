@@ -64,7 +64,7 @@ curlFeatures := adash.join([
 
 libcurl := "curl[" curlFeatures "]:x64-windows"
 If RunWait("vcpkg install " libcurl " --overlay-ports=overlays\openssl --x-install-root=build --recurse --clean-after-build",A_ScriptDir)
-    throw("building libcurl failed")
+    throw("building libcurl failed") 
 
 
 
