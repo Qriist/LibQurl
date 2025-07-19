@@ -432,9 +432,7 @@ _configureSSL(requestedSSLprovider := "WolfSSL"){
         ,   "OpenSSL"           ; id = 1 (plus any of its forks)
         ,   "Schannel"          ; id = 8
         ,   "GnuTLS"            ; id = 2
-        ,   "SecureTransport"   ; id = 9
         ,   "mbedTLS"           ; id = 11
-        ,   "BearSSL"           ; id = 13
         ,   "RustLS"            ; id = 14
 
         ;insert any new providers ABOVE this line
