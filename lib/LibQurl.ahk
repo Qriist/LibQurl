@@ -1037,7 +1037,25 @@ class LibQurl {
             return 0
         return Round((ret["currentBytesUploaded"] / ret["expectedBytesUploaded"]) * 100,2)
     }
-
+    EnableDebug(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        curl._setCallbacks(,,,,1,easy_handle)
+        this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] := []
+        ; ;prepare the infotype maps
+        ; infotypes := [
+        ;     "text",
+        ;     "header_in",
+        ;     "header_out",
+        ;     "data_in",
+        ;     "data_out",
+        ;     "ssl_data_in",
+        ;     "ssl_data_out"
+        ; ]
+        ; for k,v in ["text","header_in","header_out","data_in","data"]{
+        ;     this.easyHandleMap[easy_handle]["callbacks"]["debug"][v] := Map()
+        ; }
+        
+    }
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
@@ -1165,7 +1183,7 @@ class LibQurl {
             this.SetOpt("NOPROGRESS", 0, easy_handle)   ;enables progress meter on this handle
             
             CBF := this.easyHandleMap[easy_handle]["callbacks"]["progress"]["CBF"]
-                    if IsInteger(CBF){  ;checks if this callback already exists
+            if IsInteger(CBF){  ;checks if this callback already exists
                 this.writeRefs[CBF] -= 1    ;decrement the reference tracker
                 CallbackFree(CBF)
                 (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
@@ -1180,7 +1198,25 @@ class LibQurl {
             this.SetOpt("XFERINFOFUNCTION",CBF,easy_handle)
             this.writeRefs[CBF] := 1
         }
-        ; if IsSet(debug)
+        if IsSet(debug){
+            this.SetOpt("VERBOSE", 1, easy_handle)    ;enables 
+    
+            CBF := this.easyHandleMap[easy_handle]["callbacks"]["debug"]["CBF"]
+            if IsInteger(CBF){  ;checks if this callback already exists
+                this.writeRefs[CBF] -= 1    ;decrement the reference tracker
+                CallbackFree(CBF)
+                (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
+            }
+    
+            this.easyHandleMap[easy_handle]["callbacks"]["debug"]["CBF"] := CBF := CallbackCreate(
+                (easy_handle, infotype, data , size, clientp) =>
+                this._debugCallbackFunction(easy_handle, infotype, data, size, clientp)
+            )
+    
+            this.SetOpt("DEBUGDATA",easy_handle,easy_handle)
+            this.SetOpt("DEBUGFUNCTION",CBF,easy_handle)
+            this.writeRefs[CBF] := 1
+        }
         
         
         ;non-lambda rewrite
@@ -1227,6 +1263,26 @@ class LibQurl {
                 ,   "UPtr", bytesRead)  ;length
     
         return bytesRead
+    }
+    
+    _debugCallbackFunction(easy_handle, infotype, data, size, clientp){
+        pushObj := Map("infotype",infotype)
+        switch infotype {
+            case 0,1,2,3:
+                pushObj["data"] := StrGet(data,"UTF-8")
+            Default: 
+                pushObj["data"] := data
+        }
+    
+        this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"].push(pushObj)
+        ; outObj := []
+        ; outobj.Push(easy_handle)
+        ; outobj.Push(infotype)
+        ; outobj.Push(StrGet(data,"UTF-8"))
+        ; outobj.Push(size)
+        ; outobj.Push(clientp)
+        ; msgbox this.PrintObj(this.easyHandleMap[easy_handle])
+        return 0
     }
     
     ; Linked-list

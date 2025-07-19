@@ -118,7 +118,7 @@ _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
         this.SetOpt("NOPROGRESS", 0, easy_handle)   ;enables progress meter on this handle
         
         CBF := this.easyHandleMap[easy_handle]["callbacks"]["progress"]["CBF"]
-                if IsInteger(CBF){  ;checks if this callback already exists
+        if IsInteger(CBF){  ;checks if this callback already exists
             this.writeRefs[CBF] -= 1    ;decrement the reference tracker
             CallbackFree(CBF)
             (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
@@ -133,7 +133,25 @@ _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
         this.SetOpt("XFERINFOFUNCTION",CBF,easy_handle)
         this.writeRefs[CBF] := 1
     }
-    ; if IsSet(debug)
+    if IsSet(debug){
+        this.SetOpt("VERBOSE", 1, easy_handle)    ;enables 
+
+        CBF := this.easyHandleMap[easy_handle]["callbacks"]["debug"]["CBF"]
+        if IsInteger(CBF){  ;checks if this callback already exists
+            this.writeRefs[CBF] -= 1    ;decrement the reference tracker
+            CallbackFree(CBF)
+            (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
+        }
+
+        this.easyHandleMap[easy_handle]["callbacks"]["debug"]["CBF"] := CBF := CallbackCreate(
+            (easy_handle, infotype, data , size, clientp) =>
+            this._debugCallbackFunction(easy_handle, infotype, data, size, clientp)
+        )
+
+        this.SetOpt("DEBUGDATA",easy_handle,easy_handle)
+        this.SetOpt("DEBUGFUNCTION",CBF,easy_handle)
+        this.writeRefs[CBF] := 1
+    }
     
     
     ;non-lambda rewrite
@@ -180,6 +198,26 @@ _readCallbackFunction(toBuf, size, nitems, easy_handle){
             ,   "UPtr", bytesRead)  ;length
 
     return bytesRead
+}
+
+_debugCallbackFunction(easy_handle, infotype, data, size, clientp){
+    pushObj := Map("infotype",infotype)
+    switch infotype {
+        case 0,1,2,3:
+            pushObj["data"] := StrGet(data,"UTF-8")
+        Default: 
+            pushObj["data"] := data
+    }
+
+    this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"].push(pushObj)
+    ; outObj := []
+    ; outobj.Push(easy_handle)
+    ; outobj.Push(infotype)
+    ; outobj.Push(StrGet(data,"UTF-8"))
+    ; outobj.Push(size)
+    ; outobj.Push(clientp)
+    ; msgbox this.PrintObj(this.easyHandleMap[easy_handle])
+    return 0
 }
 
 ; Linked-list

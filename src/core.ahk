@@ -1042,7 +1042,25 @@ class LibQurl {
             return 0
         return Round((ret["currentBytesUploaded"] / ret["expectedBytesUploaded"]) * 100,2)
     }
-
+    EnableDebug(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        curl._setCallbacks(,,,,1,easy_handle)
+        this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] := []
+        ; ;prepare the infotype maps
+        ; infotypes := [
+        ;     "text",
+        ;     "header_in",
+        ;     "header_out",
+        ;     "data_in",
+        ;     "data_out",
+        ;     "ssl_data_in",
+        ;     "ssl_data_out"
+        ; ]
+        ; for k,v in ["text","header_in","header_out","data_in","data"]{
+        ;     this.easyHandleMap[easy_handle]["callbacks"]["debug"][v] := Map()
+        ; }
+        
+    }
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }

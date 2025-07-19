@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "01 - register the dll"
+current := "21 - use debug info"
 
 clean := ["txt","html","json","zst"]
 for k,v in clean
