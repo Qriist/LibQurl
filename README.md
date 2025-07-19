@@ -51,6 +51,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_reset               |                              |
 | &check;    | curl_easy_send                |                              |
 | &check;    | curl_easy_setopt              |                              |
+|            | curl_easy_ssls_import         | missing from the curl docs   |
 | &check;    | curl_easy_strerror            |                              |
 | &check;    | curl_easy_upkeep              |                              |
 | &check;    | curl_free                     |                              |
@@ -60,6 +61,7 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_global_init_mem          |                              |
 | &check;    | curl_global_sslset            |                              |
 | &check;    | curl_mime_addpart             |                              |
+|            | curl_global_trace             |                              |
 | &check;    | curl_mime_data                |                              |
 |            | curl_mime_data_cb             |                              |
 | &check;    | curl_mime_encoder             |                              |
@@ -75,6 +77,7 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_multi_assign             |                              |
 | &check;    | curl_multi_cleanup            |                              |
 |            | curl_multi_fdset              |                              |
+|            | curl_multi_get_handles        |                              |
 | &check;    | curl_multi_info_read          |                              |
 | &check;    | curl_multi_init               |                              |
 | &check;    | curl_multi_perform            | called with .Async()         |
@@ -85,6 +88,7 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_multi_timeout            |                              |
 |            | curl_multi_poll               |                              |
 |            | curl_multi_wait               |                              |
+|            | curl_multi_waitfds            |                              |
 |            | curl_multi_wakeup             |                              |
 |            | curl_pushheader_byname        |                              |
 |            | curl_pushheader_bynum         |                              |
@@ -94,6 +98,8 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_share_strerror           |                              |
 | &check;    | curl_slist_append             |                              |
 | &check;    | curl_slist_free_all           |                              |
+| &check;    | curl_strequal                 | called with .StrCompare()    |
+| &check;    | curl_strnequal                | called with .StrCompare()    |
 | &check;    | curl_url                      |                              |
 | &check;    | curl_url_cleanup              |                              |
 | &check;    | curl_url_dup                  |                              |
@@ -111,6 +117,10 @@ https://curl.se/libcurl/c/allfuncs.html
 |:----------:|:------------------------------|:-----------------------------|
 | &#10060;   | curl_easy_escape<br>curl_easy_unescape<br>curl_escape<br>curl_unescape | use the URL API  |
 | &#10060;   | curl_formadd<br>curl_formfree<br>curl_formget | use the mime API |
+| &#10060;   | curl_getenv | use AHK's EnvGet() |
+| &#10060;   | curl_multi_socket<br>curl_multi_socket_all | use curl_multi_socket_action |
+| &#10060;   | curl_mprintf<br>curl_mvaprintf<br>curl_mvfprintf<br>curl_mvprintf<br>curl_mvsnprintf | use AHK's own text maniupulation |
+
 </summary>
 </details>
 

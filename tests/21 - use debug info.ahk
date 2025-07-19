@@ -2,11 +2,11 @@
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
-curl := LibQurl(A_WorkingDir "\bin\libcurl.dll","OpenSSL")
+curl := LibQurl(A_WorkingDir "\bin\libcurl.dll","GnuTLS")
 easy_handle := curl.EasyInit()
 curl.EnableDebug(easy_handle)
 url := "https://collectionapi.metmuseum.org/"
 ; url := "https://google.com"
 curl.SetOpt("URL",url,easy_handle)
 try curl.Sync(easy_handle)
-MsgBox A_Clipboard := curl.PrintObj(curl.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"])
+MsgBox A_Clipboard := curl.PrintObj(curl.caughtErrors) "`n" strget(curl.easyHandleMap[easy_handle]["error buffer"])
