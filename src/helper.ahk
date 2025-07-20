@@ -210,13 +210,6 @@ _debugCallbackFunction(easy_handle, infotype, data, size, clientp){
     }
 
     this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"].push(pushObj)
-    ; outObj := []
-    ; outobj.Push(easy_handle)
-    ; outobj.Push(infotype)
-    ; outobj.Push(StrGet(data,"UTF-8"))
-    ; outobj.Push(size)
-    ; outobj.Push(clientp)
-    ; msgbox this.PrintObj(this.easyHandleMap[easy_handle])
     return 0
 }
 
@@ -403,7 +396,7 @@ _performCleanup(easy_handle){
             lastBody := FileOpen(bodyObj["filename"],"rw")
     }
     this.easyHandleMap[easy_handle]["lastBody"] := lastBody
-
+    
     ;accessibly attach headers to easy_handle output
     headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
     lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
@@ -471,7 +464,7 @@ _configureSSL(requestedSSLprovider := "WolfSSL"){
         ,   "Schannel"          ; id = 8
         ,   "GnuTLS"            ; id = 2
         ,   "mbedTLS"           ; id = 11
-        ,   "RustLS"            ; id = 14
+        ; ,   "RustLS"            ; id = 14
 
         ;insert any new providers ABOVE this line
         ,   ""]                 ;fallback on whatever curl has

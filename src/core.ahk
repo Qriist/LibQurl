@@ -1044,7 +1044,7 @@ class LibQurl {
     }
     EnableDebug(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        curl._setCallbacks(,,,,1,easy_handle)
+        this._setCallbacks(,,,,1,easy_handle)
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] := []
         ; ;prepare the infotype maps
         ; infotypes := [
@@ -1060,6 +1060,24 @@ class LibQurl {
         ;     this.easyHandleMap[easy_handle]["callbacks"]["debug"][v] := Map()
         ; }
         
+    }
+    PollDebug(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        static infotypes := Map(
+            0,"text",
+            1,"header_in",
+            2,"header_out",
+            3,"data_in",
+            4,"data_out",
+            5,"ssl_data_in",
+            6,"ssl_data_out"
+        )
+        logArr := this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"]
+        out := ""
+        For k,v in logArr {
+            out .= a_index " [ " infotypes[v["infotype"]] " ]: " v["data"]
+        }
+        return out
     }
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")

@@ -1039,7 +1039,7 @@ class LibQurl {
     }
     EnableDebug(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        curl._setCallbacks(,,,,1,easy_handle)
+        this._setCallbacks(,,,,1,easy_handle)
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] := []
         ; ;prepare the infotype maps
         ; infotypes := [
@@ -1055,6 +1055,24 @@ class LibQurl {
         ;     this.easyHandleMap[easy_handle]["callbacks"]["debug"][v] := Map()
         ; }
         
+    }
+    PollDebug(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        static infotypes := Map(
+            0,"text",
+            1,"header_in",
+            2,"header_out",
+            3,"data_in",
+            4,"data_out",
+            5,"ssl_data_in",
+            6,"ssl_data_out"
+        )
+        logArr := this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"]
+        out := ""
+        For k,v in logArr {
+            out .= a_index " [ " infotypes[v["infotype"]] " ]: " v["data"]
+        }
+        return out
     }
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
@@ -1275,13 +1293,6 @@ class LibQurl {
         }
     
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"].push(pushObj)
-        ; outObj := []
-        ; outobj.Push(easy_handle)
-        ; outobj.Push(infotype)
-        ; outobj.Push(StrGet(data,"UTF-8"))
-        ; outobj.Push(size)
-        ; outobj.Push(clientp)
-        ; msgbox this.PrintObj(this.easyHandleMap[easy_handle])
         return 0
     }
     
@@ -1468,7 +1479,7 @@ class LibQurl {
                 lastBody := FileOpen(bodyObj["filename"],"rw")
         }
         this.easyHandleMap[easy_handle]["lastBody"] := lastBody
-    
+        
         ;accessibly attach headers to easy_handle output
         headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
         lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
@@ -1536,7 +1547,7 @@ class LibQurl {
             ,   "Schannel"          ; id = 8
             ,   "GnuTLS"            ; id = 2
             ,   "mbedTLS"           ; id = 11
-            ,   "RustLS"            ; id = 14
+            ; ,   "RustLS"            ; id = 14
     
             ;insert any new providers ABOVE this line
             ,   ""]                 ;fallback on whatever curl has
