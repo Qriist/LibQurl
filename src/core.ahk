@@ -1046,20 +1046,6 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this._setCallbacks(,,,,1,easy_handle)
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] := []
-        ; ;prepare the infotype maps
-        ; infotypes := [
-        ;     "text",
-        ;     "header_in",
-        ;     "header_out",
-        ;     "data_in",
-        ;     "data_out",
-        ;     "ssl_data_in",
-        ;     "ssl_data_out"
-        ; ]
-        ; for k,v in ["text","header_in","header_out","data_in","data"]{
-        ;     this.easyHandleMap[easy_handle]["callbacks"]["debug"][v] := Map()
-        ; }
-        
     }
     PollDebug(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
@@ -1074,10 +1060,42 @@ class LibQurl {
         )
         logArr := this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"]
         out := ""
+        PadLen := StrLen(logArr.length)
         For k,v in logArr {
-            out .= a_index " [ " infotypes[v["infotype"]] " ]: " v["data"]
+            if v["infotype"] < 3{
+                index := Format("{:0" PadLen "}",a_index)
+                info := Format("{:-13}", infotypes[v["infotype"]])
+                out .= index ")  " v["timestamp"] "  [" info "]:  " v["data"]
+            }
         }
         return out
+    }
+    Timestamp(){
+        ; https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
+        static GetSystemTimePreciseAsFileTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", "kernel32", "Ptr")
+            , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")
+        
+        ft := Buffer(8, 0)
+        DllCall(GetSystemTimePreciseAsFileTime, "Ptr", ft, "Cdecl")
+
+        ; Convert FILETIME (100ns intervals since 1601-01-01) to SYSTEMTIME (UTC)
+        ; SystemTimeFromFileTime is available via Kernel32
+        static FileTimeToSystemTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", "kernel32", "Ptr")
+            , "AStr", "FileTimeToSystemTime", "Ptr")
+        
+        st := Buffer(16)  ; SYSTEMTIME is 16 WORDs = 16 * 2 = 32 bytes
+        DllCall(FileTimeToSystemTime, "Ptr", ft, "Ptr", st)
+
+        ; Extract and format SYSTEMTIME fields
+        year   := NumGet(st,  0, "UShort")
+        month  := NumGet(st,  2, "UShort")
+        day    := NumGet(st,  6, "UShort")
+        hour   := NumGet(st,  8, "UShort")
+        minute := NumGet(st, 10, "UShort")
+        second := NumGet(st, 12, "UShort")
+        ms     := NumGet(st, 14, "UShort")
+    
+        return Format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}", year, month, day, hour, minute, second, ms)
     }
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")

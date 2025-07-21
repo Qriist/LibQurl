@@ -201,7 +201,7 @@ _readCallbackFunction(toBuf, size, nitems, easy_handle){
 }
 
 _debugCallbackFunction(easy_handle, infotype, data, size, clientp){
-    pushObj := Map("infotype",infotype)
+    pushObj := Map("infotype",infotype,"timestamp",this.Timestamp())
     switch infotype {
         case 0,1,2,3:
             pushObj["data"] := StrGet(data,"UTF-8")
