@@ -51,7 +51,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_reset               |                              |
 | &check;    | curl_easy_send                |                              |
 | &check;    | curl_easy_setopt              |                              |
-|            | curl_easy_ssls_import         | missing from the curl docs   |
+|            | curl_easy_ssls_export         | missing from the curl docs   |
 | &check;    | curl_easy_strerror            |                              |
 | &check;    | curl_easy_upkeep              |                              |
 | &check;    | curl_free                     |                              |
