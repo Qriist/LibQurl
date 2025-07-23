@@ -8,7 +8,7 @@ curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
 easy_handle := curl.EasyInit()
 curl.EnableDebug(easy_handle)
 url := "https://collectionapi.metmuseum.org/"
-url := "https://google.com"
+; url := "https://google.com"
 curl.SetOpt("URL",url,easy_handle)
 try curl.Sync(easy_handle)
 out := curl.PollDebug(easy_handle)

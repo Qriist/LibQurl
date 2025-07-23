@@ -2764,6 +2764,25 @@ class LibQurl {
     
     ; all dll calls below this line haven't been fully tested
     
+    _curl_easy_ssls_export(easy_handle,export_fn,userptr){  ;untested   https://curl.se/libcurl/c/curl_easy_ssls_export.html
+        static curl_easy_ssls_export := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_export") 
+        return DllCall(curl_easy_ssls_export
+            ,   "Ptr", easy_handle
+            ,   "Ptr", export_fn
+            ,   "Ptr", userptr)
+    }
+    
+    _curl_easy_ssls_import(easy_handle, session_key, shmac, shmac_len, sdata, sdata_len){    ;untested  https://curl.se/libcurl/c/curl_easy_ssls_import.html
+        static curl_easy_ssls_import := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_import") 
+        return DllCall(curl_easy_ssls_import
+            ,   "Ptr", easy_handle
+            ,   "AStr", session_key
+            ,   "Ptr", shmac
+            ,   "UPtr", shmac_len
+            ,   "Ptr", sdata
+            ,   "UPtr", sdata_len)
+    }
+    
     ; _curl_global_init_mem(flags,curl_malloc_callback,curl_free_callback,curl_realloc_callback,curl_strdup_callback,curl_calloc_callback) {   ;untested   https://curl.se/libcurl/c/curl_global_init_mem.html
         ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
         ; return DllCall(curl_global_init_mem
