@@ -48,6 +48,15 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
     }
     ; msgbox this.PrintObj(this.opt)
 }
+_mimePartCleanup(mime_part){
+        mime_handle := this.mimePartMap[mime_part]["associated_mime_handle"]
+        
+        if this.mimePartMap[mime_part].has("associated_mime_parts")
+            for k,v in this.mimePartMap[mime_part]["associated_mime_parts"]
+                this._mimePartCleanup(k)
+
+        this.mimePartMap.Delete(mime_part)
+}
 
 _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
     easy_handle ??= this.easyHandleMap[0][1]   ;defaults to the first created easy_handle

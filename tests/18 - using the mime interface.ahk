@@ -54,8 +54,8 @@ curl.Sync()
 
 FileOpen(A_ScriptDir "\18.resultsB.txt","w").Write(curl.GetLastBody())
 
-;Only pass root mime_handles, mime_parts get culled automatically
-curl.MimeCleanup(mime2)
+;mime_handles that were attached as parts are safely ignored
+curl.MimeCleanup(mime_handle)
 
-;do not pass mime_handles that were attached as parts
-; curl.MimeCleanup(mime_handle)
+;Only root mime_handles are considered, mime_parts get culled automatically
+curl.MimeCleanup(mime2)

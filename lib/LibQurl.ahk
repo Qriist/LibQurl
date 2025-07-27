@@ -816,6 +816,7 @@ class LibQurl {
 
         this.easyHandleMap[easy_handle]["active_mime_handle"] := mime_handle
         this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := 1
+        this.mimeHandleMap[mime_handle]["nested"] := 0
         this.SetOpt("MIMEPOST",mime_handle,easy_handle)
 
         return mime_handle
@@ -824,28 +825,36 @@ class LibQurl {
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
 
         mime_part := this._curl_mime_addpart(mime_handle)
+        this.mimePartMap[mime_part] := Map()
+        this.mimePartMap[mime_part]["associated_mime_handle"] := mime_handle
+
         this.mimeHandleMap[mime_handle]["associated_mime_parts"][mime_part] := 1
+
         return mime_part
     }
     MimePartName(mime_part,partName){
         this._curl_mime_name(mime_part,partName)
+        this.mimePartMap[mime_part]["name"] := partName
     }
     MimePartData(mime_part,partContent){
         switch Type(partContent) {
             case "String","Integer":
-                utf8buf := this._StrBuf(partContent,"UTF-8")
-                this._curl_mime_data(mime_part,utf8buf,-1)
+                buf := this._StrBuf(partContent,"UTF-8")
+                this._curl_mime_data(mime_part,buf,-1)
             case "Object","Array","Map":
                 buf := this._StrBuf(json.dump(partContent),"UTF-8")
                 this._curl_mime_data(mime_part,buf,buf.size-1)
             case "File":
                 filePath := this._GetFilePathFromFileObject(partContent)
                 this._curl_mime_filedata(mime_part,filePath)
+                this.mimePartMap[mime_part]["content"] := partContent
             case "Buffer":
-                this._curl_mime_data(mime_part,partContent,partContent.size)
+                buf := partContent
+                this._curl_mime_data(mime_part,buf,partContent.size)
             Default:
                 throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
         }
+        this.mimePartMap[mime_part]["content"] ??= buf
     }
     MimePartType(mime_part,partContent?,override?){
         If IsSet(override?)
@@ -867,6 +876,8 @@ class LibQurl {
             Default:
                 throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
         }
+
+        this.mimePartMap[mime_part]["type"] := mime_type
     }
     AttachMimePart(partName,partContent,mime_handle?){
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
@@ -882,13 +893,23 @@ class LibQurl {
     }
     MimeCleanup(mime_handle?){
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
-        
+
+        ;prevent cleaning up nested mime_handles
+        if this.mimeHandleMap[mime_handle]["nested"]
+            return
+
         ;break easy_handle association
         easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
         if (this.easyHandleMap[easy_handle]["active_mime_handle"] = mime_handle){
             this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;don't want to auto-revert for the user
         }
         this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := unset
+        
+        ;cull tracked mime_part info
+        for k,v in this.mimeHandleMap[mime_handle]["associated_mime_parts"] {
+            ; this.mimePartMap.Delete(k)
+            this._mimePartCleanup(k)
+        }
         
         ;stop tracking the mime_handle
         this.mimeHandleMap.Delete(mime_handle)
@@ -926,15 +947,9 @@ class LibQurl {
         mime_part := this.AttachMimePart(partName,"",mime_handle)
         ret := this._curl_mime_subparts(mime_part,mime_to_embed)
 
-        ;stop tracking the mime_handle
-        
-        this.mimeHandleMap.Delete(mime_to_embed)
-        for k,v in this.mimeHandleMap[0] {
-            if (v = mime_to_embed){
-                this.mimeHandleMap[0].RemoveAt(a_index)
-                break
-            }
-        }
+        ;tag the tracked mime_handle as nested
+        this.mimeHandleMap[mime_to_embed]["nested"] := mime_handle
+        this.mimePartMap[mime_part]["associated_mime_parts"] := this.mimeHandleMap[mime_to_embed]["associated_mime_parts"]
 
         return mime_part
     }
@@ -1199,6 +1214,15 @@ class LibQurl {
                 this.OptById[o["id"]] := o["name"]
         }
         ; msgbox this.PrintObj(this.opt)
+    }
+    _mimePartCleanup(mime_part){
+            mime_handle := this.mimePartMap[mime_part]["associated_mime_handle"]
+            
+            if this.mimePartMap[mime_part].has("associated_mime_parts")
+                for k,v in this.mimePartMap[mime_part]["associated_mime_parts"]
+                    this._mimePartCleanup(k)
+    
+            this.mimePartMap.Delete(mime_part)
     }
     
     _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
