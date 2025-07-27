@@ -826,7 +826,6 @@ class LibQurl {
             Default:
                 throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
         }
-        
     }
     MimePartType(mime_part,partContent?,override?){
         If IsSet(override?)
@@ -1351,6 +1350,8 @@ class LibQurl {
         ; msgbox "hit`n" easy_handle "`n" session_key "`n" shmac  "`n" shmac_len "`n" sdata "`n" sdata_le "`n" valid_until "`n" ietf_tls_id "`n" alpn "`n" earlydata_max
         return 0
     }
+    
+    
     
     
     ; Linked-list
@@ -2576,6 +2577,18 @@ class LibQurl {
             ,   "Ptr", data
             ,   "Int", datasize)
     }
+    _curl_mime_data_cb(mime_handle,datasize,readfunc,seekfunc,freefunc,arg) {  ;https://curl.se/libcurl/c/curl_mime_data_cb.html
+        ;Wrapping is not worth the work due to multiple implementation factors.
+        ;If you really need use a callback due to memory constraints then upload from a File.
+        static curl_mime_data_cb := this._getDllAddress(this.curlDLLpath,"curl_mime_data_cb") 
+        return DllCall(curl_mime_data_cb
+            ,   "Int", mime_handle
+            ,   "Int", datasize
+            ,   "Ptr", readfunc
+            ,   "Ptr", seekfunc
+            ,   "Ptr", freefunc
+            ,   "Ptr", arg)
+    }
     _curl_mime_encoder(mime_part,encoding) {  ;https://curl.se/libcurl/c/curl_mime_encoder.html
         static curl_mime_encoder := this._getDllAddress(this.curlDLLpath,"curl_mime_encoder") 
         return DllCall(curl_mime_encoder
@@ -2832,16 +2845,6 @@ class LibQurl {
         static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 
         return DllCall(curl_global_trace
             ,   "AStr", config)
-    }
-    _curl_mime_data_cb(mime_handle,datasize,readfunc,seekfunc,freefunc,arg) {  ;untested   https://curl.se/libcurl/c/curl_mime_data_cb.html
-        static curl_mime_data_cb := this._getDllAddress(this.curlDLLpath,"curl_mime_data_cb") 
-        return DllCall(curl_mime_data_cb
-            ,   "Int", mime_handle
-            ,   "Int", datasize
-            ,   "Ptr", readfunc
-            ,   "Ptr", seekfunc
-            ,   "Ptr", freefunc
-            ,   "Ptr", arg)
     }
     _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html
         static curl_multi_assign := this._getDllAddress(this.curlDLLpath,"curl_multi_assign") 
