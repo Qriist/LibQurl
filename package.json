@@ -10,6 +10,7 @@
 	"dependencies": {
 		"Chunjee/adash": "^v0.6.0",
 		"G33kDude/cJson": "^2.0.0",
+		"Qriist/Null": "github:Qriist/Null@^v1.0.0 --main Null.ahk",
 		"Qriist/libmagic": "github:Qriist/libmagic@^v0.80.0 --main Lib\\libmagic.ahk",
 		"SKAN/RunCMD": "9a8392d"
 	},

@@ -2,6 +2,7 @@
 #Include "*i <Aris\G33kDude\cJson>"
 #include "*i <Aris\SKAN\RunCMD>" ; SKAN/RunCMD@9a8392d
 #include "*i <Aris\Qriist\libmagic>" ; github:Qriist/libmagic@v0.80.0 --main Lib\libmagic.ahk
+#include "*i <Aris\Qriist\Null>" ; github:Qriist/Null@v1.0.0 --main Null.ahk
 class LibQurl {
     ;core functionality
     __New(dllPath?,requestedSSLprovider?) {
@@ -120,6 +121,13 @@ class LibQurl {
             this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_setopt",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         return ret
     }
+    GetOpt(option,easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        
+        if this.easyHandleMap[easy_handle]["options"].has(option)
+            return this.easyHandleMap[easy_handle]["options"][option]
+        return Null()
+    }
     MultiSetOpt(option,parameter,multi_handle?){
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
@@ -134,6 +142,14 @@ class LibQurl {
         this.multiHandleMap[multi_handle]["options"][option] := parameter
         return this._curl_multi_setopt(multi_handle,option,parameter)
     }
+    MultiGetOpt(option,multi_handle?){
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+        
+        if this.multiHandleMap[multi_handle]["options"].has(option)
+            return this.multiHandleMap[multi_handle]["options"][option]
+        return Null()
+    }
+
     SetOpts(optionMap,&optErrMap?,easy_handle?){  ;for setting multiple options at once
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         optErrMap := Map()
@@ -782,6 +798,13 @@ class LibQurl {
         if ret := this._curl_share_setopt(share_handle,option,parameter)
             this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_setopt",ret,this.shareHandleMap[share_handle]["error buffer"],share_handle)
         return ret
+    }
+    ShareGetOpt(option,share_handle?){
+        share_handle := this.shareHandleMap[0][1]   ;defaults to the first created share_handle
+
+        if this.shareHandleMap[share_handle]["options"].has(option)
+            return this.shareHandleMap[share_handle]["options"][option]
+        Return Null()
     }
 
 
