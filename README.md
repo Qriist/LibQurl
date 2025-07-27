@@ -50,13 +50,13 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_reset               |                              |
 | &check;    | curl_easy_send                |                              |
 | &check;    | curl_easy_setopt              |                              |
-|            | curl_easy_ssls_export         |                              |
-|            | curl_easy_ssls_import         |                              |
+|            | curl_easy_ssls_export         | waiting on upstream bug fixes|
+|            | curl_easy_ssls_import         | waiting on upstream bug fixes|
 | &check;    | curl_easy_strerror            |                              |
 | &check;    | curl_easy_upkeep              |                              |
 | &check;    | curl_free                     |                              |
 | &check;    | curl_getdate                  |                              |
-|            | curl_global_cleanup           |                              |
+| &check;    | curl_global_cleanup           |                              |
 | &check;    | curl_global_init              | only default mode for now    |
 |            | curl_global_init_mem          |                              |
 | &check;    | curl_global_sslset            |                              |

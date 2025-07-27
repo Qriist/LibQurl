@@ -336,6 +336,14 @@ class LibQurl {
         } until (got = 0)   ;break on no data received
         return retBuffer
     }
+    WebSocketSend(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+    }
+    WebSocketReceive(){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+    }
 
     GetLastHeaders(returnAsEncoding := "UTF-8",easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
@@ -351,23 +359,12 @@ class LibQurl {
     GetLastBody(returnAsEncoding := "UTF-8",easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         lastBody := this.easyHandleMap[easy_handle]["lastBody"]
-        ; Switch {
-        ;     case ((returnAsEncoding = "Object") && IsObject(lastBody)):
-        ;         return lastBody
-        ;     case ((returnAsEncoding = "File") && (Type(lastBody) = "File")):
-        ;         return lastBody
-        ;     case ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer")):
-        ;         return lastBody
-        ;     default:
-        ;         RegexMatch(returnAsEncoding,"i)(?:Object|File|Buffer|(\S+))",&f) ;filter object types
-        ;         return (Type(lastBody)="File"?(lastBody.seek(0,0)=1?"":"") lastBody.read()
-        ;             :StrGet(lastBody,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
-        ; }
 
         if ((returnAsEncoding = "Object") && IsObject(lastBody))
         || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
         || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
             return lastBody
+        
         RegexMatch(returnAsEncoding,"i)(?:Object|File|Buffer|(\S+))",&f) ;filter object types
         return (Type(lastBody)="File"?(lastBody.seek(0,0)=1?"":"") lastBody.read()
             :StrGet(lastBody,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
