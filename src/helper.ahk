@@ -52,9 +52,6 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
 _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
     easy_handle ??= this.easyHandleMap[0][1]   ;defaults to the first created easy_handle
 
-    ;todo - read/progress/debug callbacks
-
-    
     if IsSet(body){
         CBF := this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"]
         if IsInteger(CBF){  ;checks if this callback already exists
@@ -212,6 +209,16 @@ _debugCallbackFunction(easy_handle, infotype, data, size, clientp){
     this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"].push(pushObj)
     return 0
 }
+
+_SSLExportCallbackFunction(easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max){
+; _SSLExportCallbackFunction(params*){
+    msgbox "hello from inside the callback"
+
+    
+    ; msgbox "hit`n" easy_handle "`n" session_key "`n" shmac  "`n" shmac_len "`n" sdata "`n" sdata_le "`n" valid_until "`n" ietf_tls_id "`n" alpn "`n" earlydata_max
+    return 0
+}
+
 
 ; Linked-list
 ; ===========

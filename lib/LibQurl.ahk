@@ -730,6 +730,7 @@ class LibQurl {
         this.shareHandleMap[share_handle] := Map()
         this.shareHandleMap[share_handle]["options"] := Map()
         this.shareHandleMap[share_handle]["associatedEasyHandles"] := Map()
+        this.shareHandleMap[share_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE)
         return share_handle
     }
     AddEasyToShare(easy_handle?,share_handle?){
@@ -776,7 +777,7 @@ class LibQurl {
         }
         
         parameter := this.constants["curl_lock"][parameter]
-        ; this.shareHandleMap[share_handle]["options"][option] := parameter
+        this.shareHandleMap[share_handle]["options"][option] := parameter
 
         if ret := this._curl_share_setopt(share_handle,option,parameter)
             this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_setopt",ret,this.shareHandleMap[share_handle]["error buffer"],share_handle)
@@ -1092,6 +1093,37 @@ class LibQurl {
     
         return Format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}", year, month, day, hour, minute, second, ms)
     }
+    /*  ssl import/export seems to be bugged in libcurl, shelving for now
+    ExportSSLs(easy_handle?,share_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
+        
+        ;open the session share so the export can happen
+        this.ShareSetOpt("SHARE","SSL_SESSION",share_handle)
+        this.SetOpt("SHARE",share_handle,easy_handle)
+
+        ;create the callback to the export function
+        this.shareHandleMap[share_handle]["callback"] := CBF := CallbackCreate(
+            (easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max) =>
+            this._SSLExportCallbackFunction(easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max)
+        )
+        CBF := CallbackCreate(this._SSLExportCallbackFunction.bind(this))
+        ; this.shareHandleMap[share_handle]["callback"] := CBF
+        if ret := this._curl_easy_ssls_export(easy_handle,CBF,share_handle)
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_ssls_export",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+        
+        ;callback doesn't need to be stored as this is a one-shot operation
+        CallbackFree(CBF)
+        this.shareHandleMap[share_handle]["callback"] := unset
+        
+        return ret
+    }
+    ImportSSLs(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+    }
+    */
+
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")
     ; }
@@ -1153,9 +1185,6 @@ class LibQurl {
     _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1]   ;defaults to the first created easy_handle
     
-        ;todo - read/progress/debug callbacks
-    
-        
         if IsSet(body){
             CBF := this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"]
             if IsInteger(CBF){  ;checks if this callback already exists
@@ -1313,6 +1342,16 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"].push(pushObj)
         return 0
     }
+    
+    _SSLExportCallbackFunction(easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max){
+    ; _SSLExportCallbackFunction(params*){
+        msgbox "hello from inside the callback"
+    
+        
+        ; msgbox "hit`n" easy_handle "`n" session_key "`n" shmac  "`n" shmac_len "`n" sdata "`n" sdata_le "`n" valid_until "`n" ietf_tls_id "`n" alpn "`n" earlydata_max
+        return 0
+    }
+    
     
     ; Linked-list
     ; ===========
@@ -2776,7 +2815,7 @@ class LibQurl {
         static curl_easy_ssls_import := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_import") 
         return DllCall(curl_easy_ssls_import
             ,   "Ptr", easy_handle
-            ,   "AStr", session_key
+            ,   "Str", session_key
             ,   "Ptr", shmac
             ,   "UPtr", shmac_len
             ,   "Ptr", sdata

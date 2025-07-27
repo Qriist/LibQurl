@@ -420,7 +420,7 @@ _curl_easy_ssls_import(easy_handle, session_key, shmac, shmac_len, sdata, sdata_
     static curl_easy_ssls_import := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_import") 
     return DllCall(curl_easy_ssls_import
         ,   "Ptr", easy_handle
-        ,   "AStr", session_key
+        ,   "Str", session_key
         ,   "Ptr", shmac
         ,   "UPtr", shmac_len
         ,   "Ptr", sdata

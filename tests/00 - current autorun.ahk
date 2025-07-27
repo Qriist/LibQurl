@@ -1,9 +1,14 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := "21 - use debug info"
+current := 1
+
+current := Format("{:02}",current)
+loop files A_ScriptDir "\*.ahk"
+	if InStr(A_LoopFileName " - ",current)
+		found := A_LoopFileFullPath
 
 clean := ["txt","html","json","zst"]
 for k,v in clean
 	FileDelete(A_ScriptDir "\*." v)
 	
-run(A_ScriptDir "\" current ".ahk")
+Run(found)
