@@ -7,11 +7,12 @@ Much work has been done to abstract away the need for a full understanding of cu
 - This is a full direct binding of libcurl, meaning that you have access* to all functions.
 - libcurl's "easy" interface is completely wrapped in a user-friendly way.
 - Seamless async transfers are possible if desired.
-- Transparently compressed transfers are on by default - this saves bandwidth and time.
+- Transparently compressed transfers are on by default, saving bandwidth and time.
 - Numerous simultaneous curl handles are supported, as is the multi interface. All options are remembered per-handle.
 - The ability to download a file directly into RAM without touching the disk - very useful when working with APIs.
+    - A unique hybrid "magic" download mode is supported where the download starts in memory but flushes to disk when a certain size threshold is reached.
 - Effortless POSTing of data from almost any source, be it a String, Integer, Object, Array, Map, Buffer, or even a FileObject.
-- Similarly effortless building of complex MIME forms, with the same smart source handling.
+    - Similarly effortless building of complex MIME forms, with the same smart source handling.
 - You can manually send and receive protocol-level raw data.
 - Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris). (This is the recommended installation method!)
 
@@ -20,15 +21,13 @@ Much work has been done to abstract away the need for a full understanding of cu
 ## Roadmap
 - [X] Establish basic communication with the DLL
 - [X] Wrap Easy
-- [ ] Wrap Multi
+- [X] Wrap Multi
 - [ ] Wrap Multi_Socket
 - [ ] Wrap misc functions that weren't required by any of the above
 
 ## Random to-do list, in no real order
 - add handling for Opts with scaffolding during the batch SetOpts
 - gather and clean the SetOpts after a handle finishes downloading
-- build the debug callback
-- write an "output to null" callback function for more safely reseting file writes (currently resets to memory output)
 - add the other origin types to GetAllHeaders
   
 <details><summary>Implemented Functions</summary>
@@ -64,7 +63,6 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_mime_addpart             |                              |
 |            | curl_global_trace             |                              |
 | &check;    | curl_mime_data                |                              |
-|            | curl_mime_data_cb             |                              |
 | &check;    | curl_mime_encoder             |                              |
 | &check;    | curl_mime_filedata            |                              |
 | &check;    | curl_mime_filename            |                              |
@@ -121,6 +119,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &#10060;   | curl_getenv | use AHK's EnvGet() |
 | &#10060;   | curl_multi_socket<br>curl_multi_socket_all | use curl_multi_socket_action |
 | &#10060;   | curl_mprintf<br>curl_mvaprintf<br>curl_mvfprintf<br>curl_mvprintf<br>curl_mvsnprintf | use AHK's own text maniupulation |
+| &#10060;   | curl_mime_data_cb             | Upload the mime_part as a File |
 
 </summary>
 </details>
