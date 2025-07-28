@@ -4,6 +4,7 @@
 
 ;keeps processes locked to one window
 DllCall("AllocConsole")
+buildlog := FileOpen(A_ScriptDir "\build.log","w")
 
 ;update vcpkg
 RunCMD("git pull","C:\dev\vcpkg")
@@ -25,7 +26,16 @@ wolfsslFeatures := adash.join([
 ])
 
 wolfssl := "wolfssl[" wolfsslFeatures "]"
-If RunWait("vcpkg install " wolfssl " --x-install-root=build --recurse",A_ScriptDir)
+
+vcpkgFlags := adash.join([
+    "--x-install-root=build",
+    "--recurse"
+],A_Space)
+
+vcpkgCmd := "vcpkg install " wolfssl " " vcpkgFlags
+buildlog.WriteLine(vcpkgCmd)
+
+If RunWait(vcpkgCmd,A_ScriptDir)
     throw("building WolfSSL failed")
 
 
@@ -63,8 +73,19 @@ curlFeatures := adash.join([
 ])
 
 libcurl := "curl[" curlFeatures "]:x64-windows"
-If RunWait("vcpkg install " libcurl " --overlay-ports=overlays\openssl --x-install-root=build --recurse --clean-after-build",A_ScriptDir)
+
+vcpkgFlags := adash.join([
+    "--overlay-ports=overlays\openssl",
+    "--x-install-root=build",
+    "--recurse",
+    "--clean-after-build"
+],A_Space)
+
+vcpkgCmd := "vcpkg install " libcurl " " vcpkgFlags
+
+If RunWait(vcpkgCmd,A_ScriptDir)
     throw("building libcurl failed") 
+buildlog.WriteLine(vcpkgCmd)
 
 
 
@@ -77,8 +98,17 @@ libmagicFeatures := adash.join([
 ])
 
 libmagic := "libmagic[" libmagicFeatures "]"
-If RunWait("vcpkg install " libmagic " --x-install-root=build", A_ScriptDir)
+
+vcpkgFlags := adash.join([
+    "--x-install-root=build"
+],A_Space)
+
+vcpkgCmd := "vcpkg install " libmagic " " vcpkgFlags
+
+If RunWait(vcpkgCmd, A_ScriptDir)
     throw("building libmagic failed")
+
+buildlog.WriteLine(vcpkgCmd)
 
 ;clear old installed files now that the builds are succesful
 FileDelete(A_ScriptDir "\bin\*.dll")
@@ -86,5 +116,7 @@ FileDelete(A_ScriptDir "\bin\*.mgc")
 
 ;install all built files
 FileMove(A_ScriptDir "\build\x64-windows\tools\curl\*.dll",A_ScriptDir "\bin",1)
+FileMove(A_ScriptDir "\build\x64-windows\tools\curl\curl.exe",A_ScriptDir "\bin",1)
 FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\share\misc\*.mgc",A_ScriptDir "\bin",1)
 FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\bin\*.dll",A_ScriptDir "\bin",1)
+buildlog.Close()

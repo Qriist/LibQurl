@@ -391,8 +391,9 @@ class LibQurl {
         meta := Buffer(32,0)
 
         loop {
-            If !ret := this._curl_ws_recv(easy_handle,outbuf,outbuf.size,&recv.ptr,&meta.ptr)
+            If !ret := this._curl_ws_recv(easy_handle,outbuf,outbuf.size,&recv.ptr,&meta.ptr) {
                 break   ;completed successfully
+            }
             
             ;error 81 = "waiting for ready"
             If (ret = 81){
@@ -409,7 +410,7 @@ class LibQurl {
             this._ErrorHandler(A_ThisFunc,"Curlcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
             break
         }
-        ; MsgBox this.PrintObj(this.struct.curl_ws_frame(meta.ptr))
+        ; MsgBox this.PrintObj(this.struct.curl_ws_frame(meta.ptr)) "`n" this.PrintObj(this.struct.curl_ws_frame(recv.ptr))
         this.easyHandleMap[easy_handle]["lastBody"] := outBuf
         return ret
     }
