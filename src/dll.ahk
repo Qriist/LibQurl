@@ -533,23 +533,26 @@ _curl_pushheader_bynum(headerStruct, num) { ;untested   https://curl.se/libcurl/
         ,   "Int", num
         ,   "Ptr")
 }
-_curl_ws_recv(easy_handle,buffer,buflen,&recv,&meta) {   ;untested   https://curl.se/libcurl/c/curl_ws_recv.html
-    static curl_ws_recv := this._getDllAddress(this.curlDLLpath,"curl_ws_recv") 
+_curl_ws_recv(curl, buffer, buflen, &recv, &meta){    ; https://curl.se/libcurl/c/curl_ws_recv.html
+    static curl_ws_recv := this._getDllAddress(this.curlDLLpath, "curl_ws_recv")
     return DllCall(curl_ws_recv
-        ,   "Int", easy_handle
-        ,   "Ptr", buffer
-        ,   "Int", buflen
-        ,   "Int", &recv
-        ,   "Ptr", meta)
+        ,   "Ptr", curl                     ; CURL *curl
+        ,   "Ptr", buffer                   ; void *buffer
+        ,   "UPtr", buflen                  ; size_t buflen
+        ,   "UPtr*", recv                   ; size_t *recv
+        ,   "Ptr*", meta                    ; const struct curl_ws_frame **meta
+        ,   "Cdecl")
 }
+
+
 _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;untested   https://curl.se/libcurl/c/curl_ws_send.html
     static curl_ws_send := this._getDllAddress(this.curlDLLpath,"curl_ws_send") 
     return DllCall(curl_ws_send
-        ,   "Int", easy_handle
+        ,   "Ptr", easy_handle
         ,   "Ptr", buffer
-        ,   "Int", buflen
-        ,   "Int", &sent
-        ,   "Int", fragsize
+        ,   "UPtr", buflen
+        ,   "UPtr*", &sent
+        ,   "Int64", fragsize
         ,   "UInt", flags)
 }
 _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html

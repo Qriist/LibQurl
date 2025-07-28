@@ -217,7 +217,13 @@ _declareConstants(){
     c["SINGLE"] := 2
     c["LAST"] := unset
 
-
+    this.constants["CURLWS"] := c := Map()
+    c["TEXT"] := (1<<0)
+    c["BINARY"] := (1<<1)
+    c["CONT"] := (1<<2)
+    c["CLOSE"] := (1<<3)
+    c["PING"] := (1<<4)
+    c["OFFSET"] := (1<<5)
     
         ; todo with the error handlers
     ; this.constants["CURLHcode"] := c := Map()  

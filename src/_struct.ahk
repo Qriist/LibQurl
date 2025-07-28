@@ -116,4 +116,13 @@ class _struct {
         }
         return retObj
     }
+    curl_ws_frame(ptr){
+        retObj := Map()
+        retObj["age"] := NumGet(ptr,0,"Int")
+        retObj["flags"] := NumGet(ptr,4,"Int")
+        retObj["offset"] := NumGet(ptr,8,"Int")
+        retObj["bytesleft"] := NumGet(ptr,16,"Int")
+        retObj["len"] := NumGet(ptr,24,"Int")
+        return retObj
+    }
 }

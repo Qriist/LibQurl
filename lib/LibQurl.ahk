@@ -53,7 +53,7 @@ class LibQurl {
 
         this.easyHandleMap[easy_handle]["easy_handle"] := easy_handle
         this.easyHandleMap[easy_handle]["options"] := Map()  ;prepares option storage
-
+        
         ;setup error handling
         this.SetOpt("ERRORBUFFER"
             ,   this.easyHandleMap[easy_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE))
@@ -75,6 +75,8 @@ class LibQurl {
         }
 
         this._setCallbacks(1,1,,1,,easy_handle) ;don't enable debug by default
+        this.easyHandleMap[easy_handle]["debug"] := 0
+        this.easyHandleMap[easy_handle]["websocket_mode"] := 0
         ; this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
         
         this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;null until set
@@ -199,8 +201,7 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "body", easy_handle)
-        ; this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Ptr := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
-        ; writeTo := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]:= LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "body", easy_handle)
+
         writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].writeObj["writeTo"].ptr
         this.SetOpt("WRITEDATA",writeHandle,easy_handle)
         this.SetOpt("WRITEFUNCTION",this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"],easy_handle)
@@ -336,22 +337,100 @@ class LibQurl {
         } until (got = 0)   ;break on no data received
         return retBuffer
     }
-    WebSocketSend(easy_handle?){
+    WebSocketSend(content,easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        flags := 0
+        switch Type(content) {
+            case "String","Integer":
+                buf := this._StrBuf(content,"UTF-8")
+                flags += this.constants["CURLWS"]["TEXT"]
+            case "Object","Array","Map":
+                buf := this._StrBuf(json.dump(content),"UTF-8")
+                flags += this.constants["CURLWS"]["TEXT"]
+            case "File":
+                filePath := this._GetFilePathFromFileObject(content)
+                buf := FileRead(filePath)
+                flags += this.constants["CURLWS"]["BINARY"]
+            case "Buffer":
+                buf := content
+                flags += this.constants["CURLWS"]["BINARY"]
+            Default:
+                throw ValueError("Unknown object type passed as WebSocketSend content: " Type(content))
+        }
 
+        fragsize := 0
+        maxframesize := this.easyHandleMap[easy_handle]["frame_size"]
+        iterations := Ceil(buf.size / maxframesize)
+
+        if iterations > 1{
+            fragsize := buf.size
+            flags += this.constants["CURLWS"]["OFFSET"]
+        }
+        
+        offset := 0
+        
+        loop iterations {
+            if ret := this._curl_ws_send(easy_handle,buf.ptr + offset,min(buf.size-offset,maxframesize),&sent := 0,fragsize,flags)
+                this._ErrorHandler(A_ThisFunc,"Curlcode","curl_ws_send",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            fragsize := 0
+            offset += sent
+        } until !sent
+        return ret
     }
-    WebSocketReceive(){
+    WebSocketReceive(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
+        ;prepare buffers
+        outBuf := Buffer(1024)
+        recv := Buffer(8,0)
+        meta := Buffer(32,0)
+
+        loop {
+            If !ret := this._curl_ws_recv(easy_handle,outbuf,outbuf.size,&recv.ptr,&meta.ptr)
+                break   ;completed successfully
+            
+            ;error 81 = "waiting for ready"
+            If (ret = 81){
+                ;error 81 is normal traffic so only capture with debug enabled
+                If (this.easyHandleMap[easy_handle]["debug"] = 1)
+                    this._ErrorHandler(A_ThisFunc,"Curlcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+                
+                ;short sleep before checking again for ready
+                Sleep(50)
+                continue
+            }
+            
+            ;any other error
+            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            break
+        }
+        ; MsgBox this.PrintObj(this.struct.curl_ws_frame(meta.ptr))
+        this.easyHandleMap[easy_handle]["lastBody"] := outBuf
+        return ret
+    }
+    SetWebSocketFrameSize(frame_size := 10 * 1024,easy_handle?){ ;outgoing traffic will be auto-split at this size
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        this.easyHandleMap[easy_handle]["frame_size"] := frame_size
+    }
+    WebSocketConvert(easy_handle?){
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+        ;prepare the handle options
+        this.SetOpt("CONNECT_ONLY",2,easy_handle)
+        this.SetWebSocketFrameSize(10 * 1024,easy_handle?)
+        this.easyHandleMap[easy_handle]["websocket_mode"] := 1
+        this.Sync(easy_handle)
     }
 
     GetLastHeaders(returnAsEncoding := "UTF-8",easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         lastHeaders := this.easyHandleMap[easy_handle]["lastHeaders"]
+
         if ((returnAsEncoding = "Object") && IsObject(lastHeaders))
         || ((returnAsEncoding = "File") && (Type(lastHeaders) = "File"))
         || ((returnAsEncoding = "Buffer") && (Type(lastHeaders) = "Buffer"))
             return lastHeaders
+
         RegexMatch(returnAsEncoding,"i)(?:Object|File|Buffer|(\S+))",&f) ;filter object types
         return (Type(lastHeaders)="File"?(lastHeaders.seek(0,0)=1?"":"") lastHeaders.read()
             :StrGet(lastHeaders,(f[1]=returnAsEncoding?f[1]:"UTF-8")))
@@ -1076,6 +1155,7 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this._setCallbacks(,,,,1,easy_handle)
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] := []
+        this.easyHandleMap[easy_handle]["debug"] := 1
     }
     PollDebug(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
@@ -1394,7 +1474,6 @@ class LibQurl {
         ; msgbox "hit`n" easy_handle "`n" session_key "`n" shmac  "`n" shmac_len "`n" sdata "`n" sdata_le "`n" valid_until "`n" ietf_tls_id "`n" alpn "`n" earlydata_max
         return 0
     }
-    
     
     
     
@@ -1932,6 +2011,15 @@ class LibQurl {
             }
             return retObj
         }
+        curl_ws_frame(ptr){
+            retObj := Map()
+            retObj["age"] := NumGet(ptr,0,"Int")
+            retObj["flags"] := NumGet(ptr,4,"Int")
+            retObj["offset"] := NumGet(ptr,8,"Int")
+            retObj["bytesleft"] := NumGet(ptr,16,"Int")
+            retObj["len"] := NumGet(ptr,24,"Int")
+            return retObj
+        }
     }
 
     Class Storage {
@@ -2423,7 +2511,13 @@ class LibQurl {
         c["SINGLE"] := 2
         c["LAST"] := unset
     
-    
+        this.constants["CURLWS"] := c := Map()
+        c["TEXT"] := (1<<0)
+        c["BINARY"] := (1<<1)
+        c["CONT"] := (1<<2)
+        c["CLOSE"] := (1<<3)
+        c["PING"] := (1<<4)
+        c["OFFSET"] := (1<<5)
         
             ; todo with the error handlers
         ; this.constants["CURLHcode"] := c := Map()  
@@ -2973,23 +3067,26 @@ class LibQurl {
             ,   "Int", num
             ,   "Ptr")
     }
-    _curl_ws_recv(easy_handle,buffer,buflen,&recv,&meta) {   ;untested   https://curl.se/libcurl/c/curl_ws_recv.html
-        static curl_ws_recv := this._getDllAddress(this.curlDLLpath,"curl_ws_recv") 
+    _curl_ws_recv(curl, buffer, buflen, &recv, &meta){    ; https://curl.se/libcurl/c/curl_ws_recv.html
+        static curl_ws_recv := this._getDllAddress(this.curlDLLpath, "curl_ws_recv")
         return DllCall(curl_ws_recv
-            ,   "Int", easy_handle
-            ,   "Ptr", buffer
-            ,   "Int", buflen
-            ,   "Int", &recv
-            ,   "Ptr", meta)
+            ,   "Ptr", curl                     ; CURL *curl
+            ,   "Ptr", buffer                   ; void *buffer
+            ,   "UPtr", buflen                  ; size_t buflen
+            ,   "UPtr*", recv                   ; size_t *recv
+            ,   "Ptr*", meta                    ; const struct curl_ws_frame **meta
+            ,   "Cdecl")
     }
+    
+    
     _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;untested   https://curl.se/libcurl/c/curl_ws_send.html
         static curl_ws_send := this._getDllAddress(this.curlDLLpath,"curl_ws_send") 
         return DllCall(curl_ws_send
-            ,   "Int", easy_handle
+            ,   "Ptr", easy_handle
             ,   "Ptr", buffer
-            ,   "Int", buflen
-            ,   "Int", &sent
-            ,   "Int", fragsize
+            ,   "UPtr", buflen
+            ,   "UPtr*", &sent
+            ,   "Int64", fragsize
             ,   "UInt", flags)
     }
     _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
