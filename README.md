@@ -63,6 +63,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_mime_addpart             |                              |
 |            | curl_global_trace             |                              |
 | &check;    | curl_mime_data                |                              |
+| &check;    | curl_mime_data_cb             |                              |
 | &check;    | curl_mime_encoder             |                              |
 | &check;    | curl_mime_filedata            |                              |
 | &check;    | curl_mime_filename            |                              |
@@ -119,7 +120,6 @@ https://curl.se/libcurl/c/allfuncs.html
 | &#10060;   | curl_getenv | use AHK's EnvGet() |
 | &#10060;   | curl_multi_socket<br>curl_multi_socket_all | use curl_multi_socket_action |
 | &#10060;   | curl_mprintf<br>curl_mvaprintf<br>curl_mvfprintf<br>curl_mvprintf<br>curl_mvsnprintf | use AHK's own text maniupulation |
-| &#10060;   | curl_mime_data_cb             | Upload the mime_part as a File |
 
 </summary>
 </details>
