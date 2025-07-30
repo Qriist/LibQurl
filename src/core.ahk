@@ -943,8 +943,12 @@ __New(dllPath?,requestedSSLprovider?) {
                 ; this._curl_mime_data(mime_part,buf,buf.size-1)
             case "File":
                 filePath := this._GetFilePathFromFileObject(partContent)
-                this._curl_mime_filedata(mime_part,filePath)
-                return  ;no need to store anything
+                If ret := this._curl_mime_filedata(mime_part,filePath){
+                    easy_handle := this._getEasyHandleFromMimePart(mime_part)
+                    this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_data_cb",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+                }
+                ;no need to store anything
+                return ret
             case "Buffer":
                 buf := partContent
                 ; this._curl_mime_data(mime_part,buf,partContent.size)
@@ -972,13 +976,16 @@ __New(dllPath?,requestedSSLprovider?) {
 
         ;hand off everything to libcurl
         If ret := this._curl_mime_data_cb(mime_part,buf.size,rCBF,sCBF,fCBF,mime_part){
-            ;look up the associated easy_handle
-            mime_handle := this.mimePartMap[mime_part]["associated_mime_handle"]
-            easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
-
-            ;generate the error report
+            easy_handle := this._getEasyHandleFromMimePart(mime_part)
             this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_data_cb",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         }
+
+        return ret
+    }
+    _getEasyHandleFromMimePart(mime_part){
+        mime_handle := this.mimePartMap[mime_part]["associated_mime_handle"]
+        easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
+        return easy_handle
     }
     MimePartType(mime_part,partContent?,override?){
         If IsSet(override?)

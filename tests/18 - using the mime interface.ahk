@@ -52,13 +52,9 @@ curl.Sync()
 
 FileOpen(A_ScriptDir "\18.resultsB.txt","w").Write(curl.GetLastBody())
 
-; try msgbox FileRead(A_ScriptDir "\18.resultsB.txt")
-
 ;mime_handles that were attached as parts normal shouldn't be manually cleaned up
 ;however, LibQurl will detect and safely ignore such mime_handles
-curl.MimeCleanup(mime_handle)
+; curl.MimeCleanup(mime_handle)
 
-;Only root mime_handles are considered, mime_parts get culled automatically
+;Only clean up root mime_handles, mime_parts get culled automatically
 curl.MimeCleanup(mime2)
-
-; msgbox A_Clipboard := curl.PrintObj(curl.caughtErrors) 
