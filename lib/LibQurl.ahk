@@ -911,8 +911,10 @@ __New(dllPath?,requestedSSLprovider?) {
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
 
         mime_part := this._curl_mime_addpart(mime_handle)
-        this.mimePartMap[mime_part] := Map()
-        this.mimePartMap[mime_part]["associated_mime_handle"] := mime_handle
+        this.mimePartMap[mime_part] := partMap := Map()
+        
+        partMap["associated_mime_handle"] := mime_handle
+        partMap["associated_easy_handle"] :=  this.mimeHandleMap[mime_handle]["associated_easy_handle"]
 
         this.mimeHandleMap[mime_handle]["associated_mime_parts"][mime_part] := 1
 
@@ -924,7 +926,8 @@ __New(dllPath?,requestedSSLprovider?) {
     }
     MimePartData(mime_part,partContent){
         ;File doesn't use this callback but still checks for the Map during cleanup
-        this.mimePartMap[mime_part]["callbacks"] := CBFmap := Map()
+        partMap := this.mimePartMap[mime_part]
+        partMap["callbacks"] := CBFmap := Map()
 
         ;get the data into the correct format
         switch Type(partContent) {
@@ -939,11 +942,10 @@ __New(dllPath?,requestedSSLprovider?) {
             case "File":
                 filePath := this._GetFilePathFromFileObject(partContent)
                 If ret := this._curl_mime_filedata(mime_part,filePath){
-                    easy_handle := this._getEasyHandleFromMimePart(mime_part)
+                    easy_handle := partMap["associated_easy_handle"]
                     this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_data_cb",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
                 }
-                ;no need to store anything
-                return ret
+                return ret  ;early return because there's no need to store anything
             case "Buffer":
                 buf := partContent
                 ; this._curl_mime_data(mime_part,buf,partContent.size)
@@ -952,10 +954,10 @@ __New(dllPath?,requestedSSLprovider?) {
         }
 
         ;store the data in the correct location
-        this.mimePartMap[mime_part]["content"] ??= buf
+        partMap["content"] ??= buf
 
         ;create the callbacks
-        this.mimePartMap[mime_part]["offset"] := 0
+        partMap["offset"] := 0
         rCBF := CBFmap["read"] := CallbackCreate(
             (buf, size, nitems, mime_part) =>
             this._mimeDataReadCallbackFunction(buf, size, nitems, mime_part)
@@ -971,16 +973,11 @@ __New(dllPath?,requestedSSLprovider?) {
 
         ;hand off everything to libcurl
         If ret := this._curl_mime_data_cb(mime_part,buf.size,rCBF,sCBF,fCBF,mime_part){
-            easy_handle := this._getEasyHandleFromMimePart(mime_part)
+            easy_handle := partMap["associated_easy_handle"]
             this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_data_cb",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         }
 
         return ret
-    }
-    _getEasyHandleFromMimePart(mime_part){
-        mime_handle := this.mimePartMap[mime_part]["associated_mime_handle"]
-        easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
-        return easy_handle
     }
     MimePartType(mime_part,partContent?,override?){
         If IsSet(override?)
@@ -1552,15 +1549,21 @@ __New(dllPath?,requestedSSLprovider?) {
     _mimeDataSeekCallbackFunction(mime_part, offset, origin){
         partMap := this.mimePartMap[mime_part]
     
+        ;validate the offset
+        if (partMap["offset"] < 0
+        || partMap["offset"] > partMap["content"].size)
+            return 2    ;CURL_SEEKFUNC_CANTSEEK
+        
+        
         switch origin {
-            case 0: ;directly set
+            case 0: ;directly set (SEEK_SET)
                 partMap["offset"] := offset
-            case 1: ;positive seek
+            case 1: ;positive seek (SEEK_CUR)
                 partMap["offset"] += offset
-            case 2: ;negative seek
-                partMap["offset"] -= offset
+            case 2: ;negative seek (SEEK_END)
+                partMap["offset"] := partMap["content"].size + offset
             default: 
-                throw ValueError("Unknown origin type passed to _mimeDataSeekCallbackFunction: " origin)        
+                return 1    ;CURL_SEEKFUNC_FAIL
         }
     
         return 0
@@ -2822,8 +2825,6 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "Int", datasize)
     }
     _curl_mime_data_cb(mime_handle,datasize,readfunc,seekfunc,freefunc,arg) {  ;https://curl.se/libcurl/c/curl_mime_data_cb.html
-        ;Wrapping is not worth the work due to multiple implementation factors.
-        ;If you really need use a callback due to memory constraints then upload from a File.
         static curl_mime_data_cb := this._getDllAddress(this.curlDLLpath,"curl_mime_data_cb") 
         return DllCall(curl_mime_data_cb
             ,   "Int", mime_handle

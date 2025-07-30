@@ -182,8 +182,6 @@ _curl_mime_data(mime_handle,data,datasize) { ;https://curl.se/libcurl/c/curl_mim
         ,   "Int", datasize)
 }
 _curl_mime_data_cb(mime_handle,datasize,readfunc,seekfunc,freefunc,arg) {  ;https://curl.se/libcurl/c/curl_mime_data_cb.html
-    ;Wrapping is not worth the work due to multiple implementation factors.
-    ;If you really need use a callback due to memory constraints then upload from a File.
     static curl_mime_data_cb := this._getDllAddress(this.curlDLLpath,"curl_mime_data_cb") 
     return DllCall(curl_mime_data_cb
         ,   "Int", mime_handle

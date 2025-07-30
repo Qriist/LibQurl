@@ -251,15 +251,21 @@ _mimeDataReadCallbackFunction(retBuffer, size, nitems, mime_part){
 _mimeDataSeekCallbackFunction(mime_part, offset, origin){
     partMap := this.mimePartMap[mime_part]
 
+    ;validate the offset
+    if (partMap["offset"] < 0
+    || partMap["offset"] > partMap["content"].size)
+        return 2    ;CURL_SEEKFUNC_CANTSEEK
+    
+    
     switch origin {
-        case 0: ;directly set
+        case 0: ;directly set (SEEK_SET)
             partMap["offset"] := offset
-        case 1: ;positive seek
+        case 1: ;positive seek (SEEK_CUR)
             partMap["offset"] += offset
-        case 2: ;negative seek
-            partMap["offset"] -= offset
+        case 2: ;negative seek (SEEK_END)
+            partMap["offset"] := partMap["content"].size + offset
         default: 
-            throw ValueError("Unknown origin type passed to _mimeDataSeekCallbackFunction: " origin)        
+            return 1    ;CURL_SEEKFUNC_FAIL
     }
 
     return 0
