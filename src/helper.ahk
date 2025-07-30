@@ -256,7 +256,7 @@ _mimeDataSeekCallbackFunction(mime_part, offset, origin){
     || partMap["offset"] > partMap["content"].size)
         return 2    ;CURL_SEEKFUNC_CANTSEEK
     
-    
+    ;process the offset
     switch origin {
         case 0: ;directly set (SEEK_SET)
             partMap["offset"] := offset
@@ -272,6 +272,8 @@ _mimeDataSeekCallbackFunction(mime_part, offset, origin){
 }
 
 _mimeDataFreeCallbackFunction(mime_part){
+    ; todo - check if I can fully cleanup the mime_parts in this callback
+    
     ; partMap := this.mimePartMap[mime_part]
     ; partMap["content"] := unset
     ; partMap["offset"] := unset
