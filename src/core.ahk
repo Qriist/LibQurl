@@ -350,23 +350,30 @@ __New(dllPath?,requestedSSLprovider?) {
         } until (got = 0)   ;break on no data received
         return retBuffer
     }
-    WebSocketSend(content,easy_handle?){
+    WebSocketSend(content,flagArr := ["TEXT"],easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        
+        ;push a lone flag string into a a flagArr
+        if (Type(flags)="String")
+            flagArr := [flags]
+
+        ;parse the flags
         flags := 0
+        for k,v in flagArr
+            flags += this.constants["CURLWS"][v]
+
         switch Type(content) {
             case "String","Integer":
                 buf := this._StrBuf(content,"UTF-8")
-                flags += this.constants["CURLWS"]["TEXT"]
+                buf.size -= 1   ;truncates a trailing binary zero
             case "Object","Array","Map":
                 buf := this._StrBuf(json.dump(content),"UTF-8")
-                flags += this.constants["CURLWS"]["TEXT"]
+                buf.size -= 1   ;truncates a trailing binary zero
             case "File":
                 filePath := this._GetFilePathFromFileObject(content)
                 buf := FileRead(filePath)
-                flags += this.constants["CURLWS"]["BINARY"]
             case "Buffer":
                 buf := content
-                flags += this.constants["CURLWS"]["BINARY"]
             Default:
                 throw ValueError("Unknown object type passed as WebSocketSend content: " Type(content))
         }
@@ -394,7 +401,7 @@ __New(dllPath?,requestedSSLprovider?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
         ;prepare buffers
-        outBuf := Buffer(1024)
+        outBuf := Buffer(4096)
         recv := Buffer(8,0)
         meta := Buffer(32,0)
 
@@ -426,6 +433,10 @@ __New(dllPath?,requestedSSLprovider?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this.easyHandleMap[easy_handle]["frame_size"] := frame_size
     }
+    SetWebSocketBufferChunkSize(chunk_size := 4 * 1024,easy_handle?){   ;incoming traffic will auto-split at this size
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        this.easyHandleMap[easy_handle]["websocket_buffer_chunk_size"] := chunk_size
+    }
     WebSocketConvert(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
@@ -433,6 +444,9 @@ __New(dllPath?,requestedSSLprovider?) {
         this.SetOpt("CONNECT_ONLY",2,easy_handle)
         this.SetWebSocketFrameSize(10 * 1024,easy_handle?)
         this.easyHandleMap[easy_handle]["websocket_mode"] := 1
+
+        ;This is the default size libcurl will 
+        this.easyHandleMap[easy_handle]["websocket_buffer_chunk_size"] := 4096
         this.Sync(easy_handle)
     }
 
