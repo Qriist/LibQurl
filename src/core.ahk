@@ -10,44 +10,45 @@
 #include "*i <Aris\Qriist\Null>" ; github:Qriist/Null@v1.0.0 --main Null.ahk
 class LibQurl {
     ;core functionality
-    __New(dllPath?,requestedSSLprovider?) {
-        ;prepare interface maps
-        this.easyHandleMap := Map()
-        this.easyHandleMap[0] := []
-        this.urlHandleMap := Map()
-        this.urlHandleMap[0] := []
-        this.multiHandleMap := Map()
-        this.multiHandleMap[0] := []
-        this.multiHandleMap["pending_callbacks"] := []
-        this.multiHandleMap["running_callbacks"] := []
-        this.shareHandleMap := Map()
-        this.shareHandleMap[0] := []
-        this.mimeHandleMap := Map()
-        this.mimeHandleMap[0] := []
-        this.mimePartMap := Map()
-        this.mimePartMap[0] := []
-        
-        this.unassociatedEasyHandles := Map()
-        static curlDLLhandle := ""
-        static curlDLLpath := ""
-        this.Opt := Map()
-        this.OptById := Map()
-        this.mOpt := Map()
-        this.mOptById := Map()
-        this.struct := LibQurl._struct()  ;holds the various structs
-        this.writeRefs := Map()    ;holds the various write handles
-        this.constants := Map()
+__New(dllPath?,requestedSSLprovider?) {
+    ;prepare interface maps
+    this.easyHandleMap := Map()
+    this.easyHandleMap[0] := []
+    this.urlHandleMap := Map()
+    this.urlHandleMap[0] := []
+    this.multiHandleMap := Map()
+    this.multiHandleMap[0] := []
+    this.multiHandleMap["pending_callbacks"] := []
+    this.multiHandleMap["running_callbacks"] := []
+    this.shareHandleMap := Map()
+    this.shareHandleMap[0] := []
+    this.mimeHandleMap := Map()
+    this.mimeHandleMap[0] := []
+    this.mimePartMap := Map()
+    this.mimePartMap[0] := []
+    this.mimePartCBFcleanupArr := []
 
-        this.caughtErrors := []
-        this.keepLastNumErrors := 1000
-        this.CURL_ERROR_SIZE := 256
+    this.unassociatedEasyHandles := Map()
+    static curlDLLhandle := ""
+    static curlDLLpath := ""
+    this.Opt := Map()
+    this.OptById := Map()
+    this.mOpt := Map()
+    this.mOptById := Map()
+    this.struct := LibQurl._struct()  ;holds the various structs
+    this.writeRefs := Map()    ;holds the various write handles
+    this.constants := Map()
 
-        ;safely prepare curl's initial environment
-        Critical "On"
-        this._register(dllPath?,requestedSSLprovider?)
-        this.magic := libmagic()
-        Critical "Off"
-    }
+    this.caughtErrors := []
+    this.keepLastNumErrors := 1000
+    this.CURL_ERROR_SIZE := 256
+
+    ;safely prepare curl's initial environment
+    Critical "On"
+    this._register(dllPath?,requestedSSLprovider?)
+    this.magic := libmagic()
+    Critical "Off"
+}
     Init(){
         easy_handle := this._curl_easy_init()
         this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][1] is a dynamic reference to the first created easy_handle
@@ -125,7 +126,7 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["options"][option] := parameter
 
         if ret := this._curl_easy_setopt(easy_handle,option,parameter,debug?)
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_setopt",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_setopt",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         return ret
     }
     GetOpt(option,easy_handle?){
@@ -190,6 +191,13 @@ class LibQurl {
     GetMultiErrorString(errornum){
         return StrGet(this._curl_multi_strerror(errornum),"UTF-8")
     }
+    GetShareErrorString(incomingValue){
+        return StrGet(this._curl_share_strerror(incomingValue),"UTF-8")
+    }
+    GetUrlErrorString(incomingValue){
+        return StrGet(this._curl_url_strerror(incomingValue),"UTF-8")
+    }
+
 	HeaderToMem(maxCapacity := 0, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
@@ -289,7 +297,7 @@ class LibQurl {
         this._fallbackWrite(easy_handle)
 
         If ret := this._Perform(easy_handle?)
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_perform",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_perform",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
         ; MsgBox ret
         return ret
@@ -312,7 +320,7 @@ class LibQurl {
         }
         sent := 0
         if ret := this._curl_easy_send(easy_handle,outBuffer,outBuffer.size,&sent)
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_send",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_send",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
         return sent
     }
@@ -324,7 +332,7 @@ class LibQurl {
         offset := 0
         loop {
             if ret := this._curl_easy_recv(easy_handle,replyBuffer,replyBuffer.size,&got)
-                this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+                this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
             offsetPtr := retBuffer.ptr + got
 
@@ -376,7 +384,7 @@ class LibQurl {
         
         loop iterations {
             if ret := this._curl_ws_send(easy_handle,buf.ptr + offset,min(buf.size-offset,maxframesize),&sent := 0,fragsize,flags)
-                this._ErrorHandler(A_ThisFunc,"Curlcode","curl_ws_send",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+                this._ErrorHandler(A_ThisFunc,"CURLcode","curl_ws_send",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
             fragsize := 0
             offset += sent
         } until !sent
@@ -399,7 +407,7 @@ class LibQurl {
             If (ret = 81){
                 ;error 81 is normal traffic so only capture with debug enabled
                 If (this.easyHandleMap[easy_handle]["debug"] = 1)
-                    this._ErrorHandler(A_ThisFunc,"Curlcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+                    this._ErrorHandler(A_ThisFunc,"CURLcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
                 
                 ;short sleep before checking again for ready
                 Sleep(50)
@@ -407,7 +415,7 @@ class LibQurl {
             }
             
             ;any other error
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
             break
         }
         ; MsgBox this.PrintObj(this.struct.curl_ws_frame(meta.ptr)) "`n" this.PrintObj(this.struct.curl_ws_frame(recv.ptr))
@@ -479,7 +487,7 @@ class LibQurl {
             }
         }
 
-        this._curl_easy_cleanup(easy_handle)
+        this._curl_easy_cleanup(easy_handle)    ;no error code return
         if (this.easyHandleMap[0].length = 0)   ;ensures there's always a usable easy_handle
             this.EasyInit()
     }
@@ -504,21 +512,21 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
         if ret := this._curl_easy_pause(easy_handle,PauseMode := 5)
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_pause",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_pause",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         return ret
     }
     UnPause(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         
         if ret := this._curl_easy_pause(easy_handle,PauseMode := 0)
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_pause",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_pause",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         return ret
     }
     Upkeep(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
         if ret := this._curl_easy_upkeep(easy_handle)
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_upkeep",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_upkeep",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         return ret
     }
     ; UrlEscape(){
@@ -684,7 +692,8 @@ class LibQurl {
     RemoveEasyFromMulti(easy_handle?,multi_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
-        ret := this._curl_multi_remove_handle(multi_handle,easy_handle)
+        If ret := this._curl_multi_remove_handle(multi_handle,easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLMcode","curl_multi_remove_handle",ret,this.multiHandleMap[multi_handle]["error buffer"],multi_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := unset
         this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := unset
         return ret
@@ -698,7 +707,7 @@ class LibQurl {
     GetInfo(infoOption,easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         if ret := this._curl_easy_getinfo(easy_handle,infoOption,&info := 0)
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_getinfo",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_getinfo",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
         switch this.constants["CURLINFO"][infoOption]["infoType"] {
             case "STRING":
@@ -837,7 +846,7 @@ class LibQurl {
 
         if ret := this.SetOpt("SHARE",share_handle,easy_handle)
             this._ErrorHierarchy(A_ThisFunc,"CURLSHcode",share_handle)
-
+            ,this._ErrorHierarchy(A_ThisFunc,"CURLcode",easy_handle)
         this.easyHandleMap[easy_handle]["associated_share_handle"] := share_handle
         this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
         return ret
@@ -858,9 +867,6 @@ class LibQurl {
         if ret := this._curl_share_cleanup(share_handle)
             this._ErrorHandler(A_ThisFunc,"CURLSHcode","curl_share_cleanup",ret,,share_handle)
         return ret
-    }
-    GetShareErrorString(incomingValue){
-        return StrGet(this._curl_share_strerror(incomingValue),"UTF-8")
     }
 
     ShareSetOpt(option,parameter,share_handle?){
@@ -922,24 +928,57 @@ class LibQurl {
         this.mimePartMap[mime_part]["name"] := partName
     }
     MimePartData(mime_part,partContent){
+        ;File doesn't use this callback but still checks for the Map during cleanup
+        this.mimePartMap[mime_part]["callbacks"] := CBFmap := Map()
+
+        ;get the data into the correct format
         switch Type(partContent) {
             case "String","Integer":
                 buf := this._StrBuf(partContent,"UTF-8")
-                this._curl_mime_data(mime_part,buf,-1)
+                buf.size -= 1   ;truncates a trailing binary zero
+                ; this._curl_mime_data(mime_part,buf,-1)
             case "Object","Array","Map":
                 buf := this._StrBuf(json.dump(partContent),"UTF-8")
-                this._curl_mime_data(mime_part,buf,buf.size-1)
+                buf.size -= 1   ;truncates a trailing binary zero
+                ; this._curl_mime_data(mime_part,buf,buf.size-1)
             case "File":
                 filePath := this._GetFilePathFromFileObject(partContent)
                 this._curl_mime_filedata(mime_part,filePath)
-                this.mimePartMap[mime_part]["content"] := partContent
+                return  ;no need to store anything
             case "Buffer":
                 buf := partContent
-                this._curl_mime_data(mime_part,buf,partContent.size)
+                ; this._curl_mime_data(mime_part,buf,partContent.size)
             Default:
                 throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
         }
+
+        ;store the data in the correct location
         this.mimePartMap[mime_part]["content"] ??= buf
+
+        ;create the callbacks
+        this.mimePartMap[mime_part]["offset"] := 0
+        rCBF := CBFmap["read"] := CallbackCreate(
+            (buf, size, nitems, mime_part) =>
+            this._mimeDataReadCallbackFunction(buf, size, nitems, mime_part)
+        )
+        sCBF := CBFmap["seek"] := CallbackCreate(
+            (mime_part, offset, origin) =>
+            this._mimeDataSeekCallbackFunction(mime_part, offset, origin)
+        )
+        fCBF := CBFmap["free"] := CallbackCreate(
+            (mime_part) =>
+            this._mimeDataFreeCallbackFunction(mime_part)
+        )
+
+        ;hand off everything to libcurl
+        If ret := this._curl_mime_data_cb(mime_part,buf.size,rCBF,sCBF,fCBF,mime_part){
+            ;look up the associated easy_handle
+            mime_handle := this.mimePartMap[mime_part]["associated_mime_handle"]
+            easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
+
+            ;generate the error report
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_data_cb",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+        }
     }
     MimePartType(mime_part,partContent?,override?){
         If IsSet(override?)
@@ -990,6 +1029,7 @@ class LibQurl {
         }
         this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := unset
         
+
         ;cull tracked mime_part info
         for k,v in this.mimeHandleMap[mime_handle]["associated_mime_parts"] {
             ; this.mimePartMap.Delete(k)
@@ -1007,6 +1047,10 @@ class LibQurl {
 
         ;delete the mime_handle
         this._curl_mime_free(mime_handle)
+
+        ;free the staged callbacks
+        loop this.mimePartCBFcleanupArr.Length
+            CallbackFree(this.mimePartCBFcleanupArr.Pop())
     }
     MimePartEncoder(mime_part,encoding := ""){
         ;I honestly have no idea how to use this.
@@ -1213,24 +1257,26 @@ class LibQurl {
     
         return Format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}", year, month, day, hour, minute, second, ms)
     }
-    /*  ssl import/export seems to be bugged in libcurl, shelving for now
+    ; /*  ssl import/export seems to be bugged in libcurl, shelving for now
     ExportSSLs(easy_handle?,share_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
         
         ;open the session share so the export can happen
-        this.ShareSetOpt("SHARE","SSL_SESSION",share_handle)
-        this.SetOpt("SHARE",share_handle,easy_handle)
+        If this.ShareSetOpt("SHARE","SSL_SESSION",share_handle)
+            this._ErrorHierarchy(A_ThisFunc,"CURLSHcode",share_handle)
+        If this.SetOpt("SHARE",share_handle,easy_handle)
+            this._ErrorHierarchy(A_ThisFunc,"CURLcode",share_handle)
 
         ;create the callback to the export function
         this.shareHandleMap[share_handle]["callback"] := CBF := CallbackCreate(
             (easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max) =>
             this._SSLExportCallbackFunction(easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max)
         )
-        CBF := CallbackCreate(this._SSLExportCallbackFunction.bind(this))
+        ; CBF := CallbackCreate(this._SSLExportCallbackFunction.bind(this))
         ; this.shareHandleMap[share_handle]["callback"] := CBF
         if ret := this._curl_easy_ssls_export(easy_handle,CBF,share_handle)
-            this._ErrorHandler(A_ThisFunc,"Curlcode","curl_easy_ssls_export",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_ssls_export",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         
         ;callback doesn't need to be stored as this is a one-shot operation
         CallbackFree(CBF)
@@ -1242,7 +1288,7 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
     }
-    */
+    ; */
 
     ; WriteToNone() {
     ; 	Return (this._writeTo := "")

@@ -3,13 +3,17 @@
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
 
-curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
-
+; curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
+curl := LibQurl("C:\Users\Qriist\Desktop\curl\bagder\libcurl-x64.dll")
 
 ;currently bugged in curl, no point in running
-exitapp
+
 
 url := "https://amazon.com"
+; url := "https://example.com/"
+; url := "https://github.com/"
+; url := "https://curl.se/"
+; url := "https://www.curl.se/"
 curl.SetOpt("URL",url)
 curl.Sync()
 

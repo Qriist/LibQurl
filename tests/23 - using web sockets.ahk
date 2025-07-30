@@ -25,3 +25,5 @@ curl.WebSocketSend(content)
 msgbox curl.WebSocketReceive() "`n`n`n" curl.GetLastBody()
 
 MsgBox StrLen(content) "`n" StrLen(curl.GetLastBody())
+
+

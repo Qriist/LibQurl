@@ -49,11 +49,17 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
     ; msgbox this.PrintObj(this.opt)
 }
 _mimePartCleanup(mime_part){
-        mime_handle := this.mimePartMap[mime_part]["associated_mime_handle"]
+        partMap := this.mimePartMap[mime_part]
+        mime_handle := partMap["associated_mime_handle"]
         
-        if this.mimePartMap[mime_part].has("associated_mime_parts")
-            for k,v in this.mimePartMap[mime_part]["associated_mime_parts"]
+        ;discover and clean nested parts
+        if partMap.has("associated_mime_parts")
+            for k,v in partMap["associated_mime_parts"]
                 this._mimePartCleanup(k)
+        
+        ;stage the callbacks to be freed
+        for k,v in partMap["callbacks"]
+            this.mimePartCBFcleanupArr.push(v)
 
         this.mimePartMap.Delete(mime_part)
 }
@@ -227,8 +233,46 @@ _SSLExportCallbackFunction(easy_handle, userptr, session_key, shmac , shmac_len,
     ; msgbox "hit`n" easy_handle "`n" session_key "`n" shmac  "`n" shmac_len "`n" sdata "`n" sdata_le "`n" valid_until "`n" ietf_tls_id "`n" alpn "`n" earlydata_max
     return 0
 }
+_mimeDataReadCallbackFunction(retBuffer, size, nitems, mime_part){
+    partMap := this.mimePartMap[mime_part]
+    remainingBytes := partMap["content"].size - partMap["offset"]
+    bytesToWrite := Min(size * nitems,remainingBytes)
 
+    DllCall("kernel32.dll\RtlMoveMemory"
+        ,   "Ptr",  retBuffer
+        ,   "Ptr",  partMap["content"].ptr + partMap["offset"]
+        ,   "UInt", bytesToWrite)
 
+    partMap["offset"] += bytesToWrite
+
+    return bytesToWrite
+}
+ 
+_mimeDataSeekCallbackFunction(mime_part, offset, origin){
+    partMap := this.mimePartMap[mime_part]
+
+    switch origin {
+        case 0: ;directly set
+            partMap["offset"] := offset
+        case 1: ;positive seek
+            partMap["offset"] += offset
+        case 2: ;negative seek
+            partMap["offset"] -= offset
+        default: 
+            throw ValueError("Unknown origin type passed to _mimeDataSeekCallbackFunction: " origin)        
+    }
+
+    return 0
+}
+
+_mimeDataFreeCallbackFunction(mime_part){
+    ; partMap := this.mimePartMap[mime_part]
+    ; partMap["content"] := unset
+    ; partMap["offset"] := unset
+    ; for k,v in partMap["callbacks"]
+    ;     CallbackFree(v)
+    ; return 0
+}
 
 ; Linked-list
 ; ===========
@@ -304,6 +348,9 @@ _DeepClone(obj) {    ;https://github.com/thqby/ahk2_lib/blob/master/deepclone.ah
 }
 
 _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValue := 0,errorBuffer?,relevant_handle?){
+    ;captures a snapshot when the libcurl DLL reports an error
+    ;use _ErrorHierarchy to trace LibQurl method calls
+
     if !incomingValue
         return 0
 
@@ -326,10 +373,13 @@ _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValu
             thisError["options snapshot"].push(this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
             ;todo - gather nested CURLE_PROXY struct
         case "CURLMcode":
+            ; thisError["options snapshot"].InsertAt(1,this._DeepClone(this.multiHandleMap[relevant_handle]["options"]))
         case "CURLSHcode":
             thisError["error string"] := this.GetShareErrorString(incomingValue)
             thisError["options snapshot"].push(this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
         case "CURLUcode":
+            thisError["error string"] := this.GetUrlErrorString(incomingValue)
+            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.urlHandleMap[relevant_handle]["options"]))
         case "CURLHcode":
     }
 
@@ -350,7 +400,9 @@ _ErrorHierarchy(callingMethod,curlErrorCodeFamily,relevant_handle?){
         case "CURLSHcode":
             thisError["options snapshot"].InsertAt(1,this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
         case "CURLUcode":
+            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.urlHandleMap[relevant_handle]["options"]))
         case "CURLHcode":
+            ; thisError["options snapshot"].InsertAt(1,this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
     }
 }
 

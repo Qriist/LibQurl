@@ -39,9 +39,7 @@ outFile := FileOpen(A_ScriptDir "\18.text.upload.txt","w")
 outFile.write(JSON.Dump(Map("Hello","World")))
 curl.AttachMimePart("upload 123",outFile)
 
-curl.Sync()
-
-FileOpen(A_ScriptDir "\18.resultsA.txt","w").Write(curl.GetLastBody())
+curl.Sync(), FileOpen(A_ScriptDir "\18.resultsA.txt","w").Write(curl.GetLastBody())
 
 ;attach a few more things to make our nested mime distinct
 curl.AttachMimePart("String","abc")
@@ -54,8 +52,13 @@ curl.Sync()
 
 FileOpen(A_ScriptDir "\18.resultsB.txt","w").Write(curl.GetLastBody())
 
-;mime_handles that were attached as parts are safely ignored
+; try msgbox FileRead(A_ScriptDir "\18.resultsB.txt")
+
+;mime_handles that were attached as parts normal shouldn't be manually cleaned up
+;however, LibQurl will detect and safely ignore such mime_handles
 curl.MimeCleanup(mime_handle)
 
 ;Only root mime_handles are considered, mime_parts get culled automatically
 curl.MimeCleanup(mime2)
+
+; msgbox A_Clipboard := curl.PrintObj(curl.caughtErrors) 
