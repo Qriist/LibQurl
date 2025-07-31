@@ -108,8 +108,8 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_url_strerror             |                              |
 | &check;    | curl_version                  |                              |
 | &check;    | curl_version_info             |                              |
-|            | curl_ws_recv                  |                              |
-|            | curl_ws_send                  |                              |
+| &check;    | curl_ws_recv                  |                              |
+| &check;    | curl_ws_send                  |                              |
 |            | curl_ws_meta                  |                              |
 <details><summary>Deprecated Functions with Suggested Alternatives</summary>
   

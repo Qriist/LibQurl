@@ -534,14 +534,12 @@ _curl_pushheader_bynum(headerStruct, num) { ;untested   https://curl.se/libcurl/
 _curl_ws_recv(curl, buffer, buflen, &recv, &meta){    ; https://curl.se/libcurl/c/curl_ws_recv.html
     static curl_ws_recv := this._getDllAddress(this.curlDLLpath, "curl_ws_recv")
     return DllCall(curl_ws_recv
-        ,   "Ptr", curl                     ; CURL *curl
-        ,   "Ptr", buffer                   ; void *buffer
-        ,   "UPtr", buflen                  ; size_t buflen
-        ,   "UPtr*", &recv := 0                   ; size_t *recv
-        ,   "Ptr*", &meta := 0)                    ; const struct curl_ws_frame **meta
+        ,   "Ptr", curl
+        ,   "Ptr", buffer
+        ,   "UPtr", buflen
+        ,   "UPtr*", &recv := 0
+        ,   "Ptr*", &meta := 0)
 }
-
-
 _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;untested   https://curl.se/libcurl/c/curl_ws_send.html
     static curl_ws_send := this._getDllAddress(this.curlDLLpath,"curl_ws_send") 
     return DllCall(curl_ws_send
