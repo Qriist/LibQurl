@@ -3067,6 +3067,25 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "Int", 0xA
             ,   "Ptr")
     }
+    _curl_ws_recv(curl, buffer, buflen, &recv, &meta){    ; https://curl.se/libcurl/c/curl_ws_recv.html
+        static curl_ws_recv := this._getDllAddress(this.curlDLLpath, "curl_ws_recv")
+        return DllCall(curl_ws_recv
+            ,   "Ptr", curl
+            ,   "Ptr", buffer
+            ,   "UPtr", buflen
+            ,   "UPtr*", &recv := 0
+            ,   "Ptr*", &meta := 0)
+    }
+    _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;untested   https://curl.se/libcurl/c/curl_ws_send.html
+        static curl_ws_send := this._getDllAddress(this.curlDLLpath,"curl_ws_send") 
+        return DllCall(curl_ws_send
+            ,   "Ptr", easy_handle
+            ,   "Ptr", buffer
+            ,   "UPtr", buflen
+            ,   "UPtr*", &sent
+            ,   "Int64", fragsize
+            ,   "UInt", flags)
+    }
     
     ; all dll calls below this line haven't been fully tested
     
@@ -3182,25 +3201,6 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "Ptr", headerStruct
             ,   "Int", num
             ,   "Ptr")
-    }
-    _curl_ws_recv(curl, buffer, buflen, &recv, &meta){    ; https://curl.se/libcurl/c/curl_ws_recv.html
-        static curl_ws_recv := this._getDllAddress(this.curlDLLpath, "curl_ws_recv")
-        return DllCall(curl_ws_recv
-            ,   "Ptr", curl
-            ,   "Ptr", buffer
-            ,   "UPtr", buflen
-            ,   "UPtr*", &recv := 0
-            ,   "Ptr*", &meta := 0)
-    }
-    _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;untested   https://curl.se/libcurl/c/curl_ws_send.html
-        static curl_ws_send := this._getDllAddress(this.curlDLLpath,"curl_ws_send") 
-        return DllCall(curl_ws_send
-            ,   "Ptr", easy_handle
-            ,   "Ptr", buffer
-            ,   "UPtr", buflen
-            ,   "UPtr*", &sent
-            ,   "Int64", fragsize
-            ,   "UInt", flags)
     }
     _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
         static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 
