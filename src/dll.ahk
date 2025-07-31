@@ -341,6 +341,23 @@ _curl_slist_free_all(ptrSList) {    ;https://curl.se/libcurl/c/curl_slist_free_a
     return DllCall(curl_slist_free_all
         , "Ptr", ptrSList)
 }
+_curl_easy_ssls_export(easy_handle,export_fn,userptr){  ;untested   https://curl.se/libcurl/c/curl_easy_ssls_export.html
+    static curl_easy_ssls_export := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_export") 
+    return DllCall(curl_easy_ssls_export
+        ,   "Ptr", easy_handle
+        ,   "Ptr", export_fn
+        ,   "Ptr", userptr)
+}
+_curl_easy_ssls_import(easy_handle, session_key, shmac, sdata){    ;untested  https://curl.se/libcurl/c/curl_easy_ssls_import.html
+    static curl_easy_ssls_import := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_import") 
+    return DllCall(curl_easy_ssls_import
+        ,   "Ptr", easy_handle
+        ,   "Str", session_key
+        ,   "Ptr", shmac
+        ,   "UPtr", shmac.size
+        ,   "Ptr", sdata
+        ,   "UPtr", sdata.size)
+}
 _curl_strequal(str1, str2){    ;untested    https://curl.se/libcurl/c/curl_strequal.html
     static curl_strequal := this._getDllAddress(this.curlDLLpath, "curl_strequal") 
     return DllCall(curl_strequal
@@ -356,9 +373,6 @@ _curl_strnequal(str1, str2, length){    ;untested   https://curl.se/libcurl/c/cu
         ,   "Ptr", length
         ,   "Cdecl Int")
 }
-
-
-
 _curl_url() {   ;https://curl.se/libcurl/c/curl_url.html
     /*  use the URL interface instead of the following deprecated functions:
         curl_easy_escape
@@ -437,24 +451,6 @@ _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;https://curl.se
 
 ; all dll calls below this line haven't been fully tested
 
-_curl_easy_ssls_export(easy_handle,export_fn,userptr){  ;untested   https://curl.se/libcurl/c/curl_easy_ssls_export.html
-    static curl_easy_ssls_export := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_export") 
-    return DllCall(curl_easy_ssls_export
-        ,   "Ptr", easy_handle
-        ,   "Ptr", export_fn
-        ,   "Ptr", userptr)
-}
-
-_curl_easy_ssls_import(easy_handle, session_key, shmac, sdata){    ;untested  https://curl.se/libcurl/c/curl_easy_ssls_import.html
-    static curl_easy_ssls_import := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_import") 
-    return DllCall(curl_easy_ssls_import
-        ,   "Ptr", easy_handle
-        ,   "Str", session_key
-        ,   "Ptr", shmac
-        ,   "UPtr", shmac.size
-        ,   "Ptr", sdata
-        ,   "UPtr", sdata.size)
-}
 
 ; _curl_global_init_mem(flags,curl_malloc_callback,curl_free_callback,curl_realloc_callback,curl_strdup_callback,curl_calloc_callback) {   ;untested   https://curl.se/libcurl/c/curl_global_init_mem.html
     ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
