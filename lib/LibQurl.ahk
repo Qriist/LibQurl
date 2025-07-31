@@ -349,7 +349,7 @@ __New(dllPath?,requestedSSLprovider?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         
         ;push a lone flag string into a a flagArr
-        if (Type(flags)="String")
+        if (Type(flagArr)="String")
             flagArr := [flags]
 
         ;parse the flags
@@ -395,42 +395,38 @@ __New(dllPath?,requestedSSLprovider?) {
     WebSocketReceive(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
-        ;prepare buffers
-        outBuf := Buffer(4096)
-        recv := Buffer(8,0)
-        meta := Buffer(32,0)
-
+        outBuf := Buffer(0)
         loop {
-            If !ret := this._curl_ws_recv(easy_handle,outbuf,outbuf.size,&recv.ptr,&meta.ptr) {
-                break   ;completed successfully
-            }
+            ret := this._curl_ws_recv(easy_handle,outbuf,outbuf.size,&recv,&meta)
             
-            ;error 81 = "waiting for ready"
-            If (ret = 81){
-                ;error 81 is normal traffic so only capture with debug enabled
+            switch ret {
+                case 0:
+                    metaMap := this.struct.curl_ws_frame(meta)
+                    if metaMap["bytesleft"]
+                        outBuf.Size += metaMap["bytesleft"]
+                    else
+                        break
+                case 81:    ;waiting for ready state
+                ;normal traffic so only capture with debug enabled
                 If (this.easyHandleMap[easy_handle]["debug"] = 1)
                     this._ErrorHandler(A_ThisFunc,"CURLcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
-                
+
                 ;short sleep before checking again for ready
                 Sleep(50)
                 continue
+
+                Default:    ;any other error
+                    this._ErrorHandler(A_ThisFunc,"CURLcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+                    return ret
             }
-            
-            ;any other error
-            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_ws_recv",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
-            break
+
         }
-        ; MsgBox this.PrintObj(this.struct.curl_ws_frame(meta.ptr)) "`n" this.PrintObj(this.struct.curl_ws_frame(recv.ptr))
         this.easyHandleMap[easy_handle]["lastBody"] := outBuf
         return ret
     }
     SetWebSocketFrameSize(frame_size := 10 * 1024,easy_handle?){ ;outgoing traffic will be auto-split at this size
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this.easyHandleMap[easy_handle]["frame_size"] := frame_size
-    }
-    SetWebSocketBufferChunkSize(chunk_size := 4 * 1024,easy_handle?){   ;incoming traffic will auto-split at this size
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        this.easyHandleMap[easy_handle]["websocket_buffer_chunk_size"] := chunk_size
     }
     WebSocketConvert(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
@@ -439,9 +435,6 @@ __New(dllPath?,requestedSSLprovider?) {
         this.SetOpt("CONNECT_ONLY",2,easy_handle)
         this.SetWebSocketFrameSize(10 * 1024,easy_handle?)
         this.easyHandleMap[easy_handle]["websocket_mode"] := 1
-
-        ;This is the default size libcurl will 
-        this.easyHandleMap[easy_handle]["websocket_buffer_chunk_size"] := 4096
         this.Sync(easy_handle)
     }
 
@@ -3196,9 +3189,9 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "Ptr", curl                     ; CURL *curl
             ,   "Ptr", buffer                   ; void *buffer
             ,   "UPtr", buflen                  ; size_t buflen
-            ,   "UPtr*", recv                   ; size_t *recv
-            ,   "Ptr*", meta                    ; const struct curl_ws_frame **meta
-            ,   "Cdecl")
+            ,   "UPtr*", &recv := 0                   ; size_t *recv
+            ,   "Ptr*", &meta := 0)                    ; const struct curl_ws_frame **meta
+            ; ,   "Ptr*", meta.ptr)                    ; const struct curl_ws_frame **meta
     }
     
     

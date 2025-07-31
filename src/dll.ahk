@@ -537,9 +537,8 @@ _curl_ws_recv(curl, buffer, buflen, &recv, &meta){    ; https://curl.se/libcurl/
         ,   "Ptr", curl                     ; CURL *curl
         ,   "Ptr", buffer                   ; void *buffer
         ,   "UPtr", buflen                  ; size_t buflen
-        ,   "UPtr*", recv                   ; size_t *recv
-        ,   "Ptr*", meta                    ; const struct curl_ws_frame **meta
-        ,   "Cdecl")
+        ,   "UPtr*", &recv := 0                   ; size_t *recv
+        ,   "Ptr*", &meta := 0)                    ; const struct curl_ws_frame **meta
 }
 
 
