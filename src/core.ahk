@@ -8,6 +8,7 @@
 #include "*i <Aris\SKAN\RunCMD>" ; SKAN/RunCMD@9a8392d
 #include "*i <Aris\Qriist\libmagic>" ; github:Qriist/libmagic@v0.80.0 --main Lib\libmagic.ahk
 #include "*i <Aris\Qriist\Null>" ; github:Qriist/Null@v1.0.0 --main Null.ahk
+#include "*i <Aris\Chunjee\adash>"
 class LibQurl {
     ;core functionality
 __New(dllPath?,requestedSSLprovider?) {
@@ -1216,6 +1217,17 @@ __New(dllPath?,requestedSSLprovider?) {
         this._setCallbacks(,,,,1,easy_handle)
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] := []
         this.easyHandleMap[easy_handle]["debug"] := 1
+    }
+    ConfigureDebug(config := ["-all"]){
+        ;You can use no prefix ("all"), plus ("+all"), or minus ("-all") to control the debug level for any component.
+        ;"-all" is equivalent to not calling this in the first place.
+        switch Type(config){
+            case "Array":
+                configLevel := adash.join(config,",")
+            case "String":
+                configLevel := config
+        }
+        this._curl_global_trace(configLevel)
     }
     PollDebug(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle

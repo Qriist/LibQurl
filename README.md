@@ -61,7 +61,7 @@ https://curl.se/libcurl/c/allfuncs.html
 |            | curl_global_init_mem          |                              |
 | &check;    | curl_global_sslset            |                              |
 | &check;    | curl_mime_addpart             |                              |
-|            | curl_global_trace             |                              |
+| &check;    | curl_global_trace             | called with .ConfigureDebug()|
 | &check;    | curl_mime_data                |                              |
 | &check;    | curl_mime_data_cb             |                              |
 | &check;    | curl_mime_encoder             |                              |

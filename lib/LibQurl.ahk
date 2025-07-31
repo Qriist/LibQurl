@@ -3,6 +3,7 @@
 #include "*i <Aris\SKAN\RunCMD>" ; SKAN/RunCMD@9a8392d
 #include "*i <Aris\Qriist\libmagic>" ; github:Qriist/libmagic@v0.80.0 --main Lib\libmagic.ahk
 #include "*i <Aris\Qriist\Null>" ; github:Qriist/Null@v1.0.0 --main Null.ahk
+#include "*i <Aris\Chunjee\adash>"
 class LibQurl {
     ;core functionality
 __New(dllPath?,requestedSSLprovider?) {
@@ -1212,6 +1213,17 @@ __New(dllPath?,requestedSSLprovider?) {
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] := []
         this.easyHandleMap[easy_handle]["debug"] := 1
     }
+    ConfigureDebug(config := ["-all"]){
+        ;You can use no prefix ("all"), plus ("+all"), or minus ("-all") to control the debug level for any component.
+        ;"-all" is equivalent to not calling this in the first place.
+        switch Type(config){
+            case "Array":
+                configLevel := adash.join(config,",")
+            case "String":
+                configLevel := config
+        }
+        this._curl_global_trace(configLevel)
+    }
     PollDebug(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         static infotypes := Map(
@@ -1558,7 +1570,7 @@ __New(dllPath?,requestedSSLprovider?) {
         retMap["tls_version"] := Format("0x{:04X}", ietf_tls_id)
         retMap["alpn"] := (alpn?StrGet(alpn,"UTF-8"):"")
         retMap["earlydata_max"] := earlydata_max
-        
+    
         ;push the data into the main function's array
         retArr.push(retMap)
     
@@ -2847,6 +2859,11 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "AStr", name
             ,   "Ptr*", &avail := 0)
     }
+    _curl_global_trace(config){   ;https://curl.se/libcurl/c/curl_global_trace.html
+        static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 
+        return DllCall(curl_global_trace
+            ,   "Str", config)
+    }
     _curl_mime_addpart(mime_handle) { ;https://curl.se/libcurl/c/curl_mime_addpart.html
         static curl_mime_addpart := this._getDllAddress(this.curlDLLpath,"curl_mime_addpart") 
         return DllCall(curl_mime_addpart
@@ -3136,11 +3153,6 @@ __New(dllPath?,requestedSSLprovider?) {
     ; }
     
     
-    _curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_trace.html
-        static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 
-        return DllCall(curl_global_trace
-            ,   "AStr", config)
-    }
     _curl_pushheader_byname(headerStruct, name) { ;untested   https://curl.se/libcurl/c/curl_pushheader_byname.html
         static curl_pushheader_byname := this._getDllAddress(this.curlDLLpath,"curl_pushheader_byname") 
         return DllCall(curl_pushheader_byname

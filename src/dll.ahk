@@ -169,6 +169,11 @@ _curl_global_sslset(id,name,&avail := 0) {  ;https://curl.se/libcurl/c/curl_glob
         ,   "AStr", name
         ,   "Ptr*", &avail := 0)
 }
+_curl_global_trace(config){   ;https://curl.se/libcurl/c/curl_global_trace.html
+    static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 
+    return DllCall(curl_global_trace
+        ,   "Str", config)
+}
 _curl_mime_addpart(mime_handle) { ;https://curl.se/libcurl/c/curl_mime_addpart.html
     static curl_mime_addpart := this._getDllAddress(this.curlDLLpath,"curl_mime_addpart") 
     return DllCall(curl_mime_addpart
@@ -458,11 +463,6 @@ _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;https://curl.se
 ; }
 
 
-_curl_global_trace(config){   ;untested   https://curl.se/libcurl/c/curl_global_trace.html
-    static curl_global_trace := this._getDllAddress(this.curlDLLpath,"curl_global_trace") 
-    return DllCall(curl_global_trace
-        ,   "AStr", config)
-}
 _curl_pushheader_byname(headerStruct, name) { ;untested   https://curl.se/libcurl/c/curl_pushheader_byname.html
     static curl_pushheader_byname := this._getDllAddress(this.curlDLLpath,"curl_pushheader_byname") 
     return DllCall(curl_pushheader_byname

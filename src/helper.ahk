@@ -251,7 +251,7 @@ _SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac , shmac_le
     retMap["tls_version"] := Format("0x{:04X}", ietf_tls_id)
     retMap["alpn"] := (alpn?StrGet(alpn,"UTF-8"):"")
     retMap["earlydata_max"] := earlydata_max
-    
+
     ;push the data into the main function's array
     retArr.push(retMap)
 
