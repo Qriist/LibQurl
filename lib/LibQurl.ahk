@@ -3067,7 +3067,7 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "Int", 0xA
             ,   "Ptr")
     }
-    _curl_ws_recv(curl, buffer, buflen, &recv, &meta){    ; https://curl.se/libcurl/c/curl_ws_recv.html
+    _curl_ws_recv(curl, buffer, buflen, &recv, &meta){    ;https://curl.se/libcurl/c/curl_ws_recv.html
         static curl_ws_recv := this._getDllAddress(this.curlDLLpath, "curl_ws_recv")
         return DllCall(curl_ws_recv
             ,   "Ptr", curl
@@ -3076,7 +3076,7 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "UPtr*", &recv := 0
             ,   "Ptr*", &meta := 0)
     }
-    _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;untested   https://curl.se/libcurl/c/curl_ws_send.html
+    _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;https://curl.se/libcurl/c/curl_ws_send.html
         static curl_ws_send := this._getDllAddress(this.curlDLLpath,"curl_ws_send") 
         return DllCall(curl_ws_send
             ,   "Ptr", easy_handle
@@ -3119,6 +3119,29 @@ __New(dllPath?,requestedSSLprovider?) {
         return DllCall(curl_global_trace
             ,   "AStr", config)
     }
+    _curl_pushheader_byname(headerStruct, name) { ;untested   https://curl.se/libcurl/c/curl_pushheader_byname.html
+        static curl_pushheader_byname := this._getDllAddress(this.curlDLLpath,"curl_pushheader_byname") 
+        return DllCall(curl_pushheader_byname
+            ,   "Ptr", headerStruct
+            ,   "AStr", name
+            ,   "Ptr")
+    }
+    _curl_pushheader_bynum(headerStruct, num) { ;untested   https://curl.se/libcurl/c/curl_pushheader_bynum.html
+        static curl_pushheader_bynum := this._getDllAddress(this.curlDLLpath,"curl_pushheader_bynum") 
+        return DllCall(curl_pushheader_bynum
+            ,   "Ptr", headerStruct
+            ,   "Int", num
+            ,   "Ptr")
+    }
+    _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
+        static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 
+        return DllCall(curl_ws_meta
+            , "Int", easy_handle
+            , "Ptr")
+    }
+    
+    
+    ;all calls below this line have to do with multi_socket_action
     _curl_multi_assign(multi_handle,sockfd,sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html
         static curl_multi_assign := this._getDllAddress(this.curlDLLpath,"curl_multi_assign") 
         return DllCall(curl_multi_assign
@@ -3133,6 +3156,15 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "Ptr", write_fd_set
             ,   "Ptr", exc_fd_set
             ,   "Int", max_fd)
+    }
+    _curl_multi_poll(multi_handle,extra_fds,extra_nfds,timeout_ms,&numfds) {    ;untested   https://curl.se/libcurl/c/curl_multi_poll.html
+        static curl_multi_poll := this._getDllAddress(this.curlDLLpath,"curl_multi_poll") 
+        return DllCall(curl_multi_poll
+            ,   "Ptr", multi_handle
+            ,   "Ptr", extra_fds
+            ,   "UInt", extra_nfds
+            ,   "Int", timeout_ms
+            ,   "int*", &numfds)
     }
     _curl_multi_socket_action(multi_handle,sockfd,ev_bitmask,running_handles) {   ;untested   https://curl.se/libcurl/c/curl_multi_socket_action.html
         ;use this function with ev_bitmask=0 instead of the deprecated curl_multi_socket
@@ -3156,15 +3188,6 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "Int", multi_handle
             ,   "Int", timeout)
     }
-    _curl_multi_poll(multi_handle,extra_fds,extra_nfds,timeout_ms,&numfds) {    ;untested   https://curl.se/libcurl/c/curl_multi_poll.html
-        static curl_multi_poll := this._getDllAddress(this.curlDLLpath,"curl_multi_poll") 
-        return DllCall(curl_multi_poll
-            ,   "Ptr", multi_handle
-            ,   "Ptr", extra_fds
-            ,   "UInt", extra_nfds
-            ,   "Int", timeout_ms
-            ,   "int*", &numfds)
-    }
     _curl_multi_wait(multi_handle, extra_fds, extra_nfds, timeout_ms, &numfds) {    ;untested   https://curl.se/libcurl/c/curl_multi_wait.html
         static curl_multi_wait := this._getDllAddress(this.curlDLLpath,"curl_multi_wait") 
         return DllCall(curl_multi_wait
@@ -3187,26 +3210,6 @@ __New(dllPath?,requestedSSLprovider?) {
         static curl_multi_wakeup := this._getDllAddress(this.curlDLLpath,"curl_multi_wakeup") 
         return DllCall(curl_multi_wakeup
             ,   "Int", multi_handle)
-    }
-    _curl_pushheader_byname(headerStruct, name) { ;untested   https://curl.se/libcurl/c/curl_pushheader_byname.html
-        static curl_pushheader_byname := this._getDllAddress(this.curlDLLpath,"curl_pushheader_byname") 
-        return DllCall(curl_pushheader_byname
-            ,   "Ptr", headerStruct
-            ,   "AStr", name
-            ,   "Ptr")
-    }
-    _curl_pushheader_bynum(headerStruct, num) { ;untested   https://curl.se/libcurl/c/curl_pushheader_bynum.html
-        static curl_pushheader_bynum := this._getDllAddress(this.curlDLLpath,"curl_pushheader_bynum") 
-        return DllCall(curl_pushheader_bynum
-            ,   "Ptr", headerStruct
-            ,   "Int", num
-            ,   "Ptr")
-    }
-    _curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
-        static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 
-        return DllCall(curl_ws_meta
-            , "Int", easy_handle
-            , "Ptr")
     }
 
 }
