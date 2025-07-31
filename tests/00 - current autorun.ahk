@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := 23
+current := 22
 
 current := Format("{:02}",current)
 loop files A_ScriptDir "\*.ahk"
@@ -10,5 +10,5 @@ loop files A_ScriptDir "\*.ahk"
 clean := ["txt","html","json","zst"]
 for k,v in clean
 	FileDelete(A_ScriptDir "\*." v)
-	
+
 Run(found)

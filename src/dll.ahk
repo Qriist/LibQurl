@@ -445,15 +445,15 @@ _curl_easy_ssls_export(easy_handle,export_fn,userptr){  ;untested   https://curl
         ,   "Ptr", userptr)
 }
 
-_curl_easy_ssls_import(easy_handle, session_key, shmac, shmac_len, sdata, sdata_len){    ;untested  https://curl.se/libcurl/c/curl_easy_ssls_import.html
+_curl_easy_ssls_import(easy_handle, session_key, shmac, sdata){    ;untested  https://curl.se/libcurl/c/curl_easy_ssls_import.html
     static curl_easy_ssls_import := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_import") 
     return DllCall(curl_easy_ssls_import
         ,   "Ptr", easy_handle
         ,   "Str", session_key
         ,   "Ptr", shmac
-        ,   "UPtr", shmac_len
+        ,   "UPtr", shmac.size
         ,   "Ptr", sdata
-        ,   "UPtr", sdata_len)
+        ,   "UPtr", sdata.size)
 }
 
 ; _curl_global_init_mem(flags,curl_malloc_callback,curl_free_callback,curl_realloc_callback,curl_strdup_callback,curl_calloc_callback) {   ;untested   https://curl.se/libcurl/c/curl_global_init_mem.html

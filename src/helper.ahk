@@ -225,12 +225,36 @@ _debugCallbackFunction(easy_handle, infotype, data, size, clientp){
     return 0
 }
 
-_SSLExportCallbackFunction(easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max){
-; _SSLExportCallbackFunction(params*){
-    msgbox "hello from inside the callback"
+_SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max){
+    ;get the array from the main function
+    retArr := ObjFromPtrAddRef(retArrPtr)
 
+    ;process the data
+    retMap := Map()
+    retMap["session_key"] := StrGet(session_key,"UTF-8")
+
+    shmacBuf := Buffer(shmac_len)
+    DllCall("RtlMoveMemory"
+            ,   "Ptr", shmacBuf    ;destination
+            ,   "Ptr", shmac  ;source
+            ,   "UPtr", shmac_len)  ;length
+    retMap["shmac"] := this.EncodeBase64(shmacBuf)
+
+    sdataBuf := Buffer(sdata_le)
+    DllCall("RtlMoveMemory"
+            ,   "Ptr", sdataBuf    ;destination
+            ,   "Ptr", sdata  ;source
+            ,   "UPtr", sdata_le)  ;length
+    retMap["sdata"] := this.EncodeBase64(sdataBuf)
+
+    retMap["valid_until"] := valid_until    ;unix epoch ;todo - convert to human time
+    retMap["tls_version"] := Format("0x{:04X}", ietf_tls_id)
+    retMap["alpn"] := (alpn?StrGet(alpn,"UTF-8"):"")
+    retMap["earlydata_max"] := earlydata_max
     
-    ; msgbox "hit`n" easy_handle "`n" session_key "`n" shmac  "`n" shmac_len "`n" sdata "`n" sdata_le "`n" valid_until "`n" ietf_tls_id "`n" alpn "`n" earlydata_max
+    ;push the data into the main function's array
+    retArr.push(retMap)
+
     return 0
 }
 _mimeDataReadCallbackFunction(retBuffer, size, nitems, mime_part){
@@ -273,7 +297,7 @@ _mimeDataSeekCallbackFunction(mime_part, offset, origin){
 
 _mimeDataFreeCallbackFunction(mime_part){
     ; todo - check if I can fully cleanup the mime_parts in this callback
-    
+
     ; partMap := this.mimePartMap[mime_part]
     ; partMap["content"] := unset
     ; partMap["offset"] := unset

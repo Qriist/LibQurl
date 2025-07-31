@@ -3,23 +3,30 @@
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
 
-; curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
-curl := LibQurl("C:\Users\Qriist\Desktop\curl\bagder\libcurl-x64.dll")
+curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
 
-;currently bugged in curl, no point in running
+;pulls the default handle if you don't want to manage an entire instance
+share_handle := curl.shareHandleMap[0][1]
+curl.ShareSetOpt("SHARE","SSL_SESSION")
 
+;Add the share_handle to the current easy_handle.
+;This must be done before executing a transfer.
+curl.SetOpt("SHARE",share_handle)
 
-url := "https://amazon.com"
-; url := "https://example.com/"
-; url := "https://github.com/"
-; url := "https://curl.se/"
-; url := "https://www.curl.se/"
+;if you had previously saved ssl data now is the time to
+;import all tickets found in the sslObj.
+; curl.ImportSSLs(sslObj)
+
+;Execute the transfer to generate SSL data.
+url := "https://curl.se/"
 curl.SetOpt("URL",url)
 curl.Sync()
 
-msgbox curl.ExportSSLs() "`n`n"
-    .   curl.PrintObj(curl.shareHandleMap) "`n`n"
-    .   (curl.caughtErrors.length>0?curl.PrintObj(curl.caughtErrors):"")
+;SSL data is now available to be exported.
+sslObj := curl.ExportSSLs()
 
-; if curl.caughtErrors.length > 0
-;     msgbox curl.PrintObj(curl.caughtErrors)
+;Example of dumping to json to store/restore the data.
+sslJson := JSON.Dump(sslObj)
+sslObj := JSON.Load(sslJson)
+
+FileOpen(a_scriptdir "\22.results.txt","w").Write(sslJson)

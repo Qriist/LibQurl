@@ -1012,7 +1012,6 @@ __New(dllPath?,requestedSSLprovider?) {
     AttachMimePart(partName,partContent,mime_handle?){
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
         
-        ;todo - establish mime_part relationships
         mime_part := this.MimeAddPart(mime_handle)
 
         this.MimePartName(mime_part,partName)
@@ -1263,36 +1262,39 @@ __New(dllPath?,requestedSSLprovider?) {
     
         return Format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}", year, month, day, hour, minute, second, ms)
     }
-    ; /*  ssl import/export seems to be bugged in libcurl, shelving for now
     ExportSSLs(easy_handle?,share_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
         
-        ;open the session share so the export can happen
-        If this.ShareSetOpt("SHARE","SSL_SESSION",share_handle)
-            this._ErrorHierarchy(A_ThisFunc,"CURLSHcode",share_handle)
-        If this.SetOpt("SHARE",share_handle,easy_handle)
-            this._ErrorHierarchy(A_ThisFunc,"CURLcode",share_handle)
+        retArr := []
+        retArrPtr := ObjPtr(retArr)
 
         ;create the callback to the export function
-        this.shareHandleMap[share_handle]["callback"] := CBF := CallbackCreate(
-            (easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max) =>
-            this._SSLExportCallbackFunction(easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max)
+        CBF := CallbackCreate(
+            (easy_handle, retArr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max) =>
+            this._SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max)
         )
-        ; CBF := CallbackCreate(this._SSLExportCallbackFunction.bind(this))
-        ; this.shareHandleMap[share_handle]["callback"] := CBF
-        if ret := this._curl_easy_ssls_export(easy_handle,CBF,share_handle)
+
+        ;proc the export
+        If ret := this._curl_easy_ssls_export(easy_handle,CBF,share_handle)
             this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_ssls_export",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         
         ;callback doesn't need to be stored as this is a one-shot operation
         CallbackFree(CBF)
-        this.shareHandleMap[share_handle]["callback"] := unset
         
-        return ret
+        return retArr
     }
-    ImportSSLs(easy_handle?){
+    ImportSSLs(importArr,easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-
+        for k,v in importArr{
+            importMap := v
+            if importMap.has("session_key")
+                session_key := importMap["session_key"]
+            shmac := this.DecodeBase64(importMap["shmac"],1)
+            sdata := this.DecodeBase64(importMap["sdata"],1)
+            if ret := this._curl_easy_ssls_import(easy_handle,session_key ??= 0,shmac,sdata)
+                this._ErrorHandler(A_ThisFunc,"CURLcode","curl_easy_ssls_import",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+        }
     }
     ; */
 
@@ -1530,12 +1532,36 @@ __New(dllPath?,requestedSSLprovider?) {
         return 0
     }
     
-    _SSLExportCallbackFunction(easy_handle, userptr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max){
-    ; _SSLExportCallbackFunction(params*){
-        msgbox "hello from inside the callback"
+    _SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max){
+        ;get the array from the main function
+        retArr := ObjFromPtrAddRef(retArrPtr)
     
+        ;process the data
+        retMap := Map()
+        retMap["session_key"] := StrGet(session_key,"UTF-8")
+    
+        shmacBuf := Buffer(shmac_len)
+        DllCall("RtlMoveMemory"
+                ,   "Ptr", shmacBuf    ;destination
+                ,   "Ptr", shmac  ;source
+                ,   "UPtr", shmac_len)  ;length
+        retMap["shmac"] := this.EncodeBase64(shmacBuf)
+    
+        sdataBuf := Buffer(sdata_le)
+        DllCall("RtlMoveMemory"
+                ,   "Ptr", sdataBuf    ;destination
+                ,   "Ptr", sdata  ;source
+                ,   "UPtr", sdata_le)  ;length
+        retMap["sdata"] := this.EncodeBase64(sdataBuf)
+    
+        retMap["valid_until"] := valid_until    ;unix epoch ;todo - convert to human time
+        retMap["tls_version"] := Format("0x{:04X}", ietf_tls_id)
+        retMap["alpn"] := (alpn?StrGet(alpn,"UTF-8"):"")
+        retMap["earlydata_max"] := earlydata_max
         
-        ; msgbox "hit`n" easy_handle "`n" session_key "`n" shmac  "`n" shmac_len "`n" sdata "`n" sdata_le "`n" valid_until "`n" ietf_tls_id "`n" alpn "`n" earlydata_max
+        ;push the data into the main function's array
+        retArr.push(retMap)
+    
         return 0
     }
     _mimeDataReadCallbackFunction(retBuffer, size, nitems, mime_part){
@@ -1578,7 +1604,7 @@ __New(dllPath?,requestedSSLprovider?) {
     
     _mimeDataFreeCallbackFunction(mime_part){
         ; todo - check if I can fully cleanup the mime_parts in this callback
-        
+    
         ; partMap := this.mimePartMap[mime_part]
         ; partMap["content"] := unset
         ; partMap["offset"] := unset
@@ -3097,15 +3123,15 @@ __New(dllPath?,requestedSSLprovider?) {
             ,   "Ptr", userptr)
     }
     
-    _curl_easy_ssls_import(easy_handle, session_key, shmac, shmac_len, sdata, sdata_len){    ;untested  https://curl.se/libcurl/c/curl_easy_ssls_import.html
+    _curl_easy_ssls_import(easy_handle, session_key, shmac, sdata){    ;untested  https://curl.se/libcurl/c/curl_easy_ssls_import.html
         static curl_easy_ssls_import := this._getDllAddress(this.curlDLLpath,"curl_easy_ssls_import") 
         return DllCall(curl_easy_ssls_import
             ,   "Ptr", easy_handle
             ,   "Str", session_key
             ,   "Ptr", shmac
-            ,   "UPtr", shmac_len
+            ,   "UPtr", shmac.size
             ,   "Ptr", sdata
-            ,   "UPtr", sdata_len)
+            ,   "UPtr", sdata.size)
     }
     
     ; _curl_global_init_mem(flags,curl_malloc_callback,curl_free_callback,curl_realloc_callback,curl_strdup_callback,curl_calloc_callback) {   ;untested   https://curl.se/libcurl/c/curl_global_init_mem.html
