@@ -50,8 +50,8 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_easy_reset               |                              |
 | &check;    | curl_easy_send                |                              |
 | &check;    | curl_easy_setopt              |                              |
-|            | curl_easy_ssls_export         | waiting on upstream bug fixes|
-|            | curl_easy_ssls_import         | waiting on upstream bug fixes|
+| &check;    | curl_easy_ssls_export         |                              |
+| &check;    | curl_easy_ssls_import         |                              |
 | &check;    | curl_easy_strerror            |                              |
 | &check;    | curl_easy_upkeep              |                              |
 | &check;    | curl_free                     |                              |
