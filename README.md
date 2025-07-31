@@ -13,7 +13,7 @@ Much work has been done to abstract away the need for a full understanding of cu
     - A unique hybrid "magic" download mode is supported where the download starts in memory but flushes to disk when a certain size threshold is reached.
 - Effortless POSTing of data from almost any source, be it a String, Integer, Object, Array, Map, Buffer, or even a FileObject.
     - Similarly effortless building of complex MIME forms, with the same smart source handling.
-- You can manually send and receive protocol-level raw data.
+- You can manually send and receive websocket traffic and protocol-level raw data.
 - Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris). (This is the recommended installation method!)
 
 <sup><sub>*Around 25 dll functions were added in an "untested" state and are clearly marked as such. Among these, there are almost certainly some instances of providing the wrong data type in the DllCall. *Caveat emptor* until checked off on the function list below. Most common functions are already properly wrapped.</sup></sub>
