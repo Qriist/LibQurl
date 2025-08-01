@@ -560,12 +560,11 @@ _configureSSL(requestedSSLprovider := "WolfSSL"){
     listOfSSLs := [ requestedSSLprovider    
         ;insert any new providers BELOW this line
 
-        ,   "WolfSSL"           ; id = 7
+        ,   "WolfSSL"           ; id = 7 (preferred default)
         ,   "OpenSSL"           ; id = 1 (plus any of its forks)
-        ,   "Schannel"          ; id = 8
-        ,   "GnuTLS"            ; id = 2
+        ,   "Schannel"          ; id = 8 (prioritized for Windows)
         ,   "mbedTLS"           ; id = 11
-        ; ,   "RustLS"            ; id = 14
+        ,   "GnuTLS"            ; id = 2
 
         ;insert any new providers ABOVE this line
         ,   ""]                 ;fallback on whatever curl has
@@ -591,7 +590,7 @@ _globalCleanup(){   ;this should be called when shutting down LibQurl
     
     this._curl_global_cleanup()
 }
-_register(dllPath?,requestedSSLprovider?) {
+_register(dllPath?,requestedSSLprovider?,initMemMap?) {
     ;todo - make dll auto-load feature more robust
     ;determine where the dll will load from
     if !FileExist(dllPath ??= "")
@@ -617,8 +616,16 @@ _register(dllPath?,requestedSSLprovider?) {
     A_WorkingDir := oldWorkingDir
     
     ;continue loading
-    this._configureSSL(requestedSSLprovider?)   
-    this._curl_global_init()
+    this._configureSSL(requestedSSLprovider?)
+
+    ;use the default init options unless user provides callbacks
+    If !IsSet(initMemMap)
+        this._curl_global_init()
+    else {
+        this._curl_global_init_mem(initMemMap["flags"],initMemMap["curl_malloc_callback"]
+            ,initMemMap["curl_free_callback"],initMemMap["curl_realloc_callback"]
+            ,initMemMap["curl_strdup_callback"],initMemMap["curl_calloc_callback"])
+    }
     OnExit (*) => this._globalCleanup()
     this._declareConstants()
     this._buildOptMap()

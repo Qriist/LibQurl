@@ -58,7 +58,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_getdate                  |                              |
 | &check;    | curl_global_cleanup           |                              |
 | &check;    | curl_global_init              | only default mode for now    |
-|            | curl_global_init_mem          |                              |
+| &check;    | curl_global_init_mem          | provide initMemMap callbacks |
 | &check;    | curl_global_sslset            |                              |
 | &check;    | curl_mime_addpart             |                              |
 | &check;    | curl_global_trace             | called with .ConfigureDebug()|

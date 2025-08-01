@@ -162,6 +162,17 @@ _curl_global_init() {   ;https://curl.se/libcurl/c/curl_global_init.html
     else
         return
 }
+_curl_global_init_mem(flags, curl_malloc_callback, curl_free_callback, curl_realloc_callback, curl_strdup_callback, curl_calloc_callback){    ; https://curl.se/libcurl/c/curl_global_init_mem.html
+    static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem")
+    return DllCall(curl_global_init_mem
+        ,   "Int", flags
+        ,   "Ptr", curl_malloc_callback
+        ,   "Ptr", curl_free_callback
+        ,   "Ptr", curl_realloc_callback
+        ,   "Ptr", curl_strdup_callback
+        ,   "Ptr", curl_calloc_callback
+        ,   "Cdecl")
+}
 _curl_global_sslset(id,name,&avail := 0) {  ;https://curl.se/libcurl/c/curl_global_sslset.html
     static curl_global_sslset := this._getDllAddress(this.curlDLLpath,"curl_global_sslset") 
     return DllCall(curl_global_sslset
@@ -455,14 +466,6 @@ _curl_ws_send(easy_handle,buffer,buflen,&sent,fragsize,flags) { ;https://curl.se
 }
 
 ; all dll calls below this line haven't been fully tested
-
-
-; _curl_global_init_mem(flags,curl_malloc_callback,curl_free_callback,curl_realloc_callback,curl_strdup_callback,curl_calloc_callback) {   ;untested   https://curl.se/libcurl/c/curl_global_init_mem.html
-    ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
-    ; return DllCall(curl_global_init_mem
-; }
-
-
 _curl_pushheader_byname(headerStruct, name) { ;untested   https://curl.se/libcurl/c/curl_pushheader_byname.html
     static curl_pushheader_byname := this._getDllAddress(this.curlDLLpath,"curl_pushheader_byname") 
     return DllCall(curl_pushheader_byname

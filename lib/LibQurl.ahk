@@ -1879,12 +1879,11 @@ __New(dllPath?,requestedSSLprovider?) {
         listOfSSLs := [ requestedSSLprovider    
             ;insert any new providers BELOW this line
     
-            ,   "WolfSSL"           ; id = 7
+            ,   "WolfSSL"           ; id = 7 (preferred default)
             ,   "OpenSSL"           ; id = 1 (plus any of its forks)
-            ,   "Schannel"          ; id = 8
-            ,   "GnuTLS"            ; id = 2
+            ,   "Schannel"          ; id = 8 (prioritized for Windows)
             ,   "mbedTLS"           ; id = 11
-            ; ,   "RustLS"            ; id = 14
+            ,   "GnuTLS"            ; id = 2
     
             ;insert any new providers ABOVE this line
             ,   ""]                 ;fallback on whatever curl has
@@ -1910,7 +1909,7 @@ __New(dllPath?,requestedSSLprovider?) {
         
         this._curl_global_cleanup()
     }
-    _register(dllPath?,requestedSSLprovider?) {
+    _register(dllPath?,requestedSSLprovider?,initMemMap?) {
         ;todo - make dll auto-load feature more robust
         ;determine where the dll will load from
         if !FileExist(dllPath ??= "")
@@ -1936,8 +1935,16 @@ __New(dllPath?,requestedSSLprovider?) {
         A_WorkingDir := oldWorkingDir
         
         ;continue loading
-        this._configureSSL(requestedSSLprovider?)   
-        this._curl_global_init()
+        this._configureSSL(requestedSSLprovider?)
+    
+        ;use the default init options unless user provides callbacks
+        If !IsSet(initMemMap)
+            this._curl_global_init()
+        else {
+            this._curl_global_init_mem(initMemMap["flags"],initMemMap["curl_malloc_callback"]
+                ,initMemMap["curl_free_callback"],initMemMap["curl_realloc_callback"]
+                ,initMemMap["curl_strdup_callback"],initMemMap["curl_calloc_callback"])
+        }
         OnExit (*) => this._globalCleanup()
         this._declareConstants()
         this._buildOptMap()
@@ -2852,6 +2859,17 @@ __New(dllPath?,requestedSSLprovider?) {
         else
             return
     }
+    _curl_global_init_mem(flags, curl_malloc_callback, curl_free_callback, curl_realloc_callback, curl_strdup_callback, curl_calloc_callback){    ; https://curl.se/libcurl/c/curl_global_init_mem.html
+        static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem")
+        return DllCall(curl_global_init_mem
+            ,   "Int", flags
+            ,   "Ptr", curl_malloc_callback
+            ,   "Ptr", curl_free_callback
+            ,   "Ptr", curl_realloc_callback
+            ,   "Ptr", curl_strdup_callback
+            ,   "Ptr", curl_calloc_callback
+            ,   "Cdecl")
+    }
     _curl_global_sslset(id,name,&avail := 0) {  ;https://curl.se/libcurl/c/curl_global_sslset.html
         static curl_global_sslset := this._getDllAddress(this.curlDLLpath,"curl_global_sslset") 
         return DllCall(curl_global_sslset
@@ -3145,14 +3163,6 @@ __New(dllPath?,requestedSSLprovider?) {
     }
     
     ; all dll calls below this line haven't been fully tested
-    
-    
-    ; _curl_global_init_mem(flags,curl_malloc_callback,curl_free_callback,curl_realloc_callback,curl_strdup_callback,curl_calloc_callback) {   ;untested   https://curl.se/libcurl/c/curl_global_init_mem.html
-        ; static curl_global_init_mem := this._getDllAddress(this.curlDLLpath,"curl_global_init_mem") 
-        ; return DllCall(curl_global_init_mem
-    ; }
-    
-    
     _curl_pushheader_byname(headerStruct, name) { ;untested   https://curl.se/libcurl/c/curl_pushheader_byname.html
         static curl_pushheader_byname := this._getDllAddress(this.curlDLLpath,"curl_pushheader_byname") 
         return DllCall(curl_pushheader_byname
