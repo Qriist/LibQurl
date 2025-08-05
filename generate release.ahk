@@ -14,8 +14,10 @@ If (bumped.Value = "m")
     bumped.Value := versionString(vArr,1,&bumpedArr)
 else If (bumped.Value = "p")
     bumped.Value := versionString(vArr,3,&bumpedArr)
-else
+else If (bumped.Value = bumped)
     bumped.Value := versionString(vArr,2,&bumpedArr)
+else
+    bumped.Value := versionString(vArr,0,&bumpedArr)
 If bumped.Result = "Cancel"
     ExitApp
 
@@ -85,7 +87,7 @@ versionString(vArr,bump := 0,&bumpedArr?){
     If (bump=0)
         return (vArr["major"] "." vArr["minor"] "." vArr["patch"])
     If (bump=1)
-        return (bumpedArr["major"] += 1) "." (vArr["minor"] := 0) "." (vArr["patch"] := 0)
+        return (vArr["major"] += 1) "." (vArr["minor"] := 0) "." (vArr["patch"] := 0)
     If (bump=2)
         return vArr["major"] "." (bumpedArr["minor"] += 1) "." (vArr["patch"] := 0)
     If (bump=3)
