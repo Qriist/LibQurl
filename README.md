@@ -110,7 +110,7 @@ https://curl.se/libcurl/c/allfuncs.html
 | &check;    | curl_version_info             |                              |
 | &check;    | curl_ws_recv                  |                              |
 | &check;    | curl_ws_send                  |                              |
-|            | curl_ws_meta                  |                              |
+| &check;    | curl_ws_meta                  |                              |
 <details><summary>Deprecated Functions with Suggested Alternatives</summary>
   
 | Wrapped?   | Name                          | Alternative                  |

@@ -75,10 +75,19 @@ _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
             (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
         }
 
-        this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"] := CBF := CallbackCreate(
-            (dataPtr, size, sizeBytes, userdata) =>
-            this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
-        )
+        ;special handling for websocket mode so it doesn't have to check on each invoked call
+        ;Note: websocket mode disabled until I find a good test server
+        ; If !this.easyHandleMap[easy_handle]["websocket_mode"] { ;normal
+            this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"] := CBF := CallbackCreate(
+                (dataPtr, size, sizeBytes, userdata) =>
+                this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
+            )
+        ; } else {    ;websocket mode
+        ;     this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"] := CBF := CallbackCreate(
+        ;         (dataPtr, size, sizeBytes, userdata) =>
+        ;         this._WebsocketWriteCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
+        ;     )
+        ; }
 
         ;creates or increments the tracking key
         ; If !this.writeRefs.Has(CBF)
@@ -99,9 +108,10 @@ _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
         ;     CallbackFree(this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"])
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"] := CBF := CallbackCreate(
             (dataPtr, size, sizeBytes, userdata) =>
+            ; this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle, this.writeTo[easy_handle])
             this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
         )
-
+        ; this.writeTo[easy_handle] := unset
         ;creates or increments the tracking key
         ; If !this.writeRefs.Has(CBF)
             this.writeRefs[CBF] := 1
@@ -184,9 +194,19 @@ _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     return this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].RawWrite(dataPtr, dataSize)
 }
 
+;Note: websocket mode disabled until I find a good test server
+_WebsocketWriteCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
+    ; metaMap := this.struct.curl_ws_frame(this._curl_ws_meta(easy_handle))
+    ; dataSize := size * sizeBytes
+    ; return this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].RawWrite(dataPtr, dataSize)
+}
+
+; _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle, writeObject) {
 _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     dataSize := size * sizeBytes
     Return this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
+    ; return writeObject.RawWrite(dataPtr, dataSize)
+    ; Return this.writeTo[easy_handle].RawWrite(dataPtr, dataSize)
 }
 
 _progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded){

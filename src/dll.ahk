@@ -445,6 +445,12 @@ _curl_version_info() {  ;https://curl.se/libcurl/c/curl_version_info.html
         ,   "Int", 0xA
         ,   "Ptr")
 }
+_curl_ws_meta(easy_handle) {    ;https://curl.se/libcurl/c/curl_ws_meta.html
+    static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 
+    return DllCall(curl_ws_meta
+        , "Int", easy_handle
+        , "Ptr")
+}
 _curl_ws_recv(curl, buffer, buflen, &recv, &meta){    ;https://curl.se/libcurl/c/curl_ws_recv.html
     static curl_ws_recv := this._getDllAddress(this.curlDLLpath, "curl_ws_recv")
     return DllCall(curl_ws_recv
@@ -479,12 +485,6 @@ _curl_pushheader_bynum(headerStruct, num) { ;untested   https://curl.se/libcurl/
         ,   "Ptr", headerStruct
         ,   "Int", num
         ,   "Ptr")
-}
-_curl_ws_meta(easy_handle) {    ;untested   https://curl.se/libcurl/c/curl_ws_meta.html
-    static curl_ws_meta := this._getDllAddress(this.curlDLLpath,"curl_ws_meta") 
-    return DllCall(curl_ws_meta
-        , "Int", easy_handle
-        , "Ptr")
 }
 
 

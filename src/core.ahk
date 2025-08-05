@@ -9,47 +9,49 @@
 #include "*i <Aris\Qriist\libmagic>" ; github:Qriist/libmagic@v0.80.0 --main Lib\libmagic.ahk
 #include "*i <Aris\Qriist\Null>" ; github:Qriist/Null@v1.0.0 --main Null.ahk
 #include "*i <Aris\Chunjee\adash>"
+#include "*i <Aris\Cebolla\Timer>" ; Cebolla/Timer@96d8cfe
+
 class LibQurl {
     ;core functionality
-__New(dllPath?,requestedSSLprovider?) {
-    ;prepare interface maps
-    this.easyHandleMap := Map()
-    this.easyHandleMap[0] := []
-    this.urlHandleMap := Map()
-    this.urlHandleMap[0] := []
-    this.multiHandleMap := Map()
-    this.multiHandleMap[0] := []
-    this.multiHandleMap["pending_callbacks"] := []
-    this.multiHandleMap["running_callbacks"] := []
-    this.shareHandleMap := Map()
-    this.shareHandleMap[0] := []
-    this.mimeHandleMap := Map()
-    this.mimeHandleMap[0] := []
-    this.mimePartMap := Map()
-    this.mimePartMap[0] := []
-    this.mimePartCBFcleanupArr := []
+    __New(dllPath?,requestedSSLprovider?) {
+        ;prepare interface maps
+        this.easyHandleMap := Map()
+        this.easyHandleMap[0] := []
+        this.urlHandleMap := Map()
+        this.urlHandleMap[0] := []
+        this.multiHandleMap := Map()
+        this.multiHandleMap[0] := []
+        this.multiHandleMap["pending_callbacks"] := []
+        this.multiHandleMap["running_callbacks"] := []
+        this.shareHandleMap := Map()
+        this.shareHandleMap[0] := []
+        this.mimeHandleMap := Map()
+        this.mimeHandleMap[0] := []
+        this.mimePartMap := Map()
+        this.mimePartMap[0] := []
+        this.mimePartCBFcleanupArr := []
 
-    this.unassociatedEasyHandles := Map()
-    static curlDLLhandle := ""
-    static curlDLLpath := ""
-    this.Opt := Map()
-    this.OptById := Map()
-    this.mOpt := Map()
-    this.mOptById := Map()
-    this.struct := LibQurl._struct()  ;holds the various structs
-    this.writeRefs := Map()    ;holds the various write handles
-    this.constants := Map()
+        this.unassociatedEasyHandles := Map()
+        static curlDLLhandle := ""
+        static curlDLLpath := ""
+        this.Opt := Map()
+        this.OptById := Map()
+        this.mOpt := Map()
+        this.mOptById := Map()
+        this.struct := LibQurl._struct()  ;holds the various structs
+        this.writeRefs := Map()    ;holds the various write handles
+        this.constants := Map()
 
-    this.caughtErrors := []
-    this.keepLastNumErrors := 1000
-    this.CURL_ERROR_SIZE := 256
+        this.caughtErrors := []
+        this.keepLastNumErrors := 1000
+        this.CURL_ERROR_SIZE := 256
 
-    ;safely prepare curl's initial environment
-    Critical "On"
-    this._register(dllPath?,requestedSSLprovider?)
-    this.magic := libmagic()
-    Critical "Off"
-}
+        ;safely prepare curl's initial environment
+        Critical "On"
+        this._register(dllPath?,requestedSSLprovider?)
+        this.magic := libmagic()
+        Critical "Off"
+    }
     Init(){
         easy_handle := this._curl_easy_init()
         this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][1] is a dynamic reference to the first created easy_handle
@@ -63,10 +65,10 @@ __New(dllPath?,requestedSSLprovider?) {
         
         ;setup error handling
         this.SetOpt("ERRORBUFFER"
-            ,   this.easyHandleMap[easy_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE))
+            ,   this.easyHandleMap[easy_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE),easy_handle)
 
         this.SetOpt("ACCEPT_ENCODING","",easy_handle)    ;enables compressed transfers without affecting input headers
-        ; this.SetOpt("SSH_COMPRESSION",1,easy_handle)    ;enables compressed transfers without affecting input headers
+        this.SetOpt("SSH_COMPRESSION",1,easy_handle)    ;enables compressed transfers without affecting input headers
         this.SetOpt("FOLLOWLOCATION",1,easy_handle)    ;allows curl to follow redirects
         this.SetOpt("MAXREDIRS",30,easy_handle)    ;limits redirects to 30 (matches recent curl default)
 
@@ -106,9 +108,6 @@ __New(dllPath?,requestedSSLprovider?) {
         verPtr := this._curl_version_info()
         retObj := this.struct.curl_version_info_data(verPtr)
         return retObj
-    }
-    QueueOpt(option,parameter){
-
     }
     SetOpt(option,parameter,easy_handle?,debug?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
@@ -159,19 +158,6 @@ __New(dllPath?,requestedSSLprovider?) {
         return Null()
     }
 
-    SetOpts(optionMap,&optErrMap?,easy_handle?){  ;for setting multiple options at once
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        optErrMap := Map()
-        optErrVal := 0
-        ;TODO - add handling for Opts with scaffolding
-        for k,v in optionMap {
-            Switch k, "OFF" {
-                ; case "URL":{}
-                Default: optErrVal += optErrMap[k] := this.SetOpt(k,v,easy_handle)
-            }
-        }
-        return optErrVal    ;any non-zero value means you should check the optErrMap
-    }
     ListOpts(easy_handle?){  ;returns human-readable printout of the given easy_handle's set options
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         ret := "These are the options that have been set for this easy_handle:`n"
@@ -205,6 +191,7 @@ __New(dllPath?,requestedSSLprovider?) {
 		this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity := 65536, dataSize?, &passedHandleMap, "header", easy_handle)
         
         writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].writeObj["writeTo"].ptr
+        ; this.writeTo[easy_handle] := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].writeObj["writeTo"]
         this.SetOpt("HEADERDATA",writeHandle,easy_handle)
         this.SetOpt("HEADERFUNCTION",this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"],easy_handle)
         Return
@@ -228,6 +215,7 @@ __New(dllPath?,requestedSSLprovider?) {
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "header", "w", easy_handle)
 
         writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].writeObj["writeTo"].handle
+        ; this.writeTo[easy_handle] := writeObj["writeTo"]
         this.SetOpt("HEADERDATA",writeHandle,easy_handle)
         this.SetOpt("HEADERFUNCTION",this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"],easy_handle)
 		Return
@@ -288,6 +276,10 @@ __New(dllPath?,requestedSSLprovider?) {
         }
         return still_running
     }
+    ; EventAsync(multi_handle?){
+        ; multi_handle :=  ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+        ; this.MultiSetOpt("SOCKETFUNCTION",)
+    ; }
     Sync(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         multi_handle := this.easyHandleMap[easy_handle]["associated_multi_handle"]? ;Intentionally does NOT default
@@ -400,7 +392,7 @@ __New(dllPath?,requestedSSLprovider?) {
     }
     WebSocketReceive(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-
+        
         outBuf := Buffer(0)
         loop {
             ret := this._curl_ws_recv(easy_handle,outbuf,outbuf.size,&recv,&meta)
@@ -430,6 +422,7 @@ __New(dllPath?,requestedSSLprovider?) {
         this.easyHandleMap[easy_handle]["lastBody"] := outBuf
         return ret
     }
+
     SetWebSocketFrameSize(frame_size := 10 * 1024,easy_handle?){ ;outgoing traffic will be auto-split at this size
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this.easyHandleMap[easy_handle]["frame_size"] := frame_size
@@ -679,6 +672,9 @@ __New(dllPath?,requestedSSLprovider?) {
         this.multiHandleMap[multi_handle] := Map()
         this.multiHandleMap[multi_handle]["options"] := Map()
         this.multiHandleMap[multi_handle]["associatedEasyHandles"] := Map()
+
+        ;Establish event-based async callbacks
+        ; this.MultiSetOpt("SOCKETFUNCTION",)
         return multi_handle
     }
     AddEasyToMulti(easy_handle?,multi_handle?){ ;auto-invoked during EasyInit()

@@ -37,6 +37,7 @@ download/b-body.json
 *.txt
 *.html
 *.zst
+*.bin
 releases
 lib/Aris
 bin/vcpkg
