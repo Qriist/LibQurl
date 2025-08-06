@@ -16,20 +16,12 @@ Much work has been done to abstract away the need for a full understanding of cu
 - You can manually send and receive websocket traffic and protocol-level raw data.
 - Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris). (This is the recommended installation method!)
 
-<sup><sub>*Around 25 dll functions were added in an "untested" state and are clearly marked as such. Among these, there are almost certainly some instances of providing the wrong data type in the DllCall. *Caveat emptor* until checked off on the function list below. Most common functions are already properly wrapped.</sup></sub>
-
-## Roadmap
-- [X] Establish basic communication with the DLL
-- [X] Wrap Easy
-- [X] Wrap Multi
-- [ ] Wrap Multi_Socket
-- [ ] Wrap misc functions that weren't required by any of the above
-
 ## Random to-do list, in no real order
-- add handling for Opts with scaffolding during the batch SetOpts
 - gather and clean the SetOpts after a handle finishes downloading
 - add the other origin types to GetAllHeaders
-  
+- refactor out some pointer chasing during callbacks
+- apply error tracing routine to all methods where it's not in effect
+
 <details><summary>Implemented Functions</summary>
 https://curl.se/libcurl/c/allfuncs.html
   

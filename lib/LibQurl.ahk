@@ -1,10 +1,10 @@
 #requires Autohotkey v2.1-alpha.9
-#Include "*i <Aris\G33kDude\cJson>"
-#include "*i <Aris\SKAN\RunCMD>" ; SKAN/RunCMD@9a8392d
-#include "*i <Aris\Qriist\libmagic>" ; github:Qriist/libmagic@v0.80.0 --main Lib\libmagic.ahk
-#include "*i <Aris\Qriist\Null>" ; github:Qriist/Null@v1.0.0 --main Null.ahk
-#include "*i <Aris\Chunjee\adash>"
-#include "*i <Aris\Cebolla\Timer>" ; Cebolla/Timer@96d8cfe
+#Include <Aris\G33kDude\cJson>
+#Include <Aris\SKAN\RunCMD> ; SKAN/RunCMD@9a8392d
+#Include <Aris\Qriist\libmagic> ; github:Qriist/libmagic@v0.80.0 --main Lib\libmagic.ahk
+#Include <Aris\Qriist\Null> ; github:Qriist/Null@v1.0.0 --main Null.ahk
+#Include <Aris\Chunjee\adash>
+#Include <Aris\Cebolla\Timer> ; Cebolla/Timer@96d8cfe
 
 class LibQurl {
     ;core functionality
