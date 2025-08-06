@@ -4,17 +4,17 @@ This is a full [libcurl](https://curl.se/) wrap for AHKv2.
 Much work has been done to abstract away the need for a full understanding of curl's rather arcane architecture, while still allowing complete access to those inner workings when required.
 
 ## Features
-- This is a full direct binding of libcurl, meaning that you have access* to all functions.
-- libcurl's "easy" interface is completely wrapped in a user-friendly way.
-- Seamless async transfers are possible if desired.
+- This is a full direct binding of libcurl, meaning that you have access to all known functions.
+- The vast majority of libcurl's functionality has additionally been wrapped with sensible defaults.
+- Numerous simultaneous curl handles are supported, as is the multi (aka Async) interface. All options are remembered per-handle.
 - Transparently compressed transfers are on by default, saving bandwidth and time.
-- Numerous simultaneous curl handles are supported, as is the multi interface. All options are remembered per-handle.
-- The ability to download a file directly into RAM without touching the disk - very useful when working with APIs.
-    - A unique hybrid "magic" download mode is supported where the download starts in memory but flushes to disk when a certain size threshold is reached.
+- You can download a file directly into RAM without touching the disk - very useful when working with APIs.
+    - A unique "magic" hybrid download mode is supported where the download starts in memory but flushes to disk when a certain size threshold is reached.
 - Effortless POSTing of data from almost any source, be it a String, Integer, Object, Array, Map, Buffer, or even a FileObject.
     - Similarly effortless building of complex MIME forms, with the same smart source handling.
 - You can manually send and receive websocket traffic and protocol-level raw data.
-- Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris). (This is the recommended installation method!)
+- Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris).
+   - This is the recommended installation method!
 
 ## Random to-do list, in no real order
 - gather and clean the SetOpts after a handle finishes downloading
@@ -115,4 +115,5 @@ https://curl.se/libcurl/c/allfuncs.html
 
 </summary>
 </details>
+
 
