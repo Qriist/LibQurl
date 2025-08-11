@@ -48,7 +48,8 @@ curlFeatures := adash.join([
     "gsasl",
     ; "gssapi",   ;unsupported
     "http2",
-    "httpsrr",  ;beta support until August 1 2025
+    ; "http3",    ;currently incompatible with multi-ssl
+    "httpsrr",
     "idn",
     "idn2",
     "ldap",
@@ -57,11 +58,10 @@ curlFeatures := adash.join([
     "openssl",  ;uses libressl overlay 
     "psl",
     "rtmp",
-    "schannel",
     ; "sectransp",    ;unsupported
     "ssh",
     "ssl",
-    "ssls-export",  ;beta support until August 1 2025
+    "ssls-export",
     "sspi",
     "tool",
     "websockets",
@@ -82,6 +82,7 @@ vcpkgFlags := adash.join([
 ],A_Space)
 
 vcpkgCmd := "vcpkg install " libcurl " " vcpkgFlags
+buildlog.WriteLine(vcpkgCmd)
 
 If RunWait(vcpkgCmd,A_ScriptDir)
     throw("building libcurl failed") 
