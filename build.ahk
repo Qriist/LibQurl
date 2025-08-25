@@ -78,7 +78,7 @@ vcpkgFlags := adash.join([
     "--overlay-ports=overlays\openssl",
     "--x-install-root=build",
     "--recurse",
-    "--clean-after-build"
+    ; "--clean-after-build"
 ],A_Space)
 
 vcpkgCmd := "vcpkg install " libcurl " " vcpkgFlags
