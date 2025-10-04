@@ -364,7 +364,7 @@ _curl_multi_setopt(multi_handle, option, parameter) {  ;https://curl.se/libcurl/
 }
 _curl_multi_strerror(errornum) {    ;https://curl.se/libcurl/c/curl_multi_strerror.html
     static curl_multi_strerror := this._getDllAddress(this.curlDLLpath,"curl_multi_strerror") 
-    ;no error code
+    ;no error class
     return DllCall(curl_multi_strerror
         ,   "Int", errornum
         ,   "Ptr")

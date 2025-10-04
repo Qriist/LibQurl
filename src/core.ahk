@@ -53,7 +53,7 @@ class LibQurl {
         Critical "Off"
     }
     Init(){
-        easy_handle := this._curl_easy_init()
+        easy_handle := this._curl_easy_init()   ;no error class
         this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][1] is a dynamic reference to the first created easy_handle
         this.easyHandleMap[easy_handle] := Map() 
 
@@ -105,7 +105,7 @@ class LibQurl {
         return Trim(ret,"`n")
     }
     GetVersionInfo(){
-        verPtr := this._curl_version_info()
+        verPtr := this._curl_version_info() ;no error class
         retObj := this.struct.curl_version_info_data(verPtr)
         return retObj
     }
@@ -148,7 +148,9 @@ class LibQurl {
         }
         
         this.multiHandleMap[multi_handle]["options"][option] := parameter
-        return this._curl_multi_setopt(multi_handle,option,parameter)
+        if ret := this._curl_multi_setopt(multi_handle,option,parameter)
+            this._ErrorHandler(A_ThisFunc,"CURLMcode","curl_multi_setopt",ret,this.multiHandleMap[multi_handle]["error buffer"],multi_handle)
+        return 
     }
     MultiGetOpt(option,multi_handle?){
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
@@ -170,19 +172,19 @@ class LibQurl {
         return ret
     }
     GetErrorString(errornum){
-        return StrGet(this._curl_easy_strerror(errornum),"UTF-8")
+        return StrGet(this._curl_easy_strerror(errornum),"UTF-8")   ;no error class
     }
     GetEasyErrorString(errornum){   ;alias for GetErrorString
         return this.GetErrorString(errornum)
     }
     GetMultiErrorString(errornum){
-        return StrGet(this._curl_multi_strerror(errornum),"UTF-8")
+        return StrGet(this._curl_multi_strerror(errornum),"UTF-8")  ;no error class
     }
     GetShareErrorString(incomingValue){
-        return StrGet(this._curl_share_strerror(incomingValue),"UTF-8")
+        return StrGet(this._curl_share_strerror(incomingValue),"UTF-8") ;no error class
     }
     GetUrlErrorString(incomingValue){
-        return StrGet(this._curl_url_strerror(incomingValue),"UTF-8")
+        return StrGet(this._curl_url_strerror(incomingValue),"UTF-8") ;no error class
     }
 
 	HeaderToMem(maxCapacity := 0, easy_handle?) {
@@ -261,8 +263,9 @@ class LibQurl {
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
         ;tell curl to process the downloads
-        retCode := this._curl_multi_perform(multi_handle,&still_running)
-
+        if retCode := this._curl_multi_perform(multi_handle,&still_running)
+            this._ErrorHandler(A_ThisFunc,"CURLMcode","curl_multi_perform",retCode,this.multiHandleMap[multi_handle]["error buffer"],multi_handle)
+        
         ;check if any downloads require cleanup
         infoObj := this.MultiInfoRead(multi_handle)
 
@@ -396,7 +399,8 @@ class LibQurl {
         outBuf := Buffer(0)
         loop {
             ret := this._curl_ws_recv(easy_handle,outbuf,outbuf.size,&recv,&meta)
-            
+            ;error catching is below for logical reasons
+
             switch ret {
                 case 0:
                     metaMap := this.struct.curl_ws_frame(meta)
@@ -506,8 +510,9 @@ class LibQurl {
             this.RemoveEasyFromMulti(easy_handle,multi_handle)
             this.EasyCleanup(easy_handle)
         }
-
-        return this._curl_multi_cleanup(multi_handle)
+        if ret := this._curl_multi_cleanup(multi_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLMcode","curl_multi_cleanup",ret,this.multiHandleMap[multi_handle]["error buffer"],multi_handle)
+        return ret
     }
     Pause(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
@@ -602,7 +607,7 @@ class LibQurl {
     }
 
     UrlInit(){
-        url_handle := this._curl_url()
+        url_handle := this._curl_url()  ;no error class
         this.urlHandleMap[0].push(url_handle) ;urlHandleMap[0][1] is a dynamic reference to the first created url_handle
         this.urlHandleMap[url_handle] := Map() 
         this.urlHandleMap[url_handle]["url_handle"] := url_handle
@@ -611,7 +616,7 @@ class LibQurl {
     }
     UrlCleanup(url_handle?){
         url_handle ??= (this.urlHandleMap[0][1])   ;defaults to the first created url_handle
-        this._curl_url_cleanup(url_handle)
+        this._curl_url_cleanup(url_handle)  ;no error class
         this.urlHandleMap.Delete(url_handle)
         for k,v in this.urlHandleMap[0] {
             if (v = url_handle){
@@ -624,7 +629,7 @@ class LibQurl {
     }
     DupeUrl(url_handle?){
         url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
-        newUrl := this._curl_url_dup(url_handle)
+        newUrl := this._curl_url_dup(url_handle)    ;no error class
         this.urlHandleMap[0].push(newUrl)
         this.urlHandleMap[newUrl] := this._DeepClone(this.urlHandleMap[url_handle])
         this.urlHandleMap[newUrl]["timestamp"] := A_NowUTC
@@ -638,7 +643,9 @@ class LibQurl {
             flagBitmask += this.constants["CURLUflags"][v]
 
         partConstant := this.constants["CURLUPart"][part]
-        return this._curl_url_set(url_handle,partConstant,content,flagBitmask)
+        if ret := this._curl_url_set(url_handle,partConstant,content,flagBitmask)
+            this._ErrorHandler(A_ThisFunc,"CURLUcode","curl_url_set",ret,this.urlHandleMap[url_handle]["error buffer"],url_handle)
+        return ret
     }
     UrlGet(part,flags := [], url_handle?){
         url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
@@ -648,16 +655,16 @@ class LibQurl {
             flagBitmask += this.constants["CURLUflags"][v]
 
         partConstant := this.constants["CURLUPart"][part]
-        retCode := this._curl_url_get(url_handle,partConstant,&content := 0,flagBitmask)
+        retCode := this._curl_url_get(url_handle,partConstant,&content := 0,flagBitmask)    ;no error class
         ret := StrGet(content,"UTF-8")
-        this._curl_free(content)
+        this._curl_free(content)    ;no error class
         return ret
     }
 
     MultiInfoRead(multi_handle?){
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
         retObj := []
-        while (retCode := this._curl_multi_info_read(multi_handle,&msgsInQueue)) {
+        while (retCode := this._curl_multi_info_read(multi_handle,&msgsInQueue)) {  ;no error class
             retObj.push(this.struct.curl_CURLMsg(retCode))
         }
         
@@ -667,7 +674,7 @@ class LibQurl {
     }
 
     MultiInit(){    ;auto-invoked during register()
-        multi_handle := this._curl_multi_init()
+        multi_handle := this._curl_multi_init() ;no error class
         this.multiHandleMap[0].push(multi_handle) ;multiHandleMap[0][1] is a dynamic reference to the last created multi_handle
         this.multiHandleMap[multi_handle] := Map()
         this.multiHandleMap[multi_handle]["options"] := Map()
@@ -681,7 +688,8 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
-        ret := this._curl_multi_add_handle(multi_handle,easy_handle)
+        if ret := this._curl_multi_add_handle(multi_handle,easy_handle)
+            this._ErrorHandler(A_ThisFunc,"CURLMcode","curl_multi_add_handle",ret,this.multiHandleMap[multi_handle]["error buffer"],multi_handle)
         this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
         this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
         ; this.multiHandleMap["pending_callbacks"].push(easy_handle)
@@ -739,7 +747,7 @@ class LibQurl {
             specificRetObj := retObj[retObj.Length]
 
             loop{
-                headerPtr := this._curl_easy_nextheader(easy_handle,origin,request,previous_curl_header)
+                headerPtr := this._curl_easy_nextheader(easy_handle,origin,request,previous_curl_header)    ;no error class
                 If !headerPtr
                     break
                 specificRetObj.Push(this.struct.curl_header(headerPtr))    
@@ -754,7 +762,8 @@ class LibQurl {
         origin ??= c["HEADER"]
 
         ;todo - add CURLHcode handling
-        ret := this._curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0)
+        If ret := this._curl_easy_header(easy_handle,name,index,origin,request,&curl_header := 0)
+            this._ErrorHandler(A_ThisFunc,"CURLHcode","curl_easy_header",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         If curl_header
             return this.struct.curl_header(curl_header)["value"]
         return unset
@@ -813,7 +822,7 @@ class LibQurl {
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
         ;gets the pointer array
-        ret := this._curl_multi_get_handles(multi_handle)
+        ret := this._curl_multi_get_handles(multi_handle)   ;no error class
         
 
         ;walk the pointer array
@@ -828,7 +837,7 @@ class LibQurl {
     }
 
     GetDate(dateString,returnEpoch?){
-        ret := this._curl_getdate(dateString)
+        ret := this._curl_getdate(dateString)   ;no error class
 
         if returnEpoch ??= 0
             return ret
@@ -836,7 +845,7 @@ class LibQurl {
     }
 
     ShareInit(){
-        share_handle := this._curl_share_init()
+        share_handle := this._curl_share_init() ;no error class
         this.shareHandleMap[0].push(share_handle) ;shareHandleMap[0][1] is a dynamic reference to the first created share_handle
         this.shareHandleMap[share_handle] := Map()
         this.shareHandleMap[share_handle]["options"] := Map()
@@ -902,7 +911,7 @@ class LibQurl {
 
     MimeInit(easy_handle?) {    ;curl requires associating mime_handles to an easy_handle
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        mime_handle := this._curl_mime_init(easy_handle)
+        mime_handle := this._curl_mime_init(easy_handle)    ;no error class
 
         this.mimeHandleMap[0].push(mime_handle)
         this.mimeHandleMap[mime_handle] := Map()
@@ -919,7 +928,7 @@ class LibQurl {
     MimeAddPart(mime_handle?){
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
 
-        mime_part := this._curl_mime_addpart(mime_handle)
+        mime_part := this._curl_mime_addpart(mime_handle)   ;no error class
         this.mimePartMap[mime_part] := partMap := Map()
         
         partMap["associated_mime_handle"] := mime_handle
@@ -930,7 +939,9 @@ class LibQurl {
         return mime_part
     }
     MimePartName(mime_part,partName){
-        this._curl_mime_name(mime_part,partName)
+        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+        if ret := this._curl_mime_name(mime_part,partName)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_name",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         this.mimePartMap[mime_part]["name"] := partName
     }
     MimePartData(mime_part,partContent){
@@ -989,25 +1000,34 @@ class LibQurl {
         return ret
     }
     MimePartType(mime_part,partContent?,override?){
-        If IsSet(override?)
-            return this._curl_mime_type(mime_part,override)
+        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
 
-        switch Type(partContent) {
+        If IsSet(override?){
+            if ret := this._curl_mime_type(mime_part,override)
+                this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_type",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+            return ret
+        }
+            
+
+        switch Type(partContent) {  ;libcurl errors will be proc'd below
             case "String","Integer":
                 mime_type := this.magic.mime(mime_part)
-                this._curl_mime_type(mime_part,mime_type)
+                ret := this._curl_mime_type(mime_part,mime_type)
             case "Object","Array","Map":
                 mime_type := this.magic.mime(json.dump(partContent))
-                this._curl_mime_type(mime_part,mime_type)
+                ret := this._curl_mime_type(mime_part,mime_type)
             case "File":
                 mime_type := this.magic.mime(partContent)
-                this._curl_mime_type(mime_part,mime_type)
+                ret := this._curl_mime_type(mime_part,mime_type)
             case "Buffer":
                 mime_type := this.magic.mime(mime_part)
-                this._curl_mime_type(mime_part,mime_type)
+                ret := this._curl_mime_type(mime_part,mime_type)
             Default:
                 throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
         }
+
+        if ret  ;eval the error code from the switch above
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_type",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
         this.mimePartMap[mime_part]["type"] := mime_type
     }
@@ -1053,7 +1073,7 @@ class LibQurl {
         }
 
         ;delete the mime_handle
-        this._curl_mime_free(mime_handle)
+        this._curl_mime_free(mime_handle)   ;no error class
 
         ;free the staged callbacks
         loop this.mimePartCBFcleanupArr.Length
@@ -1061,19 +1081,26 @@ class LibQurl {
     }
     MimePartEncoder(mime_part,encoding := ""){
         ;I honestly have no idea how to use this.
-        ret := this._curl_mime_encoder(mime_part,encoding)
+        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+
+        if ret := this._curl_mime_encoder(mime_part,encoding)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_encoder",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         return ret
     }
     MimeTreatPartAsFile(mime_part,filename := ""){
         ;Used to have the remote server treat a mime_part as a file
         ;Not required when Attaching FileObjects as curl does it internally.
         ;Pass an empty filename string to disable this mode for this mime_part, even for real files.
+        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+
         ret := this._curl_mime_filename(mime_part,filename)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_filename",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
         return ret
     }
 
     AttachMimeAsPart(partName,mime_to_embed,mime_handle?){
         ;this attaches an entire other mime_handle to the given mime_part
+        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
         
         ;prevent attempting to nest the mime_handle within itself
@@ -1081,7 +1108,9 @@ class LibQurl {
             return
 
         mime_part := this.AttachMimePart(partName,"",mime_handle)
-        ret := this._curl_mime_subparts(mime_part,mime_to_embed)
+
+        if ret := this._curl_mime_subparts(mime_part,mime_to_embed)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_subparts",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
 
         ;tag the tracked mime_handle as nested
         this.mimeHandleMap[mime_to_embed]["nested"] := mime_handle
@@ -1090,9 +1119,14 @@ class LibQurl {
         return mime_part
     }
 	SetMimePartHeaders(mime_part,headersObject) {    ;Sets custom HTTP headers for request.
+        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+        
         headersArray := this._formatHeaders(headersObject)
         headersPtr := this._ArrayToSList(headersArray)
-		Return this._curl_mime_headers(mime_part,headersPtr,1)
+        
+        if ret := this._curl_mime_headers(mime_part,headersPtr,1)
+            this._ErrorHandler(A_ThisFunc,"CURLcode","curl_mime_headers",ret,this.easyHandleMap[easy_handle]["error buffer"],easy_handle)
+		Return ret
 	}
     GetMimeType(sourceData){ ;Analyzes the input's mimetype without any other operations
         switch Type(sourceData) {
@@ -1111,15 +1145,15 @@ class LibQurl {
     StrCompare(str1,str2,maxLength?){
         ;returns 1 on match
         If IsSet(maxLength?)
-            return this._curl_strnequal(str1,str2,maxLength?)
-        return this._curl_strequal(str1,str2)
+            return this._curl_strnequal(str1,str2,maxLength?)   ;no error class
+        return this._curl_strequal(str1,str2)   ;no error class
     }
     GetEnv(input){  ;gets the specified system variable
-        retPtr := this._curl_getenv(input)
+        retPtr := this._curl_getenv(input)  ;no error class
         if !retPtr
             return
         retStr := StrGet(retPtr,"UTF-8")
-        this._curl_free(retPtr)
+        this._curl_free(retPtr) ;no error class
         return retStr
     }
     EncodeBase64(input){
@@ -1223,7 +1257,7 @@ class LibQurl {
             case "String":
                 configLevel := config
         }
-        this._curl_global_trace(configLevel)
+        this._curl_global_trace(configLevel)    ;no error class
     }
     PollDebug(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
