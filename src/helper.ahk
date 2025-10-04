@@ -15,7 +15,7 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
                 ,   8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
     
     Loop {
-        optPtr := this._curl_easy_option_next(optPtr)
+        optPtr := this._curl_easy_option_next(optPtr)   ;no error class
         if (optPtr = 0)
             break
         o := this.struct.curl_easyoption(optPtr)
@@ -336,7 +336,7 @@ _ArrayToSList(strArray) {
     ptrTemp  := 0
     
     Loop strArray.Length {
-        ptrTemp := this._curl_slist_append(ptrSList,strArray[A_Index])
+        ptrTemp := this._curl_slist_append(ptrSList,strArray[A_Index])  ;no error class
         
         If (ptrTemp == 0) {
             this._FreeSList(ptrSList)
@@ -371,7 +371,7 @@ _SListToArray(ptrSList) {
 _FreeSList(ptrSList?) {
     If (!IsSet(ptrSList) || (ptrSList == 0))
         Return
-    this._curl_slist_free_all(ptrSList)
+    this._curl_slist_free_all(ptrSList) ;no error class
 }
 
 _DeepClone(obj) {    ;https://github.com/thqby/ahk2_lib/blob/master/deepclone.ahk
@@ -482,7 +482,7 @@ _Perform(easy_handle?){
 
     ; this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
     ; this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Open()
-    retcode := this._curl_easy_perform(easy_handle)
+    retcode := this._curl_easy_perform(easy_handle) ;I've chosen to leave error handling in Sync()
 
     /*
     this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Close()
@@ -566,7 +566,7 @@ _getDllAddress(dllPath,dllfunction){
 
 _configureSSL(requestedSSLprovider := "WolfSSL"){
     ;probe SSLs
-    ret := this._curl_global_sslset(id := 0,name := "",&avail)
+    ret := this._curl_global_sslset(id := 0,name := "",&avail)  ;no error class
     this.availableSSLproviders := this.struct.curl_ssl_backend(avail)
     
     if (ret = 3){
@@ -590,7 +590,7 @@ _configureSSL(requestedSSLprovider := "WolfSSL"){
         ,   ""]                 ;fallback on whatever curl has
     
     for k,v in listOfSSLs {
-        ret := this._curl_global_sslset(id := 0,v,&avail)
+        ret := this._curl_global_sslset(id := 0,v,&avail)   ;no error class
     }   until (ret = 0)
 
     sslHaystack := this.GetVersionInfo()["ssl_version"]
@@ -608,7 +608,7 @@ _globalCleanup(){   ;this should be called when shutting down LibQurl
         try DirDelete(A_Temp "\LibQurl")
     }
     
-    this._curl_global_cleanup()
+    this._curl_global_cleanup() ;no error class
 }
 _register(dllPath?,requestedSSLprovider?,initMemMap?) {
     ;todo - make dll auto-load feature more robust
@@ -640,9 +640,9 @@ _register(dllPath?,requestedSSLprovider?,initMemMap?) {
 
     ;use the default init options unless user provides callbacks
     If !IsSet(initMemMap)
-        this._curl_global_init()
+        this._curl_global_init()    ;no error class
     else {
-        this._curl_global_init_mem(initMemMap["flags"],initMemMap["curl_malloc_callback"]
+        this._curl_global_init_mem(initMemMap["flags"],initMemMap["curl_malloc_callback"]   ;no error class
             ,initMemMap["curl_free_callback"],initMemMap["curl_realloc_callback"]
             ,initMemMap["curl_strdup_callback"],initMemMap["curl_calloc_callback"])
     }
