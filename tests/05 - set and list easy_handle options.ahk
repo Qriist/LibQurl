@@ -6,13 +6,11 @@ curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
 
 options := "INITIAL OPTIONS:`n" curl.ListOpts() "`n`n`n"
 
-newOpts := Map("ACCEPT_ENCODING","br"
-            ,"FOLLOWLOCATION",0
-            ,"MAXREDIRS",99)
-curl.SetOpts(newOpts)
+curl.SetOpt("ACCEPT_ENCODING","br")
+curl.SetOpt("FOLLOWLOCATION",0)
+curl.SetOpt("MAXREDIRS",99)
 
 options .= "MODIFIED OPTIONS:`n" curl.ListOpts() "`n`n`n"
-
 
 options .= "ALL KNOWN OPTIONS:`n" curl.PrintObj(curl.OptById)
 FileOpen(A_ScriptDir "\05.options.txt","w").Write(options)

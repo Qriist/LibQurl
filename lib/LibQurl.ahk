@@ -79,6 +79,7 @@ class LibQurl {
         }
 
         this._setCallbacks(1,1,,1,,easy_handle) ;don't enable debug by default
+        ; this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] ??= []
         this.easyHandleMap[easy_handle]["debug"] := 0
         this.easyHandleMap[easy_handle]["websocket_mode"] := 0
         ; this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
@@ -561,7 +562,7 @@ class LibQurl {
             case "Object","Array","Map":
                 this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(json.dump(sourceData))
             case "File":
-                this._setCallbacks(,,1,,easy_handle)
+                this._setCallbacks(,,1,,,easy_handle)
                 
                 ;generate an independent file handle
                 sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData),"r")
@@ -1240,7 +1241,7 @@ class LibQurl {
     EnableDebug(easy_handle?){
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         this._setCallbacks(,,,,1,easy_handle)
-        this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] := []
+        this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] ??= []
         this.easyHandleMap[easy_handle]["debug"] := 1
     }
     ConfigureDebug(config := ["-all"]){
@@ -1589,7 +1590,7 @@ class LibQurl {
             Default: 
                 pushObj["data"] := data
         }
-    
+        
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"].push(pushObj)
         return 0
     }

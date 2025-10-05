@@ -41,3 +41,4 @@ postSource := FileOpen(A_ScriptDir "\07.binary.upload.zip","r")
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.binary.json")
 curl.Sync()
+

@@ -240,7 +240,7 @@ _debugCallbackFunction(easy_handle, infotype, data, size, clientp){
         Default: 
             pushObj["data"] := data
     }
-
+    
     this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"].push(pushObj)
     return 0
 }
