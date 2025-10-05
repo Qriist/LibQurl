@@ -1096,8 +1096,8 @@ class LibQurl {
 
     AttachMimeAsPart(partName,mime_to_embed,mime_handle?){
         ;this attaches an entire other mime_handle to the given mime_part
-        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
+        easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
         
         ;prevent attempting to nest the mime_handle within itself
         if (mime_to_embed = mime_handle)
