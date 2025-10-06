@@ -9,15 +9,17 @@ msg := "LibQurl's current version is: " versionString(vArr) "`n`n"
     .   "Input m to bump the major version.`n"
     .   "Input p to bump the patch."
 
-bumped := InputBox(msg,,,versionString(vArr,2))
-If (bumped.Value = "m")
-    bumped.Value := versionString(vArr,1,&bumpedArr)
-else If (bumped.Value = "p")
-    bumped.Value := versionString(vArr,3,&bumpedArr)
-else If (bumped.Value = bumped)
-    bumped.Value := versionString(vArr,2,&bumpedArr)
-else
-    bumped.Value := versionString(vArr,0,&bumpedArr)
+bumped := InputBox(msg,,,versionString(vArr,"minor"))
+switch bumped.Value {
+    case "m":
+        bumped.Value := versionString(vArr,"major",&bumpedArr)
+    case versionString(vArr,"minor"):
+        versionString(vArr,"minor",&bumpedArr)
+    case "p":
+        bumped.Value := versionString(vArr,"patch",&bumpedArr)
+    default:
+        bumped.Value := versionString(vArr,"do nothing",&bumpedArr)
+}
 If bumped.Result = "Cancel"
     ExitApp
 
@@ -61,7 +63,8 @@ FileCopy(A_ScriptDir "\package.json",releaseDir,1)
 cmd := A_ScriptDir "\tools\7za.exe a -mx9 " Chr(34) "..\" releaseName ".zip" Chr(34)
 RunWait(cmd,releaseDir)
 DirDelete(releaseDir,1)
-FileOpen(A_ScriptDir "\releases\version.json","w").Write(JSON.Dump(bumpedArr))
+bumpedJson := JSON.Dump(bumpedArr)
+FileOpen(A_ScriptDir "\releases\version.json","w").Write(bumpedJson)
 
 ToolTip("Compiled LibQurl release v" bumped.Value ".")
 Sleep(1000)
@@ -83,13 +86,15 @@ indent(input){
     return ret
 }
 versionString(vArr,bump := 0,&bumpedArr?){
-    bumpedArr := Map("major",vArr["major"],"minor",vArr["minor"],"patch",vArr["patch"])
-    If (bump=0)
-        return (vArr["major"] "." vArr["minor"] "." vArr["patch"])
-    If (bump=1)
-        return (vArr["major"] += 1) "." (vArr["minor"] := 0) "." (vArr["patch"] := 0)
-    If (bump=2)
-        return vArr["major"] "." (bumpedArr["minor"] += 1) "." (vArr["patch"] := 0)
-    If (bump=3)
-        return vArr["major"] "." vArr["minor"] "." (bumpedArr["patch"] += 1)
+    bumpedArr ??= Map("major",vArr["major"],"minor",vArr["minor"],"patch",vArr["patch"])
+    switch bump {
+        case 1,"major":
+            return (vArr["major"] += 1) "." (vArr["minor"] := 0) "." (vArr["patch"] := 0)
+        case 2,"minor":
+            return vArr["major"] "." (bumpedArr["minor"] += 1) "." (vArr["patch"] := 0)
+        case 3,"patch":
+            return vArr["major"] "." vArr["minor"] "." (bumpedArr["patch"] += 1)
+        default:
+            return (vArr["major"] "." vArr["minor"] "." vArr["patch"])       
+    }
 }
