@@ -17,7 +17,7 @@ RunCMD("git pull","C:\dev\vcpkg")
 If (!RunCMD.ExitCode)    ;updates vcpkg only on a good git pull
     RunCMD("C:\dev\vcpkg\bootstrap-vcpkg.bat","C:\dev\vcpkg")
 newVerMap := vcpkgPortVersions(libArr,portsDir,oldVerMap)
-msgbox oldVerMap.count "`n" newVerMap.count
+; msgbox oldVerMap.count "`n" newVerMap.count
 ;clean previous install
 try DirDelete(A_ScriptDir "\build\",1)
 
