@@ -726,6 +726,30 @@ class LibQurl {
                 return info
         }
     }
+    GetMultiInfo(multi_handle?){ ;returns a map of all known info about the given multi_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+        infoMap := Map()
+        infoMap["multi_handle"] := multi_handle
+        value := 0
+
+        infoToGather := [
+            "current",
+            "running",
+            "pending",
+            "done",
+            "added"
+        ]
+
+        for k,v in infoToGather {
+            requestedValue := v
+            if ret := this._curl_multi_get_offt(multi_handle,requestedValue,&value)
+                this._ErrorHandler(A_ThisFunc,"CURLMcode","curl_multi_get_offt",ret,this.multiHandleMap[multi_handle]["error buffer"],multi_handle)
+            else
+                infoMap[requestedValue] := value
+        }
+
+        return infoMap
+    }
     GetAllHeaders(easy_handle?) {   ;use GetLastHeaders() unless you need to examine the headers from a redirect
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         static c := this.constants["CURLH_ORIGINS"]
@@ -2726,12 +2750,21 @@ class LibQurl {
         c["LAST"] := unset
     
         this.constants["CURLWS"] := c := Map()
+        c.CaseSense := 0
         c["TEXT"] := (1<<0)
         c["BINARY"] := (1<<1)
         c["CONT"] := (1<<2)
         c["CLOSE"] := (1<<3)
         c["PING"] := (1<<4)
         c["OFFSET"] := (1<<5)
+    
+        this.constants["CURLMINFO"] := c := Map()
+        c.CaseSense := 0
+        c["CURRENT"] := 1
+        c["RUNNING"] := 2
+        c["PENDING"] := 3
+        c["DONE"] := 4
+        c["ADDED"] := 5
         
             ; todo with the error handlers
         ; this.constants["CURLHcode"] := c := Map()  
@@ -3071,6 +3104,17 @@ class LibQurl {
             ,   "Int", multi_handle
             ,   "Ptr")
     }
+    _curl_multi_get_offt(multi_handle, info, &pvalue) { ;untested   https://curl.se/libcurl/c/curl_multi_get_offt.html
+        static curl_multi_get_offt := this._getDllAddress(this.curlDLLpath,"curl_multi_get_offt")
+        static c := this.constants["CURLMINFO"]
+    
+        ;CURLMcode
+        return  DllCall(curl_multi_get_offt
+            ,   "Ptr", multi_handle
+            ,   "Int", c[info]
+            ,   "Ptr*", &pvalue
+            ,   "Cdecl Int")
+    }
     _curl_multi_info_read(multi_handle, &msgs_in_queue) {    ;https://curl.se/libcurl/c/curl_multi_info_read.html
         static curl_multi_info_read := this._getDllAddress(this.curlDLLpath,"curl_multi_info_read") 
         msgs_in_queue := 0
@@ -3385,15 +3429,6 @@ class LibQurl {
     }
     
     
-    _curl_multi_get_offt(multi_handle, info, pvalue) { ;untested   https://curl.se/libcurl/c/curl_multi_get_offt.html
-        static curl_multi_get_offt := this._getDllAddress(this.curlDLLpath,"curl_multi_get_offt")
-        ;CURLMcode
-        return DllCall(curl_multi_get_offt
-            ,   "Ptr", multi_handle
-            ,   "Int", info
-            ,   "Ptr", pvalue
-            ,   "Cdecl Int")
-    }
     _curl_ws_start_frame(curl, flags, frame_len){   ;untested    ;https://curl.se/libcurl/c/curl_ws_start_frame.html
         static curl_ws_start_frame := this._getDllAddress(this.curlDLLpath,"curl_ws_start_frame")
         ;CURLcode

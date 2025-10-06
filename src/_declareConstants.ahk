@@ -218,12 +218,21 @@ _declareConstants(){
     c["LAST"] := unset
 
     this.constants["CURLWS"] := c := Map()
+    c.CaseSense := 0
     c["TEXT"] := (1<<0)
     c["BINARY"] := (1<<1)
     c["CONT"] := (1<<2)
     c["CLOSE"] := (1<<3)
     c["PING"] := (1<<4)
     c["OFFSET"] := (1<<5)
+
+    this.constants["CURLMINFO"] := c := Map()
+    c.CaseSense := 0
+    c["CURRENT"] := 1
+    c["RUNNING"] := 2
+    c["PENDING"] := 3
+    c["DONE"] := 4
+    c["ADDED"] := 5
     
         ; todo with the error handlers
     ; this.constants["CURLHcode"] := c := Map()  

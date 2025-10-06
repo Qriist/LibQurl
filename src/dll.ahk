@@ -323,6 +323,17 @@ _curl_multi_get_handles(multi_handle) { ;https://curl.se/libcurl/c/curl_multi_ge
         ,   "Int", multi_handle
         ,   "Ptr")
 }
+_curl_multi_get_offt(multi_handle, info, &pvalue) { ;untested   https://curl.se/libcurl/c/curl_multi_get_offt.html
+    static curl_multi_get_offt := this._getDllAddress(this.curlDLLpath,"curl_multi_get_offt")
+    static c := this.constants["CURLMINFO"]
+
+    ;CURLMcode
+    return  DllCall(curl_multi_get_offt
+        ,   "Ptr", multi_handle
+        ,   "Int", c[info]
+        ,   "Ptr*", &pvalue
+        ,   "Cdecl Int")
+}
 _curl_multi_info_read(multi_handle, &msgs_in_queue) {    ;https://curl.se/libcurl/c/curl_multi_info_read.html
     static curl_multi_info_read := this._getDllAddress(this.curlDLLpath,"curl_multi_info_read") 
     msgs_in_queue := 0
@@ -637,15 +648,6 @@ _curl_multi_wakeup(multi_handle) {  ;untested   https://curl.se/libcurl/c/curl_m
 }
 
 
-_curl_multi_get_offt(multi_handle, info, pvalue) { ;untested   https://curl.se/libcurl/c/curl_multi_get_offt.html
-    static curl_multi_get_offt := this._getDllAddress(this.curlDLLpath,"curl_multi_get_offt")
-    ;CURLMcode
-    return DllCall(curl_multi_get_offt
-        ,   "Ptr", multi_handle
-        ,   "Int", info
-        ,   "Ptr", pvalue
-        ,   "Cdecl Int")
-}
 _curl_ws_start_frame(curl, flags, frame_len){   ;untested    ;https://curl.se/libcurl/c/curl_ws_start_frame.html
     static curl_ws_start_frame := this._getDllAddress(this.curlDLLpath,"curl_ws_start_frame")
     ;CURLcode

@@ -731,6 +731,30 @@ class LibQurl {
                 return info
         }
     }
+    GetMultiInfo(multi_handle?){ ;returns a map of all known info about the given multi_handle
+        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+        infoMap := Map()
+        infoMap["multi_handle"] := multi_handle
+        value := 0
+
+        infoToGather := [
+            "current",
+            "running",
+            "pending",
+            "done",
+            "added"
+        ]
+
+        for k,v in infoToGather {
+            requestedValue := v
+            if ret := this._curl_multi_get_offt(multi_handle,requestedValue,&value)
+                this._ErrorHandler(A_ThisFunc,"CURLMcode","curl_multi_get_offt",ret,this.multiHandleMap[multi_handle]["error buffer"],multi_handle)
+            else
+                infoMap[requestedValue] := value
+        }
+
+        return infoMap
+    }
     GetAllHeaders(easy_handle?) {   ;use GetLastHeaders() unless you need to examine the headers from a redirect
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         static c := this.constants["CURLH_ORIGINS"]
