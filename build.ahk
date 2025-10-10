@@ -42,7 +42,7 @@ If RunWait(vcpkgCmd,A_ScriptDir)
 
 ;build libcurl
 curlFeatures := libraryFeatureFlags("libcurl",1)
-libcurl := "curl[" curlFeatures "]:x64-windows"
+libcurl := "curl[" curlFeatures "]:x64-windows" 
 
 vcpkgFlags := adash.join([
     "--overlay-ports=overlays\openssl",
