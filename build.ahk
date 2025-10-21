@@ -29,7 +29,8 @@ wolfssl := "wolfssl[" wolfsslFeatures "]"
 
 vcpkgFlags := adash.join([
     "--x-install-root=build",
-    "--recurse"
+    "--recurse",
+    "--clean-after-build"
 ],A_Space)
 
 vcpkgCmd := "vcpkg install " wolfssl " " vcpkgFlags
@@ -48,7 +49,7 @@ vcpkgFlags := adash.join([
     "--overlay-ports=overlays\openssl",
     "--x-install-root=build",
     "--recurse",
-    ; "--clean-after-build"
+    "--clean-after-build"
 ],A_Space)
 
 vcpkgCmd := "vcpkg install " libcurl " " vcpkgFlags
@@ -65,7 +66,9 @@ libmagicFeatures := libraryFeatureFlags("libmagic",1)
 libmagic := "libmagic[" libmagicFeatures "]"
 
 vcpkgFlags := adash.join([
-    "--x-install-root=build"
+    "--x-install-root=build",
+    "--recurse",
+    "--clean-after-build"
 ],A_Space)
 
 vcpkgCmd := "vcpkg install " libmagic " " vcpkgFlags

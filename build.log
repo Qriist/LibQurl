@@ -1,4 +1,4 @@
-vcpkg install wolfssl[dtls,quic] --x-install-root=build --recurse
-vcpkg install curl[brotli,c-ares,gnutls,gsasl,http2,httpsrr,idn,idn2,ldap,mbedtls,non-http,openssl,psl,rtmp,ssh,ssl,ssls-export,sspi,tool,websockets,winidn,wolfssl,zstd]:x64-windows --overlay-ports=overlays\openssl --x-install-root=build --recurse
-vcpkg install curl[brotli,c-ares,gnutls,gsasl,http2,httpsrr,idn,idn2,ldap,mbedtls,non-http,openssl,psl,rtmp,ssh,ssl,ssls-export,sspi,tool,websockets,winidn,wolfssl,zstd]:x64-windows --overlay-ports=overlays\openssl --x-install-root=build --recurse
-vcpkg install libmagic[bzip2,lzma,zlib,zstd] --x-install-root=build
+vcpkg install wolfssl[dtls,quic] --x-install-root=build --recurse --clean-after-build
+vcpkg install curl[brotli,c-ares,gnutls,gsasl,http2,httpsrr,idn,idn2,ldap,mbedtls,non-http,openssl,psl,rtmp,ssh,ssl,ssls-export,sspi,tool,websockets,winidn,wolfssl,zstd]:x64-windows --overlay-ports=overlays\openssl --x-install-root=build --recurse --clean-after-build
+vcpkg install curl[brotli,c-ares,gnutls,gsasl,http2,httpsrr,idn,idn2,ldap,mbedtls,non-http,openssl,psl,rtmp,ssh,ssl,ssls-export,sspi,tool,websockets,winidn,wolfssl,zstd]:x64-windows --overlay-ports=overlays\openssl --x-install-root=build --recurse --clean-after-build
+vcpkg install libmagic[bzip2,lzma,zlib,zstd] --x-install-root=build --recurse --clean-after-build
