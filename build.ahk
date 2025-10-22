@@ -79,6 +79,7 @@ If RunWait(vcpkgCmd, A_ScriptDir)
 buildlog.WriteLine(vcpkgCmd)
 
 ;clear old installed files now that the builds are succesful
+FileDelete(A_ScriptDir "\bin\curl.exe")
 FileDelete(A_ScriptDir "\bin\*.dll")
 FileDelete(A_ScriptDir "\bin\*.mgc")
 
