@@ -204,3 +204,6 @@ vcpkgPortVersions(libArr,portsDir,oldVerMap?){
     }
     return newVerMap
 }
+
+;git diff --name-only HEAD -- . ":(exclude)bin/"
+;git diff --name-only HEAD -- . "bin/"
