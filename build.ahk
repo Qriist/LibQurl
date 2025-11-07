@@ -5,71 +5,68 @@
 
 ;keeps processes locked to one window
 DllCall("AllocConsole")
-buildlog := FileOpen(A_ScriptDir "\build.log","w")
+buildlog := FileOpen(A_ScriptDir "\build.log", "w")
 
-libArr := ["wolfssl","curl","libmagic"]
+libArr := ["wolfssl", "curl", "libmagic"]
 portsDir := "C:\dev\vcpkg\ports"
-oldVerMap := vcpkgPortVersions(libArr,portsDir)
+oldVerMap := vcpkgPortVersions(libArr, portsDir)
 ; for k,v in verMap
-    ; msgbox k
+; msgbox k
 ;update vcpkg
-RunCMD("git pull","C:\dev\vcpkg")
+RunCMD("git pull", "C:\dev\vcpkg")
 If (!RunCMD.ExitCode)    ;updates vcpkg only on a good git pull
-    RunCMD("C:\dev\vcpkg\bootstrap-vcpkg.bat","C:\dev\vcpkg")
-newVerMap := vcpkgPortVersions(libArr,portsDir,oldVerMap)
+    RunCMD("C:\dev\vcpkg\bootstrap-vcpkg.bat", "C:\dev\vcpkg")
+newVerMap := vcpkgPortVersions(libArr, portsDir, oldVerMap)
 ; msgbox oldVerMap.count "`n" newVerMap.count
 ;clean previous install
-try DirDelete(A_ScriptDir "\build\",1)
-
+try DirDelete(A_ScriptDir "\build\", 1)
 
 
 ;build wolfssl
-wolfsslFeatures := libraryFeatureFlags("wolfssl",1)
+wolfsslFeatures := libraryFeatureFlags("wolfssl", 1)
 wolfssl := "wolfssl[" wolfsslFeatures "]"
 
 vcpkgFlags := adash.join([
     "--x-install-root=build",
     "--recurse",
     "--clean-after-build"
-],A_Space)
+], A_Space)
 
 vcpkgCmd := "vcpkg install " wolfssl " " vcpkgFlags
 buildlog.WriteLine(vcpkgCmd)
 
-If RunWait(vcpkgCmd,A_ScriptDir)
+If RunWait(vcpkgCmd, A_ScriptDir)
     throw("building WolfSSL failed")
 
 
-
 ;build libcurl
-curlFeatures := libraryFeatureFlags("libcurl",1)
-libcurl := "curl[" curlFeatures "]:x64-windows" 
+curlFeatures := libraryFeatureFlags("libcurl", 1)
+libcurl := "curl[" curlFeatures "]:x64-windows"
 
 vcpkgFlags := adash.join([
     "--overlay-ports=overlays\openssl",
     "--x-install-root=build",
     "--recurse",
     "--clean-after-build"
-],A_Space)
+], A_Space)
 
 vcpkgCmd := "vcpkg install " libcurl " " vcpkgFlags
 buildlog.WriteLine(vcpkgCmd)
 
-If RunWait(vcpkgCmd,A_ScriptDir)
-    throw("building libcurl failed") 
+If RunWait(vcpkgCmd, A_ScriptDir)
+    throw("building libcurl failed")
 buildlog.WriteLine(vcpkgCmd)
 
 
-
 ;build libmagic
-libmagicFeatures := libraryFeatureFlags("libmagic",1)
+libmagicFeatures := libraryFeatureFlags("libmagic", 1)
 libmagic := "libmagic[" libmagicFeatures "]"
 
 vcpkgFlags := adash.join([
     "--x-install-root=build",
     "--recurse",
     "--clean-after-build"
-],A_Space)
+], A_Space)
 
 vcpkgCmd := "vcpkg install " libmagic " " vcpkgFlags
 
@@ -84,15 +81,14 @@ FileDelete(A_ScriptDir "\bin\*.dll")
 FileDelete(A_ScriptDir "\bin\*.mgc")
 
 ;install all built files
-FileMove(A_ScriptDir "\build\x64-windows\tools\curl\*.dll",A_ScriptDir "\bin",1)
-FileMove(A_ScriptDir "\build\x64-windows\tools\curl\curl.exe",A_ScriptDir "\bin",1)
-FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\share\misc\*.mgc",A_ScriptDir "\bin",1)
-FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\bin\*.dll",A_ScriptDir "\bin",1)
+FileMove(A_ScriptDir "\build\x64-windows\tools\curl\*.dll", A_ScriptDir "\bin", 1)
+FileMove(A_ScriptDir "\build\x64-windows\tools\curl\curl.exe", A_ScriptDir "\bin", 1)
+FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\share\misc\*.mgc", A_ScriptDir "\bin", 1)
+FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\bin\*.dll", A_ScriptDir "\bin", 1)
 buildlog.Close()
 
 
-
-libraryFeatureFlags(requestedLibrary,join?){
+libraryFeatureFlags(requestedLibrary, join?) {
     switch requestedLibrary {
         case "wolfssl":
             ret := [
@@ -102,7 +98,7 @@ libraryFeatureFlags(requestedLibrary,join?){
                 "quic",
                 ; "secret-callback"   ;not needed
             ]
-        case "curl","libcurl":
+        case "curl", "libcurl":
             ret := [
                 "brotli",
                 "c-ares",
@@ -117,7 +113,7 @@ libraryFeatureFlags(requestedLibrary,join?){
                 "ldap",
                 "mbedtls",
                 "non-http",
-                "openssl",  ;uses libressl overlay 
+                "openssl",  ;uses libressl overlay
                 "psl",
                 "rtmp",
                 ; "sectransp",    ;unsupported
@@ -132,7 +128,7 @@ libraryFeatureFlags(requestedLibrary,join?){
                 ; "winssl",    ;Legacy name for schannel
                 "wolfssl",
                 "zstd"
-            ]    
+            ]
         case "libmagic":
             ret := [
                 "bzip2",
@@ -150,24 +146,24 @@ libraryFeatureFlags(requestedLibrary,join?){
     return ret
 }
 
-vcpkgPortVersions(libArr,portsDir,oldVerMap?){
+vcpkgPortVersions(libArr, portsDir, oldVerMap?) {
     verMap := Map()
-    for k,v in libArr {
+    for k, v in libArr {
         lib := v
 
         ;prepare each tool's command line *before* updating vcpkg so versions can be compared
-        features := libraryFeatureFlags(lib,1)
+        features := libraryFeatureFlags(lib, 1)
         libcmd := lib "[" features "]"
-        
+
         ;query current version numbers for curl/wolfssl/libmagic + each flag port
-        ports := StrSplit(RunCMD("vcpkg depend-info " libcmd ":x64-windows"),"`n","`r")
-        ports := StrSplit(ports[ports.length],":"," ")[2]
-        ports := StrSplit(ports,","," ")
+        ports := StrSplit(RunCMD("vcpkg depend-info " libcmd ":x64-windows"), "`n", "`r")
+        ports := StrSplit(ports[ports.length], ":", " ")[2]
+        ports := StrSplit(ports, ",", " ")
         ports.Push(lib)
 
-        for k,v in ports{
+        for k, v in ports {
             port := v
-            (port!="openssl"?"":port:="libressl")   ;manual overlay handling for libressl because lazy
+            (port != "openssl" ? "" : port := "libressl")   ;manual overlay handling for libressl because lazy
             portMap := JSON.Load(FileRead(portsDir "\" port "\vcpkg.json"))
 
             if portMap.has("version")
@@ -180,13 +176,13 @@ vcpkgPortVersions(libArr,portsDir,oldVerMap?){
                 verMap[port] := portMap["version-date"]
             else {
                 msgbox port "!"
-                continue   
+                continue
             }
 
-            If portMap.has("port-version"){
+            If portMap.has("port-version") {
                 verMap[port] .= "#" portMap["port-version"]
             }
-                
+
         }
     }
     ;return the freshly made map
@@ -195,10 +191,10 @@ vcpkgPortVersions(libArr,portsDir,oldVerMap?){
 
     ;return only updated elements
     newVerMap := Map()
-    for k,v in verMap {
+    for k, v in verMap {
         if (oldVerMap.has(k))   ;regular bumped version
-        && (oldVerMap[k] != v)
-            newVerMap[k] := v 
+            && (oldVerMap[k] != v)
+            newVerMap[k] := v
         else if (!oldVerMap.has(k)) ;additional new library
             newVerMap[k] := v
     }
