@@ -558,9 +558,12 @@ class LibQurl {
 
         switch Type(sourceData) {
             case "String", "Integer":
-                this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(sourceData)
+                input := this._StrBuf(sourceData)
+                this.easyHandleMap[easy_handle]["postData"] := input
+
             case "Object", "Array", "Map":
-                this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(json.dump(sourceData))
+                input := this._StrBuf(json.dump(sourceData))
+                this.easyHandleMap[easy_handle]["postData"] := input
             case "File":
                 this._setCallbacks(, , 1, , , easy_handle)
 
@@ -568,6 +571,7 @@ class LibQurl {
                 sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
                 sourceData.Seek(0) ;ensures we're before any BOM (ahk quirk)
                 this.easyHandleMap[easy_handle]["postFile"] := sourceData
+                input := this.easyHandleMap[easy_handle]["postFile"]
 
                 ;mandatory steps if the last POST was non-File
                 this.SetOpt("POSTFIELDS", 0, easy_handle)
@@ -579,12 +583,16 @@ class LibQurl {
             case "Buffer":
                 this.easyHandleMap[easy_handle]["postData"] := sourceData
                 this.SetOpt("POSTFIELDSIZE_LARGE", sourceData.size, easy_handle)
+                input := this.easyHandleMap[easy_handle]["postData"]
             Default:
                 throw ValueError("Unknown object type passed as POST data: " Type(sourceData))
         }
 
         if (Type(sourceData) != "File")
             this.SetOpt("POSTFIELDS", this.easyHandleMap[easy_handle]["postData"], easy_handle)
+
+        return this.magic.mime(input)
+
     }
     ClearPost(easy_handle?) {    ;clears any lingering POST data
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
