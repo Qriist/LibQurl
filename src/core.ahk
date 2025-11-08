@@ -613,6 +613,7 @@ class LibQurl {
         this.SetOpt("HTTPPOST", 0, easy_handle)
         this.SetOpt("MIMEPOST", 0, easy_handle)
         this.SetOpt("HTTPGET", 1, easy_handle)
+        this.SetOpt("UPLOAD", 0, easy_handle)
 
         this.SetOpt("POSTFIELDS", 0, easy_handle)
         this.SetOpt("POSTFIELDSIZE", 0, easy_handle)
