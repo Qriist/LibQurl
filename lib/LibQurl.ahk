@@ -1325,10 +1325,16 @@ class LibQurl {
         }
         return out
     }
-    Timestamp() {
+    Timestamp(tsFormat := "Readble") {
         ; https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
         static GetSystemTimePreciseAsFileTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", "kernel32", "Ptr")
             , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")
+
+        ;formatting arrays
+        static days := ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        static days3 := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        static months := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        static months3 := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
         ft := Buffer(8, 0)
         DllCall(GetSystemTimePreciseAsFileTime, "Ptr", ft, "Cdecl")
@@ -1350,7 +1356,53 @@ class LibQurl {
         second := NumGet(st, 12, "UShort")
         ms := NumGet(st, 14, "UShort")
 
-        return Format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}", year, month, day, hour, minute, second, ms)
+        ;could/should probably use FormatTime but eh
+
+        ;all examples use the same equivalent timestamp
+        switch tsFormat {
+            case "Readable", "SQL", "ODBC":    ;2025-07-27 15:36:07.746
+                return Format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}"
+                    , year, month, day, hour, minute, second, ms)
+
+            case "RFC 3339":    ;2025-07-27T15:36:07.746Z
+                return Format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z"
+                    , year, month, day, hour, minute, second, ms)
+
+            case "Unix":    ;1753630567.746
+                ; Convert FILETIME to Unix epoch seconds
+                ft64 := NumGet(ft, 0, "Int64")
+                return (ft64 - 116444736000000000) / 10000000.0
+
+            case "asctime":    ;Sun Jul 27 15:36:07 2025
+                dow := NumGet(st, 4, "UShort")
+                return Format("{} {} {:02} {:02}:{:02}:{:02} {:04}"
+                    , days3[dow + 1], months3[month], day, hour, minute, second, year)
+
+            case "RFC 1123":    ;Sun, 27 Jul 2025 15:36:07 GMT
+                dow := NumGet(st, 4, "UShort")
+                return Format("{}, {:02} {} {:04} {:02}:{:02}:{:02} GMT"
+                    , days3[dow + 1], day, months3[month], year, hour, minute, second)
+
+            case "RFC 2822":    ;Sun, 27 Jul 2025 15:36:07 +0000
+                dow := NumGet(st, 4, "UShort")
+                return Format("{}, {:02} {} {:04} {:02}:{:02}:{:02} +0000"
+                    , days3[dow + 1], day, months3[month], year, hour, minute, second)
+
+            case "FILETIME":    ;133502602077460000
+                return NumGet(ft, 0, "Int64")
+
+            case "EXIF":    ;2025:07:27 15:36:07
+                return Format("{:04}:{:02}:{:02} {:02}:{:02}:{:02}"
+                    , year, month, day, hour, minute, second)
+
+            case "RFC 850":  ;Sunday, 27-Jul-25 15:36:07 GMT
+                dow := NumGet(st, 4, "UShort")
+                return Format("{}, {:02}-{}-{:02} {:02}:{:02}:{:02} GMT"
+                    , days[dow + 1], day, months[month], Mod(year, 100), hour, minute, second)
+
+            default:
+                throw ValueError("Unsupported timestamp format: " tsFormat)
+        }
     }
     ExportSSLs(easy_handle?, share_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
