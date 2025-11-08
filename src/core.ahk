@@ -610,6 +610,8 @@ class LibQurl {
     }
     ClearPost(easy_handle?) {    ;clears any lingering POST data
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+
         this.SetOpt("HTTPPOST", 0, easy_handle)
         this.SetOpt("MIMEPOST", 0, easy_handle)
         this.SetOpt("HTTPGET", 1, easy_handle)
@@ -620,6 +622,9 @@ class LibQurl {
         this.SetOpt("POSTFIELDSIZE_LARGE", 0, easy_handle)
         this.SetOpt("INFILESIZE", -1, easy_handle)    ;-1 = disabled
         this.SetOpt("INFILESIZE_LARGE", -1, easy_handle)  ;-1 = disabled
+
+        ;reset request type for more intuitive behavior when switching between uploads and downloads
+        this.SetOpt("CUSTOMREQUEST", "GET", easy_handle)
 
         this.easyHandleMap[easy_handle]["postFile"] := unset
         this.easyHandleMap[easy_handle]["postData"] := unset
