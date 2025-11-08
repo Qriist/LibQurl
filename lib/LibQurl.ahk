@@ -566,7 +566,7 @@ class LibQurl {
             case "Object", "Array", "Map":
                 input := this._StrBuf(json.dump(sourceData))
                 this.easyHandleMap[easy_handle]["postData"] := input
-                mime_type_override := "application/json"
+                mime_type_override := "application/json"    ;always json
 
             case "File":
                 this._setCallbacks(, , 1, , , easy_handle)
