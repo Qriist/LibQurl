@@ -561,15 +561,18 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
         this.easyHandleMap[easy_handle]["postFile"] := unset    ;clears last POST. prolly redundant but eh.
 
-        switch Type(sourceData) {
+        checkType := Type(sourceData)
+
+        switch checkType {
             case "String", "Integer":
                 input := this._StrBuf(sourceData)
                 this.easyHandleMap[easy_handle]["postData"] := input
 
             case "Object", "Array", "Map":
-                this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(json.dump(sourceData))
-                ;manual mime_type override because this is always json and libmagic says its text/plain
-                return "application/json"
+                input := this._StrBuf(json.dump(sourceData))
+                this.easyHandleMap[easy_handle]["postData"] := input
+                mime_type_override := "application/json"
+
             case "File":
                 this._setCallbacks(, , 1, , , easy_handle)
 
@@ -594,11 +597,16 @@ class LibQurl {
                 throw ValueError("Unknown object type passed as POST data: " Type(sourceData))
         }
 
-        if (Type(sourceData) != "File")
+        if (checkType != "File")
             this.SetOpt("POSTFIELDS", this.easyHandleMap[easy_handle]["postData"], easy_handle)
 
-        return this.magic.mime(input)
+        ;normal return, most exit here
+        If !IsSet(mime_type_override)
+            return this.magic.mime(input)
 
+        ;manual mime_type override because dumped objects are json and libmagic reports text/plain
+        ;technically extensible later on other edgecases by setting other overrides above.
+        return mime_type_override
     }
     ClearPost(easy_handle?) {    ;clears any lingering POST data
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
