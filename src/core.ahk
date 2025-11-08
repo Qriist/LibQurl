@@ -1250,7 +1250,18 @@ class LibQurl {
 
         return retStr
     }
-    DecodeBase64(str, returnBuffer?) {
+    DecodeBase64(str, returnBuffer?, Base64URL?) {
+        if IsSet(Base64URL?) {
+            ;revert to Base64
+            str := StrReplace(str, "-", "+")
+            str := StrReplace(str, "_", "/")
+
+            ;append to valid length
+            pad := Mod(StrLen(str), 4)
+            if (pad)
+                str .= SubStr("====", 1, 4 - pad)
+        }
+
         ;calculate required output buffer size
         DllCall("crypt32\CryptStringToBinary"
             , "Str", str
@@ -1276,7 +1287,20 @@ class LibQurl {
 
         return StrGet(VarOut, "UTF-8")
     }
+    DecodeJwt(input) {
+        parts := StrSplit(input, ".")
 
+        retMap := Map()
+        for k, v in ["header", "payload"] {
+            ;decode/attach
+            part := parts[a_index]
+            partJson := this.DecodeBase64(part, , 1)
+            try retMap[v] := JSON.Load(partJson)
+        }
+
+        retMap["signature"] := parts[3]
+        return retMap
+    }
     GetProgress(easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         retObj := this._DeepClone(this.easyHandleMap[easy_handle]["callbacks"]["progress"])
