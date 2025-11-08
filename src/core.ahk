@@ -567,8 +567,9 @@ class LibQurl {
                 this.easyHandleMap[easy_handle]["postData"] := input
 
             case "Object", "Array", "Map":
-                input := this._StrBuf(json.dump(sourceData))
-                this.easyHandleMap[easy_handle]["postData"] := input
+                this.easyHandleMap[easy_handle]["postData"] := this._StrBuf(json.dump(sourceData))
+                ;manual mime_type override because this is always json and libmagic says its text/plain
+                return "application/json"
             case "File":
                 this._setCallbacks(, , 1, , , easy_handle)
 
