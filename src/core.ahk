@@ -563,14 +563,22 @@ class LibQurl {
 
         checkType := Type(sourceData)
 
-        switch checkType {
+        ;explicitly set the request for more intuitive behavior when switching between uploads and dowloads
+        this.SetOpt("POST", 1, easy_handle)
+        this.SetOpt("CUSTOMREQUEST", "POST", easy_handle)
+
+        switch Type(sourceData) {
             case "String", "Integer":
                 input := this._StrBuf(sourceData)
                 this.easyHandleMap[easy_handle]["postData"] := input
+                this.SetOpt("POSTFIELDS", input, easy_handle)
+                this.SetOpt("POSTFIELDSIZE_LARGE", input.size - 1, easy_handle)
 
             case "Object", "Array", "Map":
                 input := this._StrBuf(json.dump(sourceData))
                 this.easyHandleMap[easy_handle]["postData"] := input
+                this.SetOpt("POSTFIELDS", input, easy_handle)
+                this.SetOpt("POSTFIELDSIZE_LARGE", input.size - 1, easy_handle)
                 mime_type_override := "application/json"    ;always json
 
             case "File":
@@ -588,17 +596,16 @@ class LibQurl {
 
                 ;File-specific upload settings
                 this.SetOpt("INFILESIZE_LARGE", sourceData.length, easy_handle)
-                this.SetOpt("POST", 1, easy_handle)
+
             case "Buffer":
                 this.easyHandleMap[easy_handle]["postData"] := sourceData
-                this.SetOpt("POSTFIELDSIZE_LARGE", sourceData.size, easy_handle)
                 input := this.easyHandleMap[easy_handle]["postData"]
+                this.SetOpt("POSTFIELDS", input, easy_handle)
+                this.SetOpt("POSTFIELDSIZE_LARGE", input.size, easy_handle)
+
             Default:
                 throw ValueError("Unknown object type passed as POST data: " Type(sourceData))
         }
-
-        if (checkType != "File")
-            this.SetOpt("POSTFIELDS", this.easyHandleMap[easy_handle]["postData"], easy_handle)
 
         ;normal return, most exit here
         If !IsSet(mime_type_override)
