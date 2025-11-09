@@ -46,6 +46,7 @@ class LibQurl {
         this.keepLastNumErrors := 1000
         this.CURL_ERROR_SIZE := 256
 
+        this.autoResetToGET := 1
         ;safely prepare curl's initial environment
         Critical "On"
         this._register(dllPath?, requestedSSLprovider?)
@@ -617,7 +618,6 @@ class LibQurl {
     }
     ClearPost(easy_handle?) {    ;clears any lingering POST data
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-
 
         this.SetOpt("HTTPPOST", 0, easy_handle)
         this.SetOpt("MIMEPOST", 0, easy_handle)

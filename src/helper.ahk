@@ -5,15 +5,15 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
     this.Opt.CaseSense := "Off"
     optPtr := 0
     argTypes := Map(0, Map("type", "Int", "easyType", "CURLOT_LONG")
-                ,   1, Map("type", "Int", "easyType", "CURLOT_VALUES")
-                ,   2, Map("type", "Int64", "easyType", "CURLOT_OFF_T")
-                ,   3, Map("type", "Ptr", "easyType", "CURLOT_OBJECT")
-                ,   4, Map("type", "Astr", "easyType", "CURLOT_STRING")
-                ,   5, Map("type", "Ptr", "easyType", "CURLOT_SLIST")
-                ,   6, Map("type", "Ptr", "easyType", "CURLOT_CBPTR")
-                ,   7, Map("type", "Ptr", "easyType", "CURLOT_BLOB")
-                ,   8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
-    
+        , 1, Map("type", "Int", "easyType", "CURLOT_VALUES")
+        , 2, Map("type", "Int64", "easyType", "CURLOT_OFF_T")
+        , 3, Map("type", "Ptr", "easyType", "CURLOT_OBJECT")
+        , 4, Map("type", "Astr", "easyType", "CURLOT_STRING")
+        , 5, Map("type", "Ptr", "easyType", "CURLOT_SLIST")
+        , 6, Map("type", "Ptr", "easyType", "CURLOT_CBPTR")
+        , 7, Map("type", "Ptr", "easyType", "CURLOT_BLOB")
+        , 8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
+
     Loop {
         optPtr := this._curl_easy_option_next(optPtr)   ;no error class
         if (optPtr = 0)
@@ -41,47 +41,47 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
 
         o["type"] := argTypes[o["rawCurlType"]]["type"]
         o["easyType"] := argTypes[o["rawCurlType"]]["easyType"]
- 
+
         this.Opt[o["name"]] := o
         If !this.OptById.Has(o["id"])   ;the DLL was giving an errorneous "ENCODING" option, maybe others, idk
             this.OptById[o["id"]] := o["name"]
     }
     ; msgbox this.PrintObj(this.opt)
 }
-_mimePartCleanup(mime_part){
-        partMap := this.mimePartMap[mime_part]
-        mime_handle := partMap["associated_mime_handle"]
-        
-        ;discover and clean nested parts
-        if partMap.has("associated_mime_parts")
-            for k,v in partMap["associated_mime_parts"]
-                this._mimePartCleanup(k)
-        
-        ;stage the callbacks to be freed
-        for k,v in partMap["callbacks"]
-            this.mimePartCBFcleanupArr.push(v)
+_mimePartCleanup(mime_part) {
+    partMap := this.mimePartMap[mime_part]
+    mime_handle := partMap["associated_mime_handle"]
 
-        this.mimePartMap.Delete(mime_part)
+    ;discover and clean nested parts
+    if partMap.has("associated_mime_parts")
+        for k, v in partMap["associated_mime_parts"]
+            this._mimePartCleanup(k)
+
+    ;stage the callbacks to be freed
+    for k, v in partMap["callbacks"]
+        this.mimePartCBFcleanupArr.push(v)
+
+    this.mimePartMap.Delete(mime_part)
 }
 
-_setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
+_setCallbacks(body?, header?, read?, progress?, debug?, easy_handle?) {
     easy_handle ??= this.easyHandleMap[0][1]   ;defaults to the first created easy_handle
 
-    if IsSet(body){
+    if IsSet(body) {
         CBF := this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"]
-        if IsInteger(CBF){  ;checks if this callback already exists
+        if IsInteger(CBF) {  ;checks if this callback already exists
             this.writeRefs[CBF] -= 1    ;decrement the reference tracker
             CallbackFree(CBF)
-            (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
+            (CBF = 0 ? this.writeRefs.delete(CBF) : "")   ;remove key if done with it
         }
 
         ;special handling for websocket mode so it doesn't have to check on each invoked call
         ;Note: websocket mode disabled until I find a good test server
         ; If !this.easyHandleMap[easy_handle]["websocket_mode"] { ;normal
-            this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"] := CBF := CallbackCreate(
-                (dataPtr, size, sizeBytes, userdata) =>
+        this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"] := CBF := CallbackCreate(
+            (dataPtr, size, sizeBytes, userdata) =>
                 this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
-            )
+        )
         ; } else {    ;websocket mode
         ;     this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"] := CBF := CallbackCreate(
         ;         (dataPtr, size, sizeBytes, userdata) =>
@@ -91,91 +91,91 @@ _setCallbacks(body?,header?,read?,progress?,debug?,easy_handle?){
 
         ;creates or increments the tracking key
         ; If !this.writeRefs.Has(CBF)
-            this.writeRefs[CBF] := 1
+        this.writeRefs[CBF] := 1
         ; else
-            ; this.writeRefs[CBF] += 1
+        ; this.writeRefs[CBF] += 1
     }
 
 
-    if IsSet(header){
+    if IsSet(header) {
         CBF := this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"]
-        if IsInteger(CBF){  ;checks if this callback already exists
+        if IsInteger(CBF) {  ;checks if this callback already exists
             this.writeRefs[CBF] -= 1    ;decrement the reference tracker
             CallbackFree(CBF)
-            (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
+            (CBF = 0 ? this.writeRefs.delete(CBF) : "")   ;remove key if done with it
         }
         ; if IsInteger(this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"])
         ;     CallbackFree(this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"])
         this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"] := CBF := CallbackCreate(
             (dataPtr, size, sizeBytes, userdata) =>
-            ; this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle, this.writeTo[easy_handle])
-            this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
+                ; this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle, this.writeTo[easy_handle])
+                this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
         )
         ; this.writeTo[easy_handle] := unset
         ;creates or increments the tracking key
         ; If !this.writeRefs.Has(CBF)
-            this.writeRefs[CBF] := 1
+        this.writeRefs[CBF] := 1
         ; else
-            ; this.writeRefs[CBF] += 1
+        ; this.writeRefs[CBF] += 1
     }
     if IsSet(read) {
         CBF := this.easyHandleMap[easy_handle]["callbacks"]["read"]["CBF"]
-                if IsInteger(CBF){  ;checks if this callback already exists
+        if IsInteger(CBF) {  ;checks if this callback already exists
             this.writeRefs[CBF] -= 1    ;decrement the reference tracker
             CallbackFree(CBF)
-            (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
+            (CBF = 0 ? this.writeRefs.delete(CBF) : "")   ;remove key if done with it
         }
 
         this.easyHandleMap[easy_handle]["callbacks"]["read"]["CBF"] := CBF := CallbackCreate(
             (buf, size, nitems, userdata) =>
-            this._readCallbackFunction(buf, size, nitems, userdata)
+                this._readCallbackFunction(buf, size, nitems, userdata)
         )
 
-        this.SetOpt("READDATA",easy_handle,easy_handle)
-        this.SetOpt("READFUNCTION",CBF,easy_handle)
+        this.SetOpt("READDATA", easy_handle, easy_handle)
+        this.SetOpt("READFUNCTION", CBF, easy_handle)
         this.writeRefs[CBF] := 1
     }
-    
+
     if IsSet(progress) {
         this.SetOpt("NOPROGRESS", 0, easy_handle)   ;enables progress meter on this handle
-        
+
         CBF := this.easyHandleMap[easy_handle]["callbacks"]["progress"]["CBF"]
-        if IsInteger(CBF){  ;checks if this callback already exists
+        if IsInteger(CBF) {  ;checks if this callback already exists
             this.writeRefs[CBF] -= 1    ;decrement the reference tracker
             CallbackFree(CBF)
-            (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
+            (CBF = 0 ? this.writeRefs.delete(CBF) : "")   ;remove key if done with it
         }
 
         this.easyHandleMap[easy_handle]["callbacks"]["progress"]["CBF"] := CBF := CallbackCreate(
-            (easy_handle, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded) =>
-            this._progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded)
+            (easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded) =>
+                this._progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded)
         )
 
-        this.SetOpt("XFERINFODATA",easy_handle,easy_handle)
-        this.SetOpt("XFERINFOFUNCTION",CBF,easy_handle)
+        this.SetOpt("XFERINFODATA", easy_handle, easy_handle)
+        this.SetOpt("XFERINFOFUNCTION", CBF, easy_handle)
         this.writeRefs[CBF] := 1
     }
-    if IsSet(debug){
-        this.SetOpt("VERBOSE", 1, easy_handle)    ;enables 
+    if IsSet(debug) {
+        this.SetOpt("VERBOSE", 1, easy_handle)    ;enables
 
         CBF := this.easyHandleMap[easy_handle]["callbacks"]["debug"]["CBF"]
-        if IsInteger(CBF){  ;checks if this callback already exists
+        if IsInteger(CBF) {  ;checks if this callback already exists
             this.writeRefs[CBF] -= 1    ;decrement the reference tracker
             CallbackFree(CBF)
-            (CBF=0?this.writeRefs.delete(CBF):"")   ;remove key if done with it
+            (CBF = 0 ? this.writeRefs.delete(CBF) : "")   ;remove key if done with it
         }
 
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["CBF"] := CBF := CallbackCreate(
-            (easy_handle, infotype, data , size, clientp) =>
-            this._debugCallbackFunction(easy_handle, infotype, data, size, clientp)
+            (easy_handle, infotype, data, size, clientp) =>
+                this._debugCallbackFunction(easy_handle, infotype, data, size, clientp)
         )
 
-        this.SetOpt("DEBUGDATA",easy_handle,easy_handle)
-        this.SetOpt("DEBUGFUNCTION",CBF,easy_handle)
+        this.SetOpt("DEBUGDATA", easy_handle, easy_handle)
+        this.SetOpt("DEBUGFUNCTION", CBF, easy_handle)
         this.writeRefs[CBF] := 1
     }
-    
-    
+
+
     ;non-lambda rewrite
     ;   actualCallbackFunction(dataPtr, size, sizeBytes, userdata) {
     ;     return this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, passed_curl_handle)
@@ -209,7 +209,7 @@ _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     ; Return this.writeTo[easy_handle].RawWrite(dataPtr, dataSize)
 }
 
-_progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded , expectedBytesUploaded, currentBytesUploaded){
+_progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded) {
     progressMap := this.easyHandleMap[easy_handle]["callbacks"]["progress"]
     progressMap["expectedBytesDownloaded"] := expectedBytesDownloaded
     progressMap["currentBytesDownloaded"] := currentBytesDownloaded
@@ -218,58 +218,58 @@ _progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDown
     return 0
 }
 
-_readCallbackFunction(toBuf, size, nitems, easy_handle){
+_readCallbackFunction(toBuf, size, nitems, easy_handle) {
     bytes := size * nitems
     fromBuf := Buffer(bytes)
-    bytesRead := this.easyHandleMap[easy_handle]["postFile"].RawRead(fromBuf,bytes)
+    bytesRead := this.easyHandleMap[easy_handle]["postFile"].RawRead(fromBuf, bytes)
     fromBuf.Size := bytesRead   ;auto-truncates the buffer if needed
 
     DllCall("RtlMoveMemory"
-            ,   "Ptr", toBuf    ;destination
-            ,   "Ptr", fromBuf  ;source
-            ,   "UPtr", bytesRead)  ;length
+        , "Ptr", toBuf    ;destination
+        , "Ptr", fromBuf  ;source
+        , "UPtr", bytesRead)  ;length
 
     return bytesRead
 }
 
-_debugCallbackFunction(easy_handle, infotype, data, size, clientp){
-    pushObj := Map("infotype",infotype,"timestamp",this.Timestamp())
+_debugCallbackFunction(easy_handle, infotype, data, size, clientp) {
+    pushObj := Map("infotype", infotype, "timestamp", this.Timestamp())
     switch infotype {
-        case 0,1,2,3:
-            pushObj["data"] := StrGet(data,"UTF-8")
-        Default: 
+        case 0, 1, 2, 3:
+            pushObj["data"] := StrGet(data, "UTF-8")
+        Default:
             pushObj["data"] := data
     }
-    
+
     this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"].push(pushObj)
     return 0
 }
 
-_SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac , shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max){
+_SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac, shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max) {
     ;get the array from the main function
     retArr := ObjFromPtrAddRef(retArrPtr)
 
     ;process the data
     retMap := Map()
-    retMap["session_key"] := StrGet(session_key,"UTF-8")
+    retMap["session_key"] := StrGet(session_key, "UTF-8")
 
     shmacBuf := Buffer(shmac_len)
     DllCall("RtlMoveMemory"
-            ,   "Ptr", shmacBuf    ;destination
-            ,   "Ptr", shmac  ;source
-            ,   "UPtr", shmac_len)  ;length
+        , "Ptr", shmacBuf    ;destination
+        , "Ptr", shmac  ;source
+        , "UPtr", shmac_len)  ;length
     retMap["shmac"] := this.EncodeBase64(shmacBuf)
 
     sdataBuf := Buffer(sdata_le)
     DllCall("RtlMoveMemory"
-            ,   "Ptr", sdataBuf    ;destination
-            ,   "Ptr", sdata  ;source
-            ,   "UPtr", sdata_le)  ;length
+        , "Ptr", sdataBuf    ;destination
+        , "Ptr", sdata  ;source
+        , "UPtr", sdata_le)  ;length
     retMap["sdata"] := this.EncodeBase64(sdataBuf)
 
     retMap["valid_until"] := valid_until    ;unix epoch ;todo - convert to human time
     retMap["tls_version"] := Format("0x{:04X}", ietf_tls_id)
-    retMap["alpn"] := (alpn?StrGet(alpn,"UTF-8"):"")
+    retMap["alpn"] := (alpn ? StrGet(alpn, "UTF-8") : "")
     retMap["earlydata_max"] := earlydata_max
 
     ;push the data into the main function's array
@@ -277,29 +277,29 @@ _SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac , shmac_le
 
     return 0
 }
-_mimeDataReadCallbackFunction(retBuffer, size, nitems, mime_part){
+_mimeDataReadCallbackFunction(retBuffer, size, nitems, mime_part) {
     partMap := this.mimePartMap[mime_part]
     remainingBytes := partMap["content"].size - partMap["offset"]
-    bytesToWrite := Min(size * nitems,remainingBytes)
+    bytesToWrite := Min(size * nitems, remainingBytes)
 
     DllCall("kernel32.dll\RtlMoveMemory"
-        ,   "Ptr",  retBuffer
-        ,   "Ptr",  partMap["content"].ptr + partMap["offset"]
-        ,   "UInt", bytesToWrite)
+        , "Ptr", retBuffer
+        , "Ptr", partMap["content"].ptr + partMap["offset"]
+        , "UInt", bytesToWrite)
 
     partMap["offset"] += bytesToWrite
 
     return bytesToWrite
 }
- 
-_mimeDataSeekCallbackFunction(mime_part, offset, origin){
+
+_mimeDataSeekCallbackFunction(mime_part, offset, origin) {
     partMap := this.mimePartMap[mime_part]
 
     ;validate the offset
     if (partMap["offset"] < 0
-    || partMap["offset"] > partMap["content"].size)
+        || partMap["offset"] > partMap["content"].size)
         return 2    ;CURL_SEEKFUNC_CANTSEEK
-    
+
     ;process the offset
     switch origin {
         case 0: ;directly set (SEEK_SET)
@@ -308,14 +308,14 @@ _mimeDataSeekCallbackFunction(mime_part, offset, origin){
             partMap["offset"] += offset
         case 2: ;negative seek (SEEK_END)
             partMap["offset"] := partMap["content"].size + offset
-        default: 
+        default:
             return 1    ;CURL_SEEKFUNC_FAIL
     }
 
     return 0
 }
 
-_mimeDataFreeCallbackFunction(mime_part){
+_mimeDataFreeCallbackFunction(mime_part) {
     ; todo - check if I can fully cleanup the mime_parts in this callback
 
     ; partMap := this.mimePartMap[mime_part]
@@ -333,37 +333,37 @@ _mimeDataFreeCallbackFunction(mime_part){
 ; Returns pointer to linked-list, or 0 if something went wrong.
 _ArrayToSList(strArray) {
     ptrSList := 0
-    ptrTemp  := 0
-    
+    ptrTemp := 0
+
     Loop strArray.Length {
-        ptrTemp := this._curl_slist_append(ptrSList,strArray[A_Index])  ;no error class
-        
+        ptrTemp := this._curl_slist_append(ptrSList, strArray[A_Index])  ;no error class
+
         If (ptrTemp == 0) {
             this._FreeSList(ptrSList)
             Return 0
         }
         ptrSList := ptrTemp
     }
-    
+
     Return ptrSList
 }
 
 
 ; Converts linked-list to an array of strings.
 _SListToArray(ptrSList) {
-    result  := []
+    result := []
     ptrNext := ptrSList
-    
+
     Loop {
         If (ptrNext == 0)
             Break
-        
+
         ptrData := NumGet(ptrNext, 0, "Ptr")
         ptrNext := NumGet(ptrNext, A_PtrSize, "Ptr")
-        
+
         result.Push(StrGet(ptrData, "CP0"))
     }
-    
+
     Return result
 }
 
@@ -399,7 +399,7 @@ _DeepClone(obj) {    ;https://github.com/thqby/ahk2_lib/blob/master/deepclone.ah
     }
 }
 
-_ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValue := 0,errorBuffer?,relevant_handle?){
+_ErrorHandler(callingMethod, curlErrorCodeFamily, invokedCurlFunction, incomingValue := 0, errorBuffer?, relevant_handle?) {
     ;captures a snapshot when the libcurl DLL reports an error
     ;use _ErrorHierarchy to trace LibQurl method calls
 
@@ -408,8 +408,8 @@ _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValu
 
     thisError := Map()
     thisError["timestamp"] := A_NowUTC
-    
-    callingMethod := StrReplace(callingMethod,"LibQurl.Prototype.")
+
+    callingMethod := StrReplace(callingMethod, "LibQurl.Prototype.")
     thisError["invoked LibQurl method"] := callingMethod
     thisError["invoked curl function"] := invokedCurlFunction
 
@@ -421,7 +421,7 @@ _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValu
     switch curlErrorCodeFamily, "Off" {
         case "CURLcode":
             thisError["error string1"] := this.GetErrorString(incomingValue)
-            thisError["error string2"] := StrGet(errorBuffer,"UTF-8")
+            thisError["error string2"] := StrGet(errorBuffer, "UTF-8")
             thisError["options snapshot"].push(this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
             ;todo - gather nested CURLE_PROXY struct
         case "CURLMcode":
@@ -431,28 +431,28 @@ _ErrorHandler(callingMethod,curlErrorCodeFamily,invokedCurlFunction,incomingValu
             thisError["options snapshot"].push(this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
         case "CURLUcode":
             thisError["error string"] := this.GetUrlErrorString(incomingValue)
-            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.urlHandleMap[relevant_handle]["options"]))
+            thisError["options snapshot"].InsertAt(1, this._DeepClone(this.urlHandleMap[relevant_handle]["options"]))
         case "CURLHcode":
     }
 
     this.caughtErrors.push(thisError)
 }
-_ErrorHierarchy(callingMethod,curlErrorCodeFamily,relevant_handle?){
-    callingMethod := StrReplace(callingMethod,"LibQurl.Prototype.")
+_ErrorHierarchy(callingMethod, curlErrorCodeFamily, relevant_handle?) {
+    callingMethod := StrReplace(callingMethod, "LibQurl.Prototype.")
 
     thisError := this.caughtErrors[-1]
     thisError["invoked LibQurl method"] := callingMethod "\" thisError["invoked LibQurl method"]
 
     switch curlErrorCodeFamily, "Off" {
         case "CURLcode":
-            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
+            thisError["options snapshot"].InsertAt(1, this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
             ;todo - gather nested CURLE_PROXY struct
         case "CURLMcode":
-            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.multiHandleMap[relevant_handle]["options"]))
+            thisError["options snapshot"].InsertAt(1, this._DeepClone(this.multiHandleMap[relevant_handle]["options"]))
         case "CURLSHcode":
-            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
+            thisError["options snapshot"].InsertAt(1, this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
         case "CURLUcode":
-            thisError["options snapshot"].InsertAt(1,this._DeepClone(this.urlHandleMap[relevant_handle]["options"]))
+            thisError["options snapshot"].InsertAt(1, this._DeepClone(this.urlHandleMap[relevant_handle]["options"]))
         case "CURLHcode":
             ; thisError["options snapshot"].InsertAt(1,this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
     }
@@ -464,20 +464,19 @@ _StrBuf(str, encoding := "cp0")
     ; Calculate required size and allocate a buffer.
     buf := Buffer(StrPut(str, encoding))
     ; Copy or convert the string.
-    StrPut(str, buf,, encoding)
+    StrPut(str, buf, , encoding)
     return buf
 }
 
 
-
-_HasVal(inObj,needle){  ;return the first key with a matching input value
-    for k,v in (Type(inObj)!="Object"?inObj:inObj.OwnProps()) { ;itemize Objects if required
+_HasVal(inObj, needle) {  ;return the first key with a matching input value
+    for k, v in (Type(inObj) != "Object" ? inObj : inObj.OwnProps()) { ;itemize Objects if required
         If (v = needle)
             return k
     }
     return unset
 }
-_Perform(easy_handle?){
+_Perform(easy_handle?) {
     easy_handle ??= this.easyHandleMap[0][1]   ;defaults to the first created easy_handle
 
     ; this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Open()
@@ -491,21 +490,21 @@ _Perform(easy_handle?){
     bodyObj := this.easyHandleMap[easy_handle]["callbacks"]["body"]
     lastBody := (bodyObj["writeType"]="memory"?bodyObj["writeTo"]:FileOpen(bodyObj["filename"],"rw"))
     this.easyHandleMap[easy_handle]["lastBody"] := lastBody
-
+    
     ;accessibly attach headers to easy_handle output
     headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
     lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
     this.easyHandleMap[easy_handle]["lastHeaders"] := lastHeaders
     */
-   
+
     this._performCleanup(easy_handle)
-    this.HeaderToMem(0,easy_handle) ;resets the header buffer
-    this.WriteToMem(0,easy_handle) ;resets the header buffer
+    this.HeaderToMem(0, easy_handle) ;resets the header buffer
+    this.WriteToMem(0, easy_handle) ;resets the header buffer
     ;todo - write an "output to null" callback function for more safely reseting file writes
     return retCode
 }
 
-_performCleanup(easy_handle){
+_performCleanup(easy_handle) {
     this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].Close()
     this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].Close()
     ;accessibly attach body to easy_handle output
@@ -514,17 +513,20 @@ _performCleanup(easy_handle){
         case "memory", "magic-memory":
             lastBody := bodyObj["writeTo"]
         case "file", "magic-file":
-            lastBody := FileOpen(bodyObj["filename"],"rw")
+            lastBody := FileOpen(bodyObj["filename"], "rw")
     }
     this.easyHandleMap[easy_handle]["lastBody"] := lastBody
-    
+
     ;accessibly attach headers to easy_handle output
     headerObj := this.easyHandleMap[easy_handle]["callbacks"]["header"]
-    lastHeaders := (headerObj["writeType"]="memory"?headerObj["writeTo"]:FileOpen(headerObj["filename"],"rw"))
+    lastHeaders := (headerObj["writeType"] = "memory" ? headerObj["writeTo"] : FileOpen(headerObj["filename"], "rw"))
     this.easyHandleMap[easy_handle]["lastHeaders"] := lastHeaders
 
     ;record http status code
-    this.easyHandleMap[easy_handle]["statusCode"] := this.GetInfo("RESPONSE_CODE",easy_handle)
+    this.easyHandleMap[easy_handle]["statusCode"] := this.GetInfo("RESPONSE_CODE", easy_handle)
+
+    if (this.autoResetToGET = 1)
+        this.ClearPost(easy_handle)
 }
 ; _QueryPerformanceCounter(){
 ;     ; https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
@@ -532,14 +534,14 @@ _performCleanup(easy_handle){
 ;     DllCall("QueryPerformanceCounter", "Ptr", liPerformanceCount)
 ;     return NumGet(liPerformanceCount, 0, "Int64")
 ; }
-_findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installation
+_findDLLfromAris() { ;dynamically finds the dll from a versioned Aris installation
     If DirExist(A_ScriptDir "\lib\Aris\Qriist") ;"top level" install
         packageDir := A_ScriptDir "\lib\Aris\Qriist"
     else if DirExist(A_ScriptDir "\..\lib\Aris\Qriist") ;script one level down
         packageDir := A_ScriptDir "\..\lib\Aris\Qriist"
     else
         return ""
-    loop files (packageDir "\LibQurl@*") , "D"{
+    loop files (packageDir "\LibQurl@*"), "D" {
         LQdir := packageDir "\" A_LoopFileName
     }
     return LQdir "\bin\libcurl.dll"
@@ -551,66 +553,64 @@ _findDLLfromAris(){ ;dynamically finds the dll from a versioned Aris installatio
 ;     return LQdir "\bin\libcurl-x64.dll"
 ; }
 
-_RefreshEasyHandleForAsync(easy_handle?){    ;this soft-resets the handle without breaking the connection
+_RefreshEasyHandleForAsync(easy_handle?) {    ;this soft-resets the handle without breaking the connection
     easy_handle ??= this.easyHandleMap[0][1]   ;defaults to the first created easy_handle
     ; this._prepareInitCallbacks(easy_handle)
     ; this._setCallbacks(1,1,1,1,,easy_handle) ;don't enable debug by default
-    this.HeaderToMem(0,easy_handle)    ;automatically save lastHeader to memory
-    
+    this.HeaderToMem(0, easy_handle)    ;automatically save lastHeader to memory
+
     ;todo - gather and clean the SetOpts
 }
 
-_getDllAddress(dllPath,dllfunction){
+_getDllAddress(dllPath, dllfunction) {
     return DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", dllPath, "Ptr"), "AStr", dllfunction, "Ptr")
 }
 
-_configureSSL(requestedSSLprovider := "WolfSSL"){
+_configureSSL(requestedSSLprovider := "WolfSSL") {
     ;probe SSLs
-    ret := this._curl_global_sslset(id := 0,name := "",&avail)  ;no error class
+    ret := this._curl_global_sslset(id := 0, name := "", &avail)  ;no error class
     this.availableSSLproviders := this.struct.curl_ssl_backend(avail)
-    
-    if (ret = 3){
+
+    if (ret = 3) {
         this.selectedSSLprovider := "This version of libcurl was not built with SSL capabilities."
         return
     }
-    
+
 
     ;currently known SSLs in the curl source
     ;the user's requested string is the first provider, even if it already exists
-    listOfSSLs := [ requestedSSLprovider    
+    listOfSSLs := [requestedSSLprovider
         ;insert any new providers BELOW this line
-
-        ,   "WolfSSL"           ; id = 7 (preferred default)
-        ,   "OpenSSL"           ; id = 1 (plus any of its forks)
-        ,   "Schannel"          ; id = 8 (prioritized for Windows)
-        ,   "mbedTLS"           ; id = 11
-        ,   "GnuTLS"            ; id = 2
-
+        , "WolfSSL"           ; id = 7 (preferred default)
+        , "OpenSSL"           ; id = 1 (plus any of its forks)
+        , "Schannel"          ; id = 8 (prioritized for Windows)
+        , "mbedTLS"           ; id = 11
+        , "GnuTLS"            ; id = 2
         ;insert any new providers ABOVE this line
-        ,   ""]                 ;fallback on whatever curl has
-    
-    for k,v in listOfSSLs {
-        ret := this._curl_global_sslset(id := 0,v,&avail)   ;no error class
-    }   until (ret = 0)
+        , ""]                 ;fallback on whatever curl has
+
+    for k, v in listOfSSLs {
+        ret := this._curl_global_sslset(id := 0, v, &avail)   ;no error class
+    } until (ret = 0)
 
     sslHaystack := this.GetVersionInfo()["ssl_version"]
-    pos := RegExMatch(sslHaystack,"(?:^| )([A-Za-z\/0-9\\.]+)",&captured)    
+    pos := RegExMatch(sslHaystack, "(?:^| )([A-Za-z\/0-9\\.]+)", &captured)
     this.selectedSSLprovider := captured[1]
 }
-_globalCleanup(){   ;this should be called when shutting down LibQurl
+_globalCleanup() {   ;this should be called when shutting down LibQurl
     ;delete any flushed magic-files
     If DirExist(A_Temp "\LibQurl") {
         ;per easy_handle to avoid stepping on other instances of the class
-        for k,v in this.easyHandleMap[0]
+        for k, v in this.easyHandleMap[0]
             FileDelete(A_Temp "\LibQurl\*." v)
 
         ;attempt to clean the temp folder itself, but silently fail if temp files remain
         try DirDelete(A_Temp "\LibQurl")
     }
-    
+
     this._curl_global_cleanup() ;no error class
 }
-_register(dllPath?,requestedSSLprovider?,initMemMap?) {
+_register(dllPath?, requestedSSLprovider?, initMemMap?) {
     ;todo - make dll auto-load feature more robust
     ;determine where the dll will load from
     if !FileExist(dllPath ??= "")
@@ -624,17 +624,17 @@ _register(dllPath?,requestedSSLprovider?,initMemMap?) {
 
     ;save the current working dir so we can safely load the DLL
     oldWorkingDir := A_WorkingDir
-    SplitPath(dllPath,,&dllDir)
+    SplitPath(dllPath, , &dllDir)
     this.dllDir := dllDir
     SetWorkingDir(dllDir)
-    
+
     ;load the DLL into resident memory
     this.curlDLLpath := dllpath
     this.curlDLLhandle := DllCall("LoadLibrary", "Str", dllPath, "Ptr")
 
     ;restore the user's intended workingDir
     A_WorkingDir := oldWorkingDir
-    
+
     ;continue loading
     this._configureSSL(requestedSSLprovider?)
 
@@ -642,9 +642,9 @@ _register(dllPath?,requestedSSLprovider?,initMemMap?) {
     If !IsSet(initMemMap)
         this._curl_global_init()    ;no error class
     else {
-        this._curl_global_init_mem(initMemMap["flags"],initMemMap["curl_malloc_callback"]   ;no error class
-            ,initMemMap["curl_free_callback"],initMemMap["curl_realloc_callback"]
-            ,initMemMap["curl_strdup_callback"],initMemMap["curl_calloc_callback"])
+        this._curl_global_init_mem(initMemMap["flags"], initMemMap["curl_malloc_callback"]   ;no error class
+            , initMemMap["curl_free_callback"], initMemMap["curl_realloc_callback"]
+            , initMemMap["curl_strdup_callback"], initMemMap["curl_calloc_callback"])
     }
     OnExit (*) => this._globalCleanup()
     this._declareConstants()
@@ -656,49 +656,49 @@ _register(dllPath?,requestedSSLprovider?,initMemMap?) {
     this.UrlInit()
     this.MultiInit()
     this.ShareInit()
-    
+
     ;these should be run directly back-to-back
     this.Init(), this._autoUpdateCertFile()
     return
 }
-_autoUpdateCertFile(){
-    SplitPath(this.curlDLLpath,,&dlldir)
+_autoUpdateCertFile() {
+    SplitPath(this.curlDLLpath, , &dlldir)
     this.crt := crt := dlldir "\curl-ca-bundle.crt"
 
     ;update the default easy_handle provided by __New()
     ;otherwise it would have no SSL file
-    this.SetOpt("CAINFO",crt)
+    this.SetOpt("CAINFO", crt)
 
     ; don't try to update for at least 90 days
-    If (DateDiff(A_Now,FileGetTime(crt),"Days") < 90)
+    If (DateDiff(A_Now, FileGetTime(crt), "Days") < 90)
         return
 
     etagf := dlldir "\curl-ca-bundle.etag"
-    If FileExist(etagf){
+    If FileExist(etagf) {
         ;don't try to update within 1 day of last attempt
-        If (DateDiff(A_Now,FileGetTime(etagf),"Days") < 1)
+        If (DateDiff(A_Now, FileGetTime(etagf), "Days") < 1)
             return
 
-        etagv := FileOpen(etagf,"r").Read()
+        etagv := FileOpen(etagf, "r").Read()
     }
-    
+
     ;set the etag value if possible
-    this.SetHeaders(Map("If-None-Match",etagv??=""))
+    this.SetHeaders(Map("If-None-Match", etagv ??= ""))
 
     url := "curl.se/ca/cacert.pem"
-    this.SetOpt("URL","https://" url)
+    this.SetOpt("URL", "https://" url)
     this.Sync()
-    
+
     switch this.GetInfo("RESPONSE_CODE") {
         case 304:   ;have the latest bundle
             ;update the etag timestamp
-            FileSetTime(A_Now,etagf)
+            FileSetTime(A_Now, etagf)
             return
         case 200:   ;there's an updatable bundle
             ; save the cert bundle + etag
-            FileOpen(crt,"w").Write(this.GetLastBody())
+            FileOpen(crt, "w").Write(this.GetLastBody())
             etagv := this.InspectHeader("ETag")
-            FileOpen(etagf,"w").Write(etagv)
+            FileOpen(etagf, "w").Write(etagv)
 
             ;provide a clean handle to the class
             this.Cleanup()
@@ -711,7 +711,7 @@ _GetFilePathFromFileObject(FileObject) {
     static GetFinalPathNameByHandleW := DllCall("Kernel32\GetProcAddress", "Ptr", DllCall("Kernel32\GetModuleHandle", "Str", "Kernel32", "Ptr"), "AStr", "GetFinalPathNameByHandleW", "Ptr")
 
     ; if !FileObject
-        ; throw Error("Invalid file handle")
+    ; throw Error("Invalid file handle")
 
     ; Initialize a buffer to receive the file path
     static bufSize := 65536    ;64kb to accomodate long path names in UTF-16
@@ -719,11 +719,11 @@ _GetFilePathFromFileObject(FileObject) {
 
     ; Call GetFinalPathNameByHandleW
     len := DllCall(GetFinalPathNameByHandleW
-        ,   "Ptr", FileObject.handle       ; File handle
-        ,   "Ptr", buf         ; Buffer to receive the path
-        ,   "UInt", bufSize    ; Size of the buffer (in wchar_t units)
-        ,   "UInt", 0          ; Flags (0 for default behavior)
-        ,   "UInt")            ; Return length of the file path
+        , "Ptr", FileObject.handle       ; File handle
+        , "Ptr", buf         ; Buffer to receive the path
+        , "UInt", bufSize    ; Size of the buffer (in wchar_t units)
+        , "UInt", 0          ; Flags (0 for default behavior)
+        , "UInt")            ; Return length of the file path
 
     if (len == 0 || len > bufSize)
         throw Error("Failed to retrieve file path or insufficient buffer size", A_LastError)
@@ -731,29 +731,29 @@ _GetFilePathFromFileObject(FileObject) {
     ; Return the result as a string
     return StrGet(buf, "UTF-16")
 }
-_formatHeaders(headersObject){
+_formatHeaders(headersObject) {
     ; Pass an array of "Header: value" strings OR a Map of the same.
     ; Use empty value ("Header: ") to disable internally used header.
     ; Use semicolon ("Header;") to add the header with no value.
     switch Type(headersObject) {
-        case "Map","Object":
+        case "Map", "Object":
             headersArray := []
-            for k,v in this._Enum(headersObject){
+            for k, v in this._Enum(headersObject) {
                 switch {
-                    case v="":    ;diabled
+                    case v = "":    ;diabled
                         headersArray.Push(k ": ")
-                    case v=";":   ;empty
+                    case v = ";":   ;empty
                         headersArray.Push(k ";")
                     default:
                         headersArray.Push(k ": " v)
                 }
-        }
+            }
         case "Array":
             headersArray := headersObject
     }
     return headersArray
 }
-_Enum(inObj){   ;simplify rolling over objects
+_Enum(inObj) {   ;simplify rolling over objects
     If (Type(inObj) = "Object")
         return inObj.OwnProps()
     return inobj
