@@ -419,7 +419,7 @@ _curl_slist_free_all(ptrSList) {    ;https://curl.se/libcurl/c/curl_slist_free_a
     return DllCall(curl_slist_free_all
         , "Ptr", ptrSList)
 }
-_curl_easy_ssls_export(easy_handle, export_fn, userptr) {  ;untested   https://curl.se/libcurl/c/curl_easy_ssls_export.html
+_curl_easy_ssls_export(easy_handle, export_fn, userptr) {  ;https://curl.se/libcurl/c/curl_easy_ssls_export.html
     static curl_easy_ssls_export := this._getDllAddress(this.curlDLLpath, "curl_easy_ssls_export")
     ;CURLcode
     return DllCall(curl_easy_ssls_export
@@ -427,7 +427,7 @@ _curl_easy_ssls_export(easy_handle, export_fn, userptr) {  ;untested   https://c
         , "Ptr", export_fn
         , "Ptr", userptr)
 }
-_curl_easy_ssls_import(easy_handle, session_key, shmac, sdata) {    ;untested  https://curl.se/libcurl/c/curl_easy_ssls_import.html
+_curl_easy_ssls_import(easy_handle, session_key, shmac, sdata) {    ;https://curl.se/libcurl/c/curl_easy_ssls_import.html
     static curl_easy_ssls_import := this._getDllAddress(this.curlDLLpath, "curl_easy_ssls_import")
     ;CURLcode
     return DllCall(curl_easy_ssls_import

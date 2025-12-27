@@ -1904,7 +1904,7 @@ class LibQurl {
                 thisError["options snapshot"].push(this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
                 ;todo - gather nested CURLE_PROXY struct
             case "CURLMcode":
-                ; thisError["options snapshot"].InsertAt(1,this._DeepClone(this.multiHandleMap[relevant_handle]["options"]))
+                thisError["options snapshot"].InsertAt(1, this._DeepClone(this.multiHandleMap[relevant_handle]["options"]))
             case "CURLSHcode":
                 thisError["error string"] := this.GetShareErrorString(incomingValue)
                 thisError["options snapshot"].push(this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
@@ -3305,7 +3305,7 @@ class LibQurl {
         return DllCall(curl_slist_free_all
             , "Ptr", ptrSList)
     }
-    _curl_easy_ssls_export(easy_handle, export_fn, userptr) {  ;untested   https://curl.se/libcurl/c/curl_easy_ssls_export.html
+    _curl_easy_ssls_export(easy_handle, export_fn, userptr) {  ;https://curl.se/libcurl/c/curl_easy_ssls_export.html
         static curl_easy_ssls_export := this._getDllAddress(this.curlDLLpath, "curl_easy_ssls_export")
         ;CURLcode
         return DllCall(curl_easy_ssls_export
@@ -3313,7 +3313,7 @@ class LibQurl {
             , "Ptr", export_fn
             , "Ptr", userptr)
     }
-    _curl_easy_ssls_import(easy_handle, session_key, shmac, sdata) {    ;untested  https://curl.se/libcurl/c/curl_easy_ssls_import.html
+    _curl_easy_ssls_import(easy_handle, session_key, shmac, sdata) {    ;https://curl.se/libcurl/c/curl_easy_ssls_import.html
         static curl_easy_ssls_import := this._getDllAddress(this.curlDLLpath, "curl_easy_ssls_import")
         ;CURLcode
         return DllCall(curl_easy_ssls_import
@@ -3544,4 +3544,4 @@ class LibQurl {
             , "Cdecl Int")
     }
 
-}
+}                      

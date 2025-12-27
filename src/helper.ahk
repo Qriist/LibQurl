@@ -425,7 +425,7 @@ _ErrorHandler(callingMethod, curlErrorCodeFamily, invokedCurlFunction, incomingV
             thisError["options snapshot"].push(this._DeepClone(this.easyHandleMap[relevant_handle]["options"]))
             ;todo - gather nested CURLE_PROXY struct
         case "CURLMcode":
-            ; thisError["options snapshot"].InsertAt(1,this._DeepClone(this.multiHandleMap[relevant_handle]["options"]))
+            thisError["options snapshot"].InsertAt(1, this._DeepClone(this.multiHandleMap[relevant_handle]["options"]))
         case "CURLSHcode":
             thisError["error string"] := this.GetShareErrorString(incomingValue)
             thisError["options snapshot"].push(this._DeepClone(this.shareHandleMap[relevant_handle]["options"]))
