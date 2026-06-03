@@ -115,7 +115,7 @@ libraryFeatureFlags(requestedLibrary, join?) {
                 "non-http",
                 "openssl",  ;uses libressl overlay
                 "psl",
-                "rtmp",
+                ; "rtmp",   ;removed
                 ; "sectransp",    ;unsupported
                 "ssh",
                 "ssl",
@@ -157,6 +157,7 @@ vcpkgPortVersions(libArr, portsDir, oldVerMap?) {
 
         ;query current version numbers for curl/wolfssl/libmagic + each flag port
         ports := StrSplit(RunCMD("vcpkg depend-info " libcmd ":x64-windows"), "`n", "`r")
+        ; msgbox ports[ports.length]
         ports := StrSplit(ports[ports.length], ":", " ")[2]
         ports := StrSplit(ports, ",", " ")
         ports.Push(lib)

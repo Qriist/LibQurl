@@ -79,7 +79,7 @@ class LibQurl {
         this.SetOpt("CAINFO", this.crt ??= "", easy_handle)
 
         this.easyHandleMap[easy_handle]["callbacks"] := Map()  ;prepares write callbacks
-        for k, v in ["body", "header", "read", "progress", "debug"] {
+        for k, v in ["body", "header", "read", "progress", "debug", "upload"] {
             this.easyHandleMap[easy_handle]["callbacks"][v] := Map()
             this.easyHandleMap[easy_handle]["callbacks"][v]["CBF"] := ""
         }
@@ -616,6 +616,83 @@ class LibQurl {
         ;technically extensible later on other edgecases by setting other overrides above.
         return mime_type_override
     }
+    SetUpload(sourceData, startByte?, numBytes?, easy_handle?) {
+        ;you can pass:
+        ;   -a File/Buffer object to upload as binary
+
+        ;you cannot pass:
+        ;   -normal text/numbers
+        ;   -an Object/Array/Map to dump as JSON
+
+
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
+        this.easyHandleMap[easy_handle]["postFile"] := unset    ;clears last POST. prolly redundant but eh.
+
+        checkType := Type(sourceData)
+
+        this.SetOpt("UPLOAD", 1, easy_handle)
+
+        switch checkType {
+            case "File":
+                this._setCallbacks(, , 1, , , easy_handle)
+
+                ;generate an independent file handle
+                sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
+
+                ;set defaults if required
+                startByte ??= 0
+                numBytes ??= sourceData.Length
+
+                ;sanity checks
+                if startByte > sourceData.Length
+                    startByte := sourceData.Length
+                else if startByte < 0
+                    startByte := 0
+                if (startByte + numBytes) > sourceData.Length
+                    numBytes := sourceData.Length - startByte
+
+                sourceData.Seek(startByte)
+                this.easyHandleMap[easy_handle]["postFile"] := sourceData
+                ; input := this.easyHandleMap[easy_handle]["postFile"]
+
+                this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
+            case "Buffer":
+                ;set defaults if required
+                startByte ??= 0
+                numBytes ??= sourceData.size
+
+                ;sanity checks
+                if startByte > sourceData.size
+                    startByte := sourceData.size
+                else if startByte < 0
+                    startByte := 0
+                if (startByte + numBytes) > sourceData.size
+                    numBytes := sourceData.size - startByte
+                if (startByte != 0)
+                    || (sourceData.size - numBytes != 0) {
+                    chunkBuf := Buffer(numBytes)
+                    DllCall("RtlMoveMemory"
+                        , "Ptr", chunkBuf    ;destination
+                        , "Ptr", sourceData + startByte  ;source
+                        , "UPtr", numBytes)  ;length
+                    sourceData := chunkBuf
+                }
+                passedHandleMap := this.easyHandleMap
+                MemBufObj := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity := 65536, dataSize?, &passedHandleMap, "read", easy_handle)
+                ; MemBufObj.Open(sourceData)
+                ; msgbox StrGet(sourceData, "UTF-8")
+                this.easyHandleMap[easy_handle]["postFile"] := MemBufObj
+                this._setCallbacks(, , 1, , , easy_handle)
+                ; this.easyHandleMap[easy_handle]["postData"] := sourceData
+                ; input := this.easyHandleMap[easy_handle]["postFile"]
+                this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
+                ; this.SetOpt("POSTFIELDS", input.ptr, easy_handle)
+            default:
+                throw ValueError("Unknown object type passed as UPLOAD data: " Type(sourceData))
+        }
+    }
+
     ClearPost(easy_handle?) {    ;clears any lingering POST data
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
@@ -643,6 +720,9 @@ class LibQurl {
         this.urlHandleMap[url_handle] := Map()
         this.urlHandleMap[url_handle]["url_handle"] := url_handle
         this.urlHandleMap[url_handle]["timestamp"] := A_NowUTC
+        this.urlHandleMap[url_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE)
+        this.urlHandleMap[url_handle]["options"] := Map()
+        this.UrlPartReturnsNull(true, url_handle)
         return url_handle
     }
     UrlCleanup(url_handle?) {
@@ -670,8 +750,12 @@ class LibQurl {
         url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
 
         flagBitmask := 0
-        for k, v in flags
-            flagBitmask += this.constants["CURLUflags"][v]
+        o := this.urlHandleMap[url_handle]["options"] := Map()
+        f := this.constants["CURLUflags"]
+        for k, v in flags {
+            flagBitmask += f[v]
+            o[v] := 1
+        }
 
         partConstant := this.constants["CURLUPart"][part]
         if ret := this._curl_url_set(url_handle, partConstant, content, flagBitmask)
@@ -682,14 +766,29 @@ class LibQurl {
         url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
 
         flagBitmask := 0
-        for k, v in flags
-            flagBitmask += this.constants["CURLUflags"][v]
+        o := this.urlHandleMap[url_handle]["options"] := Map()
+        f := this.constants["CURLUflags"]
+        for k, v in flags {
+            flagBitmask += f[v]
+            o[v] := 1
+        }
 
         partConstant := this.constants["CURLUPart"][part]
         retCode := this._curl_url_get(url_handle, partConstant, &content := 0, flagBitmask)    ;no error class
-        ret := StrGet(content, "UTF-8")
+        if content
+            ret := StrGet(content, "UTF-8")
+        else
+            return this.urlHandleMap[url_handle]["null return"]
         this._curl_free(content)    ;no error class
         return ret
+    }
+    UrlPartReturnsNull(behavior := true, url_handle?) {
+        url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
+
+        if behavior = true
+            this.urlHandleMap[url_handle]["null return"] := Null()
+        else
+            this.urlHandleMap[url_handle]["null return"] := ""
     }
 
     MultiInfoRead(multi_handle?) {
@@ -1361,7 +1460,7 @@ class LibQurl {
         }
         return out
     }
-    Timestamp(tsFormat := "Readble") {
+    Timestamp(tsFormat := "Readable") {
         ; https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
         static GetSystemTimePreciseAsFileTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", "kernel32", "Ptr")
             , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")

@@ -3,7 +3,7 @@
 
 Class Storage {
     ; Wrapper for file. Shouldn't be used directly.
-    
+
     Class File {
         __New(filename, &handleMap, storageCategory, accessMode := "w", easy_handle?) {
             this.easyHandleMap := handleMap
@@ -23,7 +23,7 @@ Class Storage {
             ; this.OnHeader   := ""
             ; this.OnProgress := ""
             ; this.OnDebug    := ""
-            
+
             ; ; Input/output
             ; this._writeTo  := ""
             ; this._headerTo := ""
@@ -57,7 +57,7 @@ Class Storage {
             ; If (this._fileObject == "")
             ; || (this._accessMode != "w")
             ; 	Return -1
-            Return this.writeObj["writeTo"].RawWrite(srcDataPtr+0, srcDataSize)
+            Return this.writeObj["writeTo"].RawWrite(srcDataPtr + 0, srcDataSize)
         }
 
         getCurlHandle() {
@@ -65,11 +65,11 @@ Class Storage {
         }
 
         RawRead(dstDataPtr, dstDataSize) {
-        ; 	If (this._fileObject == "")
-        ; 	|| (this._accessMode != "r")
-        ; 		Return -1
+            ; 	If (this._fileObject == "")
+            ; 	|| (this._accessMode != "r")
+            ; 		Return -1
 
-            Return this.writeObj["writeTo"].RawRead(dstDataPtr+0, dstDataSize)
+            Return this.writeObj["writeTo"].RawRead(dstDataPtr + 0, dstDataSize)
         }
 
         Seek(offset, origin := 0) {
@@ -78,10 +78,9 @@ Class Storage {
     }
 
     Class MemBuffer {
-    ; Wrapper for memory buffer, similar to regular FileObject
+        ; Wrapper for memory buffer, similar to regular FileObject
         __New(dataPtr := 0, maxCapacity?, dataSize := 0, &handleMap?, storageCategory?, easy_handle?) {
-            ; this._data     := ""
-            this._dataPos  := 0
+            this._dataPos := 0
             this.easyHandleMap := handleMap
             easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
             ; msgbox easy_handle
@@ -92,11 +91,12 @@ Class Storage {
             this.writeObj["writeType"] := "memory"
 
             If !IsSet(maxCapacity) || (maxCapacity = 0)
-               maxCapacity := 50*1024**2  ; 50 Mb
+                maxCapacity := 50 * 1024 ** 2  ; 50 Mb
 
             maxCapacity := Max(maxCapacity, dataSize)
             this.writeObj["maxCapacity"] := maxCapacity
             this.writeObj["writeTo"] := Buffer(0)
+            this.ptr := this.writeObj["writeTo"].ptr
 
             ; msgbox "New " ObjPtr(this.writeObj["writeTo"])
             ; MsgBox maxCapacity "`n" this.writeObj["writeTo"].Ptr
@@ -104,25 +104,23 @@ Class Storage {
             ; this.writeObj["writeTo"] := Buffer(maxCapacity)
             this.writeObj["curlHandle"] := easy_handle
             this.writeObj["interimPtr"] := 0
-            
-
 
 
             If (dataPtr != 0) {
-                this._dataMax  := maxCapacity
+                this._dataMax := maxCapacity
                 this._dataSize := dataSize
-                this._dataPtr  := dataPtr
+                this._dataPtr := dataPtr
             } Else
             ; No argument, store inside class.
             {
                 this._dataSize := 0
-                this._dataMax  := ObjSetCapacity(this.writeObj["writeTo"], maxCapacity)
-                this._dataPtr  := 0 ;ObjGetAddress(this._data)
+                this._dataMax := ObjSetCapacity(this.writeObj["writeTo"], maxCapacity)
+                this._dataPtr := 0 ;ObjGetAddress(this._data)
                 ; msgbox this._dataMax
             }
         }
 
-        Open() {
+        Open(sourceBuffer?, bufferSize?) {
             ; Do nothing
         }
 
@@ -150,9 +148,9 @@ Class Storage {
             Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
             this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
             DllCall("ntdll\memcpy"
-                , "Ptr" , this.writeObj["writeTo"].Ptr + Offset
-                , "Ptr" , srcDataPtr+0
-                , "Int" , srcDataSize)
+                , "Ptr", this.writeObj["writeTo"].Ptr + Offset
+                , "Ptr", srcDataPtr + 0
+                , "Int", srcDataSize)
             this._dataSize := this._dataPtr += srcDataSize
             Return srcDataSize
         }
@@ -174,6 +172,21 @@ Class Storage {
 
         ; 	Return dstDataSize
         ; }
+        RawRead(dstDataPtr, dstDataSize) {
+            dataLeft := this._dataSize - this._dataPos
+            if (dataLeft <= 0)
+                return 0  ; EOF
+
+            bytesToRead := dstDataSize < dataLeft ? dstDataSize : dataLeft
+
+            DllCall("ntdll\memcpy"
+                , "Ptr", dstDataPtr
+                , "Ptr", this.writeObj["writeTo"].Ptr + this._dataPos
+                , "UPtr", bytesToRead)
+
+            this._dataPos += bytesToRead
+            return bytesToRead
+        }
 
         ; Seek(offset, origin := 0) {
         ; 	newDataPos := offset
@@ -201,9 +214,9 @@ Class Storage {
 
     Class Magic {
         ; transparently merges MemBuffer and File modes for an ideal solution to temp files
-        __New(flushFilename, flushThreshold := 50*1024**2, &handleMap?, storageCategory?, easy_handle?) {
+        __New(flushFilename, flushThreshold := 50 * 1024 ** 2, &handleMap?, storageCategory?, easy_handle?) {
             ;object begins life as a MemBuffer clone
-            this._dataPos  := 0
+            this._dataPos := 0
             this.easyHandleMap := handleMap
             easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
 
@@ -220,8 +233,8 @@ Class Storage {
             this.writeObj["interimPtr"] := 0
 
             this._dataSize := 0
-            this._dataMax  := flushThreshold
-            this._dataPtr  := 0 ;ObjGetAddress(this._data)
+            this._dataMax := flushThreshold
+            this._dataPtr := 0 ;ObjGetAddress(this._data)
         }
 
         Open() {
@@ -229,7 +242,7 @@ Class Storage {
         }
 
         Close() {
-            If (this.writeObj["writeType"] = "magic-memory") 
+            If (this.writeObj["writeType"] = "magic-memory")
                 this.writeObj["writeTo"].Size := this._dataSize ;truncates the buffer to the final output size
             else ;magic-file
                 this.writeObj["writeTo"].Close()
@@ -238,19 +251,19 @@ Class Storage {
         RawWrite(srcDataPtr, srcDataSize) {
             ;initial buffer conditions
             If (this.writeObj["writeType"] = "magic-memory") {
-                if (this.writeObj["flushThreshold"] > (this._dataSize + srcDataSize)){
+                if (this.writeObj["flushThreshold"] > (this._dataSize + srcDataSize)) {
                     Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
                     this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
                     DllCall("ntdll\memcpy"
-                        , "Ptr" , this.writeObj["writeTo"].Ptr + Offset
-                        , "Ptr" , srcDataPtr+0
-                        , "Int" , srcDataSize)
+                        , "Ptr", this.writeObj["writeTo"].Ptr + Offset
+                        , "Ptr", srcDataPtr + 0
+                        , "Int", srcDataSize)
                     this._dataSize := this._dataPtr += srcDataSize
                     Return srcDataSize
                 }
 
                 ;threshold met, perform one-time flush to disk
-                this.writeObj["writeType"] := "magic-file" 
+                this.writeObj["writeType"] := "magic-file"
                 this.writeObj["filename"] := this.writeObj["flushFilename"]
                 this.writeObj["flushFilename"] := unset
                 SplitPath(this.writeObj["filename"], , &fileDirPath)
@@ -259,12 +272,12 @@ Class Storage {
                 tempObj := FileOpen(this.writeObj["filename"], this.writeObj["accessMode"] := "w", "CP0")
                 tempObj.RawWrite(this.writeObj["writeTo"])
                 this.writeObj["writeTo"] := tempObj
-                
+
                 ;don't return yet because the incoming data still needs to be written to file
             }
 
             this._dataSize := this._dataPtr += srcDataSize
-            return this.writeObj["writeTo"].RawWrite(srcDataPtr+0, srcDataSize)
+            return this.writeObj["writeTo"].RawWrite(srcDataPtr + 0, srcDataSize)
         }
 
         Length() {

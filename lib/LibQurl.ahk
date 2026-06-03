@@ -74,7 +74,7 @@ class LibQurl {
         this.SetOpt("CAINFO", this.crt ??= "", easy_handle)
 
         this.easyHandleMap[easy_handle]["callbacks"] := Map()  ;prepares write callbacks
-        for k, v in ["body", "header", "read", "progress", "debug"] {
+        for k, v in ["body", "header", "read", "progress", "debug", "upload"] {
             this.easyHandleMap[easy_handle]["callbacks"][v] := Map()
             this.easyHandleMap[easy_handle]["callbacks"][v]["CBF"] := ""
         }
@@ -611,6 +611,83 @@ class LibQurl {
         ;technically extensible later on other edgecases by setting other overrides above.
         return mime_type_override
     }
+    SetUpload(sourceData, startByte?, numBytes?, easy_handle?) {
+        ;you can pass:
+        ;   -a File/Buffer object to upload as binary
+
+        ;you cannot pass:
+        ;   -normal text/numbers
+        ;   -an Object/Array/Map to dump as JSON
+
+
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
+        this.easyHandleMap[easy_handle]["postFile"] := unset    ;clears last POST. prolly redundant but eh.
+
+        checkType := Type(sourceData)
+
+        this.SetOpt("UPLOAD", 1, easy_handle)
+
+        switch checkType {
+            case "File":
+                this._setCallbacks(, , 1, , , easy_handle)
+
+                ;generate an independent file handle
+                sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
+
+                ;set defaults if required
+                startByte ??= 0
+                numBytes ??= sourceData.Length
+
+                ;sanity checks
+                if startByte > sourceData.Length
+                    startByte := sourceData.Length
+                else if startByte < 0
+                    startByte := 0
+                if (startByte + numBytes) > sourceData.Length
+                    numBytes := sourceData.Length - startByte
+
+                sourceData.Seek(startByte)
+                this.easyHandleMap[easy_handle]["postFile"] := sourceData
+                ; input := this.easyHandleMap[easy_handle]["postFile"]
+
+                this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
+            case "Buffer":
+                ;set defaults if required
+                startByte ??= 0
+                numBytes ??= sourceData.size
+
+                ;sanity checks
+                if startByte > sourceData.size
+                    startByte := sourceData.size
+                else if startByte < 0
+                    startByte := 0
+                if (startByte + numBytes) > sourceData.size
+                    numBytes := sourceData.size - startByte
+                if (startByte != 0)
+                    || (sourceData.size - numBytes != 0) {
+                    chunkBuf := Buffer(numBytes)
+                    DllCall("RtlMoveMemory"
+                        , "Ptr", chunkBuf    ;destination
+                        , "Ptr", sourceData + startByte  ;source
+                        , "UPtr", numBytes)  ;length
+                    sourceData := chunkBuf
+                }
+                passedHandleMap := this.easyHandleMap
+                MemBufObj := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity := 65536, dataSize?, &passedHandleMap, "read", easy_handle)
+                ; MemBufObj.Open(sourceData)
+                ; msgbox StrGet(sourceData, "UTF-8")
+                this.easyHandleMap[easy_handle]["postFile"] := MemBufObj
+                this._setCallbacks(, , 1, , , easy_handle)
+                ; this.easyHandleMap[easy_handle]["postData"] := sourceData
+                ; input := this.easyHandleMap[easy_handle]["postFile"]
+                this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
+                ; this.SetOpt("POSTFIELDS", input.ptr, easy_handle)
+            default:
+                throw ValueError("Unknown object type passed as UPLOAD data: " Type(sourceData))
+        }
+    }
+
     ClearPost(easy_handle?) {    ;clears any lingering POST data
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
@@ -638,6 +715,9 @@ class LibQurl {
         this.urlHandleMap[url_handle] := Map()
         this.urlHandleMap[url_handle]["url_handle"] := url_handle
         this.urlHandleMap[url_handle]["timestamp"] := A_NowUTC
+        this.urlHandleMap[url_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE)
+        this.urlHandleMap[url_handle]["options"] := Map()
+        this.UrlPartReturnsNull(true, url_handle)
         return url_handle
     }
     UrlCleanup(url_handle?) {
@@ -665,8 +745,12 @@ class LibQurl {
         url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
 
         flagBitmask := 0
-        for k, v in flags
-            flagBitmask += this.constants["CURLUflags"][v]
+        o := this.urlHandleMap[url_handle]["options"] := Map()
+        f := this.constants["CURLUflags"]
+        for k, v in flags {
+            flagBitmask += f[v]
+            o[v] := 1
+        }
 
         partConstant := this.constants["CURLUPart"][part]
         if ret := this._curl_url_set(url_handle, partConstant, content, flagBitmask)
@@ -677,14 +761,29 @@ class LibQurl {
         url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
 
         flagBitmask := 0
-        for k, v in flags
-            flagBitmask += this.constants["CURLUflags"][v]
+        o := this.urlHandleMap[url_handle]["options"] := Map()
+        f := this.constants["CURLUflags"]
+        for k, v in flags {
+            flagBitmask += f[v]
+            o[v] := 1
+        }
 
         partConstant := this.constants["CURLUPart"][part]
         retCode := this._curl_url_get(url_handle, partConstant, &content := 0, flagBitmask)    ;no error class
-        ret := StrGet(content, "UTF-8")
+        if content
+            ret := StrGet(content, "UTF-8")
+        else
+            return this.urlHandleMap[url_handle]["null return"]
         this._curl_free(content)    ;no error class
         return ret
+    }
+    UrlPartReturnsNull(behavior := true, url_handle?) {
+        url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
+
+        if behavior = true
+            this.urlHandleMap[url_handle]["null return"] := Null()
+        else
+            this.urlHandleMap[url_handle]["null return"] := ""
     }
 
     MultiInfoRead(multi_handle?) {
@@ -1356,7 +1455,7 @@ class LibQurl {
         }
         return out
     }
-    Timestamp(tsFormat := "Readble") {
+    Timestamp(tsFormat := "Readable") {
         ; https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
         static GetSystemTimePreciseAsFileTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", "kernel32", "Ptr")
             , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")
@@ -2367,7 +2466,7 @@ class LibQurl {
 
         Class Storage {
         ; Wrapper for file. Shouldn't be used directly.
-        
+    
         Class File {
             __New(filename, &handleMap, storageCategory, accessMode := "w", easy_handle?) {
                 this.easyHandleMap := handleMap
@@ -2387,7 +2486,7 @@ class LibQurl {
                 ; this.OnHeader   := ""
                 ; this.OnProgress := ""
                 ; this.OnDebug    := ""
-                
+    
                 ; ; Input/output
                 ; this._writeTo  := ""
                 ; this._headerTo := ""
@@ -2421,7 +2520,7 @@ class LibQurl {
                 ; If (this._fileObject == "")
                 ; || (this._accessMode != "w")
                 ; 	Return -1
-                Return this.writeObj["writeTo"].RawWrite(srcDataPtr+0, srcDataSize)
+                Return this.writeObj["writeTo"].RawWrite(srcDataPtr + 0, srcDataSize)
             }
     
             getCurlHandle() {
@@ -2429,11 +2528,11 @@ class LibQurl {
             }
     
             RawRead(dstDataPtr, dstDataSize) {
-            ; 	If (this._fileObject == "")
-            ; 	|| (this._accessMode != "r")
-            ; 		Return -1
+                ; 	If (this._fileObject == "")
+                ; 	|| (this._accessMode != "r")
+                ; 		Return -1
     
-                Return this.writeObj["writeTo"].RawRead(dstDataPtr+0, dstDataSize)
+                Return this.writeObj["writeTo"].RawRead(dstDataPtr + 0, dstDataSize)
             }
     
             Seek(offset, origin := 0) {
@@ -2442,10 +2541,9 @@ class LibQurl {
         }
     
         Class MemBuffer {
-        ; Wrapper for memory buffer, similar to regular FileObject
+            ; Wrapper for memory buffer, similar to regular FileObject
             __New(dataPtr := 0, maxCapacity?, dataSize := 0, &handleMap?, storageCategory?, easy_handle?) {
-                ; this._data     := ""
-                this._dataPos  := 0
+                this._dataPos := 0
                 this.easyHandleMap := handleMap
                 easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
                 ; msgbox easy_handle
@@ -2456,11 +2554,12 @@ class LibQurl {
                 this.writeObj["writeType"] := "memory"
     
                 If !IsSet(maxCapacity) || (maxCapacity = 0)
-                   maxCapacity := 50*1024**2  ; 50 Mb
+                    maxCapacity := 50 * 1024 ** 2  ; 50 Mb
     
                 maxCapacity := Max(maxCapacity, dataSize)
                 this.writeObj["maxCapacity"] := maxCapacity
                 this.writeObj["writeTo"] := Buffer(0)
+                this.ptr := this.writeObj["writeTo"].ptr
     
                 ; msgbox "New " ObjPtr(this.writeObj["writeTo"])
                 ; MsgBox maxCapacity "`n" this.writeObj["writeTo"].Ptr
@@ -2468,25 +2567,23 @@ class LibQurl {
                 ; this.writeObj["writeTo"] := Buffer(maxCapacity)
                 this.writeObj["curlHandle"] := easy_handle
                 this.writeObj["interimPtr"] := 0
-                
-    
     
     
                 If (dataPtr != 0) {
-                    this._dataMax  := maxCapacity
+                    this._dataMax := maxCapacity
                     this._dataSize := dataSize
-                    this._dataPtr  := dataPtr
+                    this._dataPtr := dataPtr
                 } Else
                 ; No argument, store inside class.
                 {
                     this._dataSize := 0
-                    this._dataMax  := ObjSetCapacity(this.writeObj["writeTo"], maxCapacity)
-                    this._dataPtr  := 0 ;ObjGetAddress(this._data)
+                    this._dataMax := ObjSetCapacity(this.writeObj["writeTo"], maxCapacity)
+                    this._dataPtr := 0 ;ObjGetAddress(this._data)
                     ; msgbox this._dataMax
                 }
             }
     
-            Open() {
+            Open(sourceBuffer?, bufferSize?) {
                 ; Do nothing
             }
     
@@ -2514,9 +2611,9 @@ class LibQurl {
                 Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
                 this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
                 DllCall("ntdll\memcpy"
-                    , "Ptr" , this.writeObj["writeTo"].Ptr + Offset
-                    , "Ptr" , srcDataPtr+0
-                    , "Int" , srcDataSize)
+                    , "Ptr", this.writeObj["writeTo"].Ptr + Offset
+                    , "Ptr", srcDataPtr + 0
+                    , "Int", srcDataSize)
                 this._dataSize := this._dataPtr += srcDataSize
                 Return srcDataSize
             }
@@ -2538,6 +2635,21 @@ class LibQurl {
     
             ; 	Return dstDataSize
             ; }
+            RawRead(dstDataPtr, dstDataSize) {
+                dataLeft := this._dataSize - this._dataPos
+                if (dataLeft <= 0)
+                    return 0  ; EOF
+    
+                bytesToRead := dstDataSize < dataLeft ? dstDataSize : dataLeft
+    
+                DllCall("ntdll\memcpy"
+                    , "Ptr", dstDataPtr
+                    , "Ptr", this.writeObj["writeTo"].Ptr + this._dataPos
+                    , "UPtr", bytesToRead)
+    
+                this._dataPos += bytesToRead
+                return bytesToRead
+            }
     
             ; Seek(offset, origin := 0) {
             ; 	newDataPos := offset
@@ -2565,9 +2677,9 @@ class LibQurl {
     
         Class Magic {
             ; transparently merges MemBuffer and File modes for an ideal solution to temp files
-            __New(flushFilename, flushThreshold := 50*1024**2, &handleMap?, storageCategory?, easy_handle?) {
+            __New(flushFilename, flushThreshold := 50 * 1024 ** 2, &handleMap?, storageCategory?, easy_handle?) {
                 ;object begins life as a MemBuffer clone
-                this._dataPos  := 0
+                this._dataPos := 0
                 this.easyHandleMap := handleMap
                 easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
     
@@ -2584,8 +2696,8 @@ class LibQurl {
                 this.writeObj["interimPtr"] := 0
     
                 this._dataSize := 0
-                this._dataMax  := flushThreshold
-                this._dataPtr  := 0 ;ObjGetAddress(this._data)
+                this._dataMax := flushThreshold
+                this._dataPtr := 0 ;ObjGetAddress(this._data)
             }
     
             Open() {
@@ -2593,7 +2705,7 @@ class LibQurl {
             }
     
             Close() {
-                If (this.writeObj["writeType"] = "magic-memory") 
+                If (this.writeObj["writeType"] = "magic-memory")
                     this.writeObj["writeTo"].Size := this._dataSize ;truncates the buffer to the final output size
                 else ;magic-file
                     this.writeObj["writeTo"].Close()
@@ -2602,19 +2714,19 @@ class LibQurl {
             RawWrite(srcDataPtr, srcDataSize) {
                 ;initial buffer conditions
                 If (this.writeObj["writeType"] = "magic-memory") {
-                    if (this.writeObj["flushThreshold"] > (this._dataSize + srcDataSize)){
+                    if (this.writeObj["flushThreshold"] > (this._dataSize + srcDataSize)) {
                         Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
                         this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
                         DllCall("ntdll\memcpy"
-                            , "Ptr" , this.writeObj["writeTo"].Ptr + Offset
-                            , "Ptr" , srcDataPtr+0
-                            , "Int" , srcDataSize)
+                            , "Ptr", this.writeObj["writeTo"].Ptr + Offset
+                            , "Ptr", srcDataPtr + 0
+                            , "Int", srcDataSize)
                         this._dataSize := this._dataPtr += srcDataSize
                         Return srcDataSize
                     }
     
                     ;threshold met, perform one-time flush to disk
-                    this.writeObj["writeType"] := "magic-file" 
+                    this.writeObj["writeType"] := "magic-file"
                     this.writeObj["filename"] := this.writeObj["flushFilename"]
                     this.writeObj["flushFilename"] := unset
                     SplitPath(this.writeObj["filename"], , &fileDirPath)
@@ -2623,12 +2735,12 @@ class LibQurl {
                     tempObj := FileOpen(this.writeObj["filename"], this.writeObj["accessMode"] := "w", "CP0")
                     tempObj.RawWrite(this.writeObj["writeTo"])
                     this.writeObj["writeTo"] := tempObj
-                    
+    
                     ;don't return yet because the incoming data still needs to be written to file
                 }
     
                 this._dataSize := this._dataPtr += srcDataSize
-                return this.writeObj["writeTo"].RawWrite(srcDataPtr+0, srcDataSize)
+                return this.writeObj["writeTo"].RawWrite(srcDataPtr + 0, srcDataSize)
             }
     
             Length() {
@@ -2637,9 +2749,9 @@ class LibQurl {
         }
     }
 
-        _declareConstants(){
+        _declareConstants() {
         ;local function for preparing constants which depend on offsets
-        bindOffsets(offsetGroup,offsetOrdinal,offsetType){
+        bindOffsets(offsetGroup, offsetOrdinal, offsetType) {
             ret := this._DeepClone(this.constants[offsetGroup][offsetType])
             ret["id"] := ret["offset"] + offsetOrdinal
             ret.delete("offset")
@@ -2675,96 +2787,98 @@ class LibQurl {
         c["ALLOW_SPACE"] := 1 << 11
         c["PUNYCODE"] := 1 << 12
         c["PUNY2IDN"] := 1 << 13
+        c["GET_EMPTY"] := 1 << 14
+        c["NO_GUESS_SCHEME"] := 1 << 15
     
-        this.constants["CURLINFO_offsets"] := o := Map()   
+        this.constants["CURLINFO_offsets"] := o := Map()
         o.CaseSense := 0
-        o["STRING"] := Map("offset",0x100000,"infoType","STRING","dllType","Ptr*")  ;good
-        o["LONG"] := Map("offset",0x200000,"infoType","LONG","dllType","Int*")  ;good
-        o["DOUBLE"] := Map("offset",0x300000,"infoType","DOUBLE","dllType","Double*")   ;good
-        o["SLIST"] := Map("offset",0x400000,"infoType","SLIST","dllType","Ptr*")    ;good, probably
-        o["PTR"] := Map("offset",0x400000,"infoType","PTR","dllType","Ptr*")    ;good, probably
-        o["SOCKET"] := Map("offset",0x500000,"infoType","SOCKET","dllType","Ptr*")  ;good, probably
-        o["OFF_T"] := Map("offset",0x600000,"infoType","OFF_T","dllType","Ptr*")    ;good
-        o["MASK"] := Map("offset",0x0fffff,"infoType","MASK","dllType","UInt*") ;unused?
-        o["TYPEMASK"] := Map("offset",0xf00000,"infoType","TYPEMASK","dllType","UInt*") ;unused?
+        o["STRING"] := Map("offset", 0x100000, "infoType", "STRING", "dllType", "Ptr*")  ;good
+        o["LONG"] := Map("offset", 0x200000, "infoType", "LONG", "dllType", "Int*")  ;good
+        o["DOUBLE"] := Map("offset", 0x300000, "infoType", "DOUBLE", "dllType", "Double*")   ;good
+        o["SLIST"] := Map("offset", 0x400000, "infoType", "SLIST", "dllType", "Ptr*")    ;good, probably
+        o["PTR"] := Map("offset", 0x400000, "infoType", "PTR", "dllType", "Ptr*")    ;good, probably
+        o["SOCKET"] := Map("offset", 0x500000, "infoType", "SOCKET", "dllType", "Ptr*")  ;good, probably
+        o["OFF_T"] := Map("offset", 0x600000, "infoType", "OFF_T", "dllType", "Ptr*")    ;good
+        o["MASK"] := Map("offset", 0x0fffff, "infoType", "MASK", "dllType", "UInt*") ;unused?
+        o["TYPEMASK"] := Map("offset", 0xf00000, "infoType", "TYPEMASK", "dllType", "UInt*") ;unused?
     
-        offsetGroup := "CURLINFO_offsets"    
+        offsetGroup := "CURLINFO_offsets"
         this.constants["CURLINFO"] := c := Map()
         c.CaseSense := 0
-        c["EFFECTIVE_URL"] :=               bindOffsets(offsetGroup, 1, "STRING")
-        c["RESPONSE_CODE"] :=               bindOffsets(offsetGroup, 2, "LONG")
-        c["TOTAL_TIME"] :=                  bindOffsets(offsetGroup, 3, "DOUBLE")
-        c["NAMELOOKUP_TIME"] :=             bindOffsets(offsetGroup, 4, "DOUBLE")
-        c["CONNECT_TIME"] :=                bindOffsets(offsetGroup, 5, "DOUBLE")
-        c["PRETRANSFER_TIME"] :=            bindOffsets(offsetGroup, 6, "DOUBLE")
-        c["SIZE_UPLOAD_T"] :=               bindOffsets(offsetGroup, 7, "OFF_T")
-        c["SIZE_DOWNLOAD_T"] :=             bindOffsets(offsetGroup, 8, "OFF_T")
-        c["SPEED_DOWNLOAD_T"] :=            bindOffsets(offsetGroup, 9, "OFF_T")
-        c["SPEED_UPLOAD_T"] :=              bindOffsets(offsetGroup, 10, "OFF_T")
-        c["HEADER_SIZE"] :=                 bindOffsets(offsetGroup, 11, "LONG")
-        c["REQUEST_SIZE"] :=                bindOffsets(offsetGroup, 12, "LONG")
-        c["SSL_VERIFYRESULT"] :=            bindOffsets(offsetGroup, 13, "LONG")
-        c["FILETIME"] :=                    bindOffsets(offsetGroup, 14, "LONG")
-        c["FILETIME_T"] :=                  bindOffsets(offsetGroup, 14, "OFF_T")
-        c["CONTENT_LENGTH_DOWNLOAD_T"] :=   bindOffsets(offsetGroup, 15, "OFF_T")
-        c["CONTENT_LENGTH_UPLOAD_T"] :=     bindOffsets(offsetGroup, 16, "OFF_T")
-        c["STARTTRANSFER_TIME"] :=          bindOffsets(offsetGroup, 17, "DOUBLE")
-        c["CONTENT_TYPE"] :=                bindOffsets(offsetGroup, 18, "STRING")
-        c["REDIRECT_TIME"] :=               bindOffsets(offsetGroup, 19, "DOUBLE")
-        c["REDIRECT_COUNT"] :=              bindOffsets(offsetGroup, 20, "LONG")
-        c["PRIVATE"] :=                     bindOffsets(offsetGroup, 21, "STRING")
-        c["HTTP_CONNECTCODE"] :=            bindOffsets(offsetGroup, 22, "LONG")
-        c["HTTPAUTH_AVAIL"] :=              bindOffsets(offsetGroup, 23, "LONG")
-        c["PROXYAUTH_AVAIL"] :=             bindOffsets(offsetGroup, 24, "LONG")
-        c["OS_ERRNO"] :=                    bindOffsets(offsetGroup, 25, "LONG")
-        c["NUM_CONNECTS"] :=                bindOffsets(offsetGroup, 26, "LONG")
-        c["SSL_ENGINES"] :=                 bindOffsets(offsetGroup, 27, "SLIST")
-        c["COOKIELIST"] :=                  bindOffsets(offsetGroup, 28, "SLIST")
-        c["FTP_ENTRY_PATH"] :=              bindOffsets(offsetGroup, 30, "STRING")
-        c["REDIRECT_URL"] :=                bindOffsets(offsetGroup, 31, "STRING")
-        c["PRIMARY_IP"] :=                  bindOffsets(offsetGroup, 32, "STRING")
-        c["APPCONNECT_TIME"] :=             bindOffsets(offsetGroup, 33, "DOUBLE")
-        c["CERTINFO"] :=                    bindOffsets(offsetGroup, 34, "PTR")
-        c["CONDITION_UNMET"] :=             bindOffsets(offsetGroup, 35, "LONG")
-        c["RTSP_SESSION_ID"] :=             bindOffsets(offsetGroup, 36, "STRING")
-        c["RTSP_CLIENT_CSEQ"] :=            bindOffsets(offsetGroup, 37, "LONG")
-        c["RTSP_SERVER_CSEQ"] :=            bindOffsets(offsetGroup, 38, "LONG")
-        c["RTSP_CSEQ_RECV"] :=              bindOffsets(offsetGroup, 39, "LONG")
-        c["PRIMARY_PORT"] :=                bindOffsets(offsetGroup, 40, "LONG")
-        c["LOCAL_IP"] :=                    bindOffsets(offsetGroup, 41, "STRING")
-        c["LOCAL_PORT"] :=                  bindOffsets(offsetGroup, 42, "LONG")
-        c["TLS_SESSION"] :=                 bindOffsets(offsetGroup, 43, "PTR")
-        c["ACTIVESOCKET"] :=                bindOffsets(offsetGroup, 44, "SOCKET")
-        c["TLS_SSL_PTR"] :=                 bindOffsets(offsetGroup, 45, "PTR")
-        c["HTTP_VERSION"] :=                bindOffsets(offsetGroup, 46, "LONG")
-        c["PROXY_SSL_VERIFYRESULT"] :=      bindOffsets(offsetGroup, 47, "LONG")
-        c["SCHEME"] :=                      bindOffsets(offsetGroup, 49, "STRING")
-        c["TOTAL_TIME_T"] :=                bindOffsets(offsetGroup, 50, "OFF_T")
-        c["NAMELOOKUP_TIME_T"] :=           bindOffsets(offsetGroup, 51, "OFF_T")
-        c["CONNECT_TIME_T"] :=              bindOffsets(offsetGroup, 52, "OFF_T")
-        c["PRETRANSFER_TIME_T"] :=          bindOffsets(offsetGroup, 53, "OFF_T")
-        c["STARTTRANSFER_TIME_T"] :=        bindOffsets(offsetGroup, 54, "OFF_T")
-        c["REDIRECT_TIME_T"] :=             bindOffsets(offsetGroup, 55, "OFF_T")
-        c["APPCONNECT_TIME_T"] :=           bindOffsets(offsetGroup, 56, "OFF_T")
-        c["RETRY_AFTER"] :=                 bindOffsets(offsetGroup, 57, "OFF_T")
-        c["EFFECTIVE_METHOD"] :=            bindOffsets(offsetGroup, 58, "STRING")
-        c["PROXY_ERROR"] :=                 bindOffsets(offsetGroup, 59, "LONG")
-        c["REFERER"] :=                     bindOffsets(offsetGroup, 60, "STRING")
-        c["CAINFO"] :=                      bindOffsets(offsetGroup, 61, "STRING")
-        c["CAPATH"] :=                      bindOffsets(offsetGroup, 62, "STRING")
-        c["XFER_ID"] :=                     bindOffsets(offsetGroup, 63, "OFF_T")
-        c["CONN_ID"] :=                     bindOffsets(offsetGroup, 64, "OFF_T")
-        c["QUEUE_TIME_T"] :=                bindOffsets(offsetGroup, 65, "OFF_T")
-        c["LASTONE"] :=                     bindOffsets(offsetGroup, 65, "OFF_T")
+        c["EFFECTIVE_URL"] := bindOffsets(offsetGroup, 1, "STRING")
+        c["RESPONSE_CODE"] := bindOffsets(offsetGroup, 2, "LONG")
+        c["TOTAL_TIME"] := bindOffsets(offsetGroup, 3, "DOUBLE")
+        c["NAMELOOKUP_TIME"] := bindOffsets(offsetGroup, 4, "DOUBLE")
+        c["CONNECT_TIME"] := bindOffsets(offsetGroup, 5, "DOUBLE")
+        c["PRETRANSFER_TIME"] := bindOffsets(offsetGroup, 6, "DOUBLE")
+        c["SIZE_UPLOAD_T"] := bindOffsets(offsetGroup, 7, "OFF_T")
+        c["SIZE_DOWNLOAD_T"] := bindOffsets(offsetGroup, 8, "OFF_T")
+        c["SPEED_DOWNLOAD_T"] := bindOffsets(offsetGroup, 9, "OFF_T")
+        c["SPEED_UPLOAD_T"] := bindOffsets(offsetGroup, 10, "OFF_T")
+        c["HEADER_SIZE"] := bindOffsets(offsetGroup, 11, "LONG")
+        c["REQUEST_SIZE"] := bindOffsets(offsetGroup, 12, "LONG")
+        c["SSL_VERIFYRESULT"] := bindOffsets(offsetGroup, 13, "LONG")
+        c["FILETIME"] := bindOffsets(offsetGroup, 14, "LONG")
+        c["FILETIME_T"] := bindOffsets(offsetGroup, 14, "OFF_T")
+        c["CONTENT_LENGTH_DOWNLOAD_T"] := bindOffsets(offsetGroup, 15, "OFF_T")
+        c["CONTENT_LENGTH_UPLOAD_T"] := bindOffsets(offsetGroup, 16, "OFF_T")
+        c["STARTTRANSFER_TIME"] := bindOffsets(offsetGroup, 17, "DOUBLE")
+        c["CONTENT_TYPE"] := bindOffsets(offsetGroup, 18, "STRING")
+        c["REDIRECT_TIME"] := bindOffsets(offsetGroup, 19, "DOUBLE")
+        c["REDIRECT_COUNT"] := bindOffsets(offsetGroup, 20, "LONG")
+        c["PRIVATE"] := bindOffsets(offsetGroup, 21, "STRING")
+        c["HTTP_CONNECTCODE"] := bindOffsets(offsetGroup, 22, "LONG")
+        c["HTTPAUTH_AVAIL"] := bindOffsets(offsetGroup, 23, "LONG")
+        c["PROXYAUTH_AVAIL"] := bindOffsets(offsetGroup, 24, "LONG")
+        c["OS_ERRNO"] := bindOffsets(offsetGroup, 25, "LONG")
+        c["NUM_CONNECTS"] := bindOffsets(offsetGroup, 26, "LONG")
+        c["SSL_ENGINES"] := bindOffsets(offsetGroup, 27, "SLIST")
+        c["COOKIELIST"] := bindOffsets(offsetGroup, 28, "SLIST")
+        c["FTP_ENTRY_PATH"] := bindOffsets(offsetGroup, 30, "STRING")
+        c["REDIRECT_URL"] := bindOffsets(offsetGroup, 31, "STRING")
+        c["PRIMARY_IP"] := bindOffsets(offsetGroup, 32, "STRING")
+        c["APPCONNECT_TIME"] := bindOffsets(offsetGroup, 33, "DOUBLE")
+        c["CERTINFO"] := bindOffsets(offsetGroup, 34, "PTR")
+        c["CONDITION_UNMET"] := bindOffsets(offsetGroup, 35, "LONG")
+        c["RTSP_SESSION_ID"] := bindOffsets(offsetGroup, 36, "STRING")
+        c["RTSP_CLIENT_CSEQ"] := bindOffsets(offsetGroup, 37, "LONG")
+        c["RTSP_SERVER_CSEQ"] := bindOffsets(offsetGroup, 38, "LONG")
+        c["RTSP_CSEQ_RECV"] := bindOffsets(offsetGroup, 39, "LONG")
+        c["PRIMARY_PORT"] := bindOffsets(offsetGroup, 40, "LONG")
+        c["LOCAL_IP"] := bindOffsets(offsetGroup, 41, "STRING")
+        c["LOCAL_PORT"] := bindOffsets(offsetGroup, 42, "LONG")
+        c["TLS_SESSION"] := bindOffsets(offsetGroup, 43, "PTR")
+        c["ACTIVESOCKET"] := bindOffsets(offsetGroup, 44, "SOCKET")
+        c["TLS_SSL_PTR"] := bindOffsets(offsetGroup, 45, "PTR")
+        c["HTTP_VERSION"] := bindOffsets(offsetGroup, 46, "LONG")
+        c["PROXY_SSL_VERIFYRESULT"] := bindOffsets(offsetGroup, 47, "LONG")
+        c["SCHEME"] := bindOffsets(offsetGroup, 49, "STRING")
+        c["TOTAL_TIME_T"] := bindOffsets(offsetGroup, 50, "OFF_T")
+        c["NAMELOOKUP_TIME_T"] := bindOffsets(offsetGroup, 51, "OFF_T")
+        c["CONNECT_TIME_T"] := bindOffsets(offsetGroup, 52, "OFF_T")
+        c["PRETRANSFER_TIME_T"] := bindOffsets(offsetGroup, 53, "OFF_T")
+        c["STARTTRANSFER_TIME_T"] := bindOffsets(offsetGroup, 54, "OFF_T")
+        c["REDIRECT_TIME_T"] := bindOffsets(offsetGroup, 55, "OFF_T")
+        c["APPCONNECT_TIME_T"] := bindOffsets(offsetGroup, 56, "OFF_T")
+        c["RETRY_AFTER"] := bindOffsets(offsetGroup, 57, "OFF_T")
+        c["EFFECTIVE_METHOD"] := bindOffsets(offsetGroup, 58, "STRING")
+        c["PROXY_ERROR"] := bindOffsets(offsetGroup, 59, "LONG")
+        c["REFERER"] := bindOffsets(offsetGroup, 60, "STRING")
+        c["CAINFO"] := bindOffsets(offsetGroup, 61, "STRING")
+        c["CAPATH"] := bindOffsets(offsetGroup, 62, "STRING")
+        c["XFER_ID"] := bindOffsets(offsetGroup, 63, "OFF_T")
+        c["CONN_ID"] := bindOffsets(offsetGroup, 64, "OFF_T")
+        c["QUEUE_TIME_T"] := bindOffsets(offsetGroup, 65, "OFF_T")
+        c["LASTONE"] := bindOffsets(offsetGroup, 65, "OFF_T")
     
         this.constants["CURLH_ORIGINS"] := c := Map()
         c.CaseSense := 0
-        c["HEADER"] := (1<<0)
-        c["TRAILER"] := (1<<1)
-        c["CONNECT"] := (1<<2)
-        c["1XX"] := (1<<3)
-        c["PSUEDO"] := (1<<4)
-        
+        c["HEADER"] := (1 << 0)
+        c["TRAILER"] := (1 << 1)
+        c["CONNECT"] := (1 << 2)
+        c["1XX"] := (1 << 3)
+        c["PSUEDO"] := (1 << 4)
+    
         this.constants["curl_sslbackend"] := c := Map()
         c.CaseSense := 0
         c["NONE"] := 0
@@ -2777,34 +2891,34 @@ class LibQurl {
         c["BEARSSL"] := 13
         c["RUSTLS"] := 14
     
-        this.constants["CURLOPTTYPE"] := o := Map()   
+        this.constants["CURLOPTTYPE"] := o := Map()
         o.CaseSense := 0
-        o["LONG"] := Map("offset",0,"multiType","LONG","dllType","Int*")  ;good
-        o["OBJECTPOINT"] := Map("offset",10000,"multiType","LONG","dllType","Int*")  ;good
-        o["FUNCTIONPOINT"] := Map("offset",20000,"multiType","LONG","dllType","Int*")  ;good
-        o["OFF_T"] := Map("offset",30000,"multiType","LONG","dllType","Int*")  ;good
-        o["BLOB"] := Map("offset",40000,"multiType","LONG","dllType","Int*")  ;good
-        
-        offsetGroup := "CURLOPTTYPE"    
+        o["LONG"] := Map("offset", 0, "multiType", "LONG", "dllType", "Int*")  ;good
+        o["OBJECTPOINT"] := Map("offset", 10000, "multiType", "LONG", "dllType", "Int*")  ;good
+        o["FUNCTIONPOINT"] := Map("offset", 20000, "multiType", "LONG", "dllType", "Int*")  ;good
+        o["OFF_T"] := Map("offset", 30000, "multiType", "LONG", "dllType", "Int*")  ;good
+        o["BLOB"] := Map("offset", 40000, "multiType", "LONG", "dllType", "Int*")  ;good
+    
+        offsetGroup := "CURLOPTTYPE"
         this.constants["CURLMoption"] := c := Map()
         c.CaseSense := 0
-        c["SOCKETFUNCTION"]                 := bindOffsets(offsetGroup, 1, "FUNCTIONPOINT")
-        c["SOCKETDATA"]                     := bindOffsets(offsetGroup, 2, "OBJECTPOINT")
-        c["PIPELINING"]                     := bindOffsets(offsetGroup, 3, "LONG")
-        c["TIMERFUNCTION"]                  := bindOffsets(offsetGroup, 4, "FUNCTIONPOINT")
-        c["TIMERDATA"]                      := bindOffsets(offsetGroup, 5, "OBJECTPOINT")
-        c["MAXCONNECTS"]                    := bindOffsets(offsetGroup, 6, "LONG")
-        c["MAX_HOST_CONNECTIONS"]           := bindOffsets(offsetGroup, 7, "LONG")
-        c["MAX_PIPELINE_LENGTH"]            := bindOffsets(offsetGroup, 8, "LONG")
-        c["CONTENT_LENGTH_PENALTY_SIZE"]    := bindOffsets(offsetGroup, 9, "OFF_T")
-        c["CHUNK_LENGTH_PENALTY_SIZE"]      := bindOffsets(offsetGroup, 10, "OFF_T")
-        c["PIPELINING_SITE_BL"]             := bindOffsets(offsetGroup, 11, "OBJECTPOINT")
-        c["PIPELINING_SERVER_BL"]           := bindOffsets(offsetGroup, 12, "OBJECTPOINT")
-        c["MAX_TOTAL_CONNECTIONS"]          := bindOffsets(offsetGroup, 13, "LONG")
-        c["PUSHFUNCTION"]                   := bindOffsets(offsetGroup, 14, "FUNCTIONPOINT")
-        c["PUSHDATA"]                       := bindOffsets(offsetGroup, 15, "OBJECTPOINT")
-        c["MAX_CONCURRENT_STREAMS"]         := bindOffsets(offsetGroup, 16, "LONG")
-        c["LASTENTRY"]                      := unset
+        c["SOCKETFUNCTION"] := bindOffsets(offsetGroup, 1, "FUNCTIONPOINT")
+        c["SOCKETDATA"] := bindOffsets(offsetGroup, 2, "OBJECTPOINT")
+        c["PIPELINING"] := bindOffsets(offsetGroup, 3, "LONG")
+        c["TIMERFUNCTION"] := bindOffsets(offsetGroup, 4, "FUNCTIONPOINT")
+        c["TIMERDATA"] := bindOffsets(offsetGroup, 5, "OBJECTPOINT")
+        c["MAXCONNECTS"] := bindOffsets(offsetGroup, 6, "LONG")
+        c["MAX_HOST_CONNECTIONS"] := bindOffsets(offsetGroup, 7, "LONG")
+        c["MAX_PIPELINE_LENGTH"] := bindOffsets(offsetGroup, 8, "LONG")
+        c["CONTENT_LENGTH_PENALTY_SIZE"] := bindOffsets(offsetGroup, 9, "OFF_T")
+        c["CHUNK_LENGTH_PENALTY_SIZE"] := bindOffsets(offsetGroup, 10, "OFF_T")
+        c["PIPELINING_SITE_BL"] := bindOffsets(offsetGroup, 11, "OBJECTPOINT")
+        c["PIPELINING_SERVER_BL"] := bindOffsets(offsetGroup, 12, "OBJECTPOINT")
+        c["MAX_TOTAL_CONNECTIONS"] := bindOffsets(offsetGroup, 13, "LONG")
+        c["PUSHFUNCTION"] := bindOffsets(offsetGroup, 14, "FUNCTIONPOINT")
+        c["PUSHDATA"] := bindOffsets(offsetGroup, 15, "OBJECTPOINT")
+        c["MAX_CONCURRENT_STREAMS"] := bindOffsets(offsetGroup, 16, "LONG")
+        c["LASTENTRY"] := unset
     
         this.constants["CURLSHcode"] := c := Map()
         c.CaseSense := 0
@@ -2816,15 +2930,15 @@ class LibQurl {
         c["NOT_BUILT_IN"] := 5
         c["LAST"] := 6
     
-        this.constants["CURLOPTTYPE_share"] := o := Map()   
+        this.constants["CURLOPTTYPE_share"] := o := Map()
         o.CaseSense := 0
-        o["LONG"] := Map("offset",0,"shareType","LONG","dllType","Int")  ;good
+        o["LONG"] := Map("offset", 0, "shareType", "LONG", "dllType", "Int")  ;good
         ; o["OBJECTPOINT"] := Map("offset",10000,"multiType","LONG","dllType","Int*")  ;good
         ; o["FUNCTIONPOINT"] := Map("offset",20000,"multiType","LONG","dllType","Int*")  ;good
         ; o["OFF_T"] := Map("offset",30000,"multiType","LONG","dllType","Int*")  ;good
         ; o["BLOB"] := Map("offset",40000,"multiType","LONG","dllType","Int*")  ;good
     
-        offsetGroup := "CURLOPTTYPE_share"    
+        offsetGroup := "CURLOPTTYPE_share"
         this.constants["CURLSHoption"] := c := Map()
         c.CaseSense := 0
         c["NONE"] := bindOffsets(offsetGroup, 0, "LONG")
@@ -2856,12 +2970,12 @@ class LibQurl {
     
         this.constants["CURLWS"] := c := Map()
         c.CaseSense := 0
-        c["TEXT"] := (1<<0)
-        c["BINARY"] := (1<<1)
-        c["CONT"] := (1<<2)
-        c["CLOSE"] := (1<<3)
-        c["PING"] := (1<<4)
-        c["OFFSET"] := (1<<5)
+        c["TEXT"] := (1 << 0)
+        c["BINARY"] := (1 << 1)
+        c["CONT"] := (1 << 2)
+        c["CLOSE"] := (1 << 3)
+        c["PING"] := (1 << 4)
+        c["OFFSET"] := (1 << 5)
     
         this.constants["CURLMINFO"] := c := Map()
         c.CaseSense := 0
@@ -2870,9 +2984,9 @@ class LibQurl {
         c["PENDING"] := 3
         c["DONE"] := 4
         c["ADDED"] := 5
-        
-            ; todo with the error handlers
-        ; this.constants["CURLHcode"] := c := Map()  
+    
+        ; todo with the error handlers
+        ; this.constants["CURLHcode"] := c := Map()
         ; typedef enum {
         ;     CURLHE_OK,
         ;     CURLHE_BADINDEX,      /* header exists but not with this index */
