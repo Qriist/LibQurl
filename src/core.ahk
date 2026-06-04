@@ -1460,7 +1460,7 @@ class LibQurl {
         }
         return out
     }
-    Timestamp(tsFormat := "Readable") {
+    Timestamp(tsFormat := "Readable", scale := "float-seconds") {
         ; https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
         static GetSystemTimePreciseAsFileTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", "kernel32", "Ptr")
             , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")
@@ -1472,12 +1472,22 @@ class LibQurl {
         static months3 := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
         ;offset lookups
-        ; static unixOffset := Map(
-        ;     "Unix", 0,
-        ;     "NTP", -22089888000000000,
-        ;     "GPS", 3159648000000000,
-        ;     "Cocoa", 9783072000000000
-        ; )
+        static unixEpochOffset := Map(
+            "Unix", 0,
+            "NTP", -22089888000000000,
+            "GPS", 3159648000000000,
+            "Cocoa", 9783072000000000
+        )
+        static unixScaleMap := Map(
+            "float-seconds", 10000000.0,
+            "float-ms", 10000.0,
+            "float-ns", 100.0,
+            "float-us", 10.0,
+            "seconds", 10000000,
+            "ms", 10000,
+            "ns", 100,
+            "us", 10
+        )
 
         ft := Buffer(8, 0)
         DllCall(GetSystemTimePreciseAsFileTime, "Ptr", ft, "Cdecl")
@@ -1512,15 +1522,9 @@ class LibQurl {
                     , year, month, day, hour, minute, second, ms)
 
             case "Unix", "NTP", "GPS", "Cocoa":    ;1753630567.746
-                static unixOffset := Map(
-                    "Unix", 0,
-                    "NTP", -22089888000000000,
-                    "GPS", 3159648000000000,
-                    "Cocoa", 9783072000000000
-                )
                 ; Convert FILETIME to Unix epoch seconds
                 ft64 := NumGet(ft, 0, "Int64")
-                return (ft64 - 116444736000000000 + unixOffset[tsFormat]) / 10000000.0
+                return (ft64 - 116444736000000000 + unixEpochOffset[tsFormat]) / unixScaleMap[scale]
 
             case "asctime":    ;Sun Jul 27 15:36:07 2025
                 dow := NumGet(st, 4, "UShort")
