@@ -102,7 +102,7 @@ libraryFeatureFlags(requestedLibrary, join?) {
             ret := [
                 "brotli",
                 "c-ares",
-                "gnutls",
+                ; "gnutls", ;disabled until vcpkg removes/changes from shiftmedia-gnutls
                 "gsasl",
                 ; "gssapi",   ;unsupported
                 "http2",

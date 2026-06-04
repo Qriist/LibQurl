@@ -1475,6 +1475,10 @@ class LibQurl {
         )
         static unixScaleMap := Map(
             "float-seconds", 10000000.0,
+            "float-ms", 10000.0,
+            "float-ns", 100.0,
+            "float-us", 10.0,
+            "seconds", 10000000,
             "ms", 10000,
             "ns", 100,
             "us", 10
