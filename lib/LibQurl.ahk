@@ -1466,6 +1466,14 @@ class LibQurl {
         static months := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
         static months3 := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
+        ;offset lookups
+        ; static unixOffset := Map(
+        ;     "Unix", 0,
+        ;     "NTP", -22089888000000000,
+        ;     "GPS", 3159648000000000,
+        ;     "Cocoa", 9783072000000000
+        ; )
+
         ft := Buffer(8, 0)
         DllCall(GetSystemTimePreciseAsFileTime, "Ptr", ft, "Cdecl")
 
@@ -1498,10 +1506,16 @@ class LibQurl {
                 return Format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z"
                     , year, month, day, hour, minute, second, ms)
 
-            case "Unix":    ;1753630567.746
+            case "Unix", "NTP", "GPS", "Cocoa":    ;1753630567.746
+                static unixOffset := Map(
+                    "Unix", 0,
+                    "NTP", -22089888000000000,
+                    "GPS", 3159648000000000,
+                    "Cocoa", 9783072000000000
+                )
                 ; Convert FILETIME to Unix epoch seconds
                 ft64 := NumGet(ft, 0, "Int64")
-                return (ft64 - 116444736000000000) / 10000000.0
+                return (ft64 - 116444736000000000 + unixOffset[tsFormat]) / 10000000.0
 
             case "asctime":    ;Sun Jul 27 15:36:07 2025
                 dow := NumGet(st, 4, "UShort")
