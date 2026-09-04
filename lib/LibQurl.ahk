@@ -2160,7 +2160,12 @@ class LibQurl {
     }
     
     _getDllAddress(dllPath, dllfunction) {
-        return DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", dllPath, "Ptr"), "AStr", dllfunction, "Ptr")
+        return DllCall("GetProcAddress",
+            "Ptr", DllCall("GetModuleHandle",
+                "Str", dllPath,
+                "Ptr"),
+            "AStr", dllfunction,
+            "Ptr")
     }
     
     _configureSSL(requestedSSLprovider := "WolfSSL") {

@@ -561,7 +561,12 @@ _RefreshEasyHandleForAsync(easy_handle?) {    ;this soft-resets the handle witho
 }
 
 _getDllAddress(dllPath, dllfunction) {
-    return DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", dllPath, "Ptr"), "AStr", dllfunction, "Ptr")
+    return DllCall("GetProcAddress",
+        "Ptr", DllCall("GetModuleHandle",
+            "Str", dllPath,
+            "Ptr"),
+        "AStr", dllfunction,
+        "Ptr")
 }
 
 _configureSSL(requestedSSLprovider := "WolfSSL") {
