@@ -439,6 +439,8 @@ class LibQurl {
     }
 
     GetLastHeaders(returnAsEncoding := "UTF-8", easy_handle?) {
+        If IsInteger(returnAsEncoding) && !IsSet(easy_handle)
+            easy_handle := returnAsEncoding
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         lastHeaders := this.easyHandleMap[easy_handle]["lastHeaders"]
 
