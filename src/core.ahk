@@ -988,7 +988,7 @@ class LibQurl {
 
         ;walk the pointer array
         out := []
-        loop 11 {
+        loop {
             ptr := NumGet(ret, (a_index - 1) * A_PtrSize, "Ptr")
             if (ptr = 0)    ;no more
                 break
