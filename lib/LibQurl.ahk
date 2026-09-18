@@ -513,8 +513,8 @@ class LibQurl {
         }
         if ret := this._curl_multi_cleanup(multi_handle)
             this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_cleanup", ret, this.multiHandleMap[multi_handle]["error buffer"], multi_handle)
-        if (this.easyHandleMap[0].length = 0)   ;ensures there's always a usable easy_handle
-            this.EasyInit()
+        if (this.multiHandleMap[0].length = 0)   ;ensures there's always a usable multi_handle
+            this.MultiInit()
         return ret
     }
     Pause(easy_handle?) {
