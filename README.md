@@ -8,13 +8,14 @@ Check out the [wiki](https://github.com/Qriist/LibQurl/wiki) for indepth usage!
 ## Features
 - This is a full direct binding of libcurl, meaning that you have access to all known functions.
 - The vast majority of libcurl's functionality has additionally been wrapped with sensible defaults.
-- Numerous simultaneous curl handles are supported, as is the multi (aka Async) interface. All options are remembered per-handle.
+- Numerous [simultaneous curl handles](https://github.com/Qriist/LibQurl/wiki/Multiple-Easy-Handles) are supported, as is the [multi (aka Async)](https://github.com/Qriist/LibQurl/wiki/Async-and-Multi-Interface) interface. All options are remembered per-handle.
 - Transparently compressed transfers are on by default, saving bandwidth and time.
-- You can download a file directly into RAM without touching the disk - very useful when working with APIs.
-    - A unique "magic" hybrid download mode is supported where the download starts in memory but flushes to disk when a certain size threshold is reached.
-- Effortless POSTing of data from almost any source, be it a String, Integer, Object, Array, Map, Buffer, or even a FileObject.
-    - Similarly effortless building of complex MIME forms, with the same smart source handling.
-- You can manually send and receive websocket traffic and protocol-level raw data.
+- You can download a file [directly into RAM](https://github.com/Qriist/LibQurl/wiki/Download-Modes#memory) without touching the disk - very useful when working with APIs.
+    - A unique "[magic](https://github.com/Qriist/LibQurl/wiki/Download-Modes#magic)" hybrid download mode is supported where the download starts in memory but flushes to disk when a certain size threshold is reached.
+- Effortless [POSTing](https://github.com/Qriist/LibQurl/wiki/POST-and-Upload) of data from almost any source, be it a String, Integer, Object, Array, Map, Buffer, or even a FileObject.
+    - Similarly effortless building of complex [MIME](https://github.com/Qriist/LibQurl/wiki/MIME-and-Multipart) forms, with the same smart source handling.
+- You can manually send and receive [websocket traffic](https://github.com/Qriist/LibQurl/wiki/WebSocket) and protocol-level raw data.
+- All libcurl errors which return a defined CURLCode error are [captured](https://github.com/Qriist/LibQurl/wiki/Error-Handling) into an error object, snapshotting everything going on with each relevant handle.
 - Full support for [Descolada](https://github.com/Descolada)'s fantastic AHK package manager, [Aris](https://github.com/Descolada/Aris).
    - This is the recommended installation method!
 
@@ -22,7 +23,6 @@ Check out the [wiki](https://github.com/Qriist/LibQurl/wiki) for indepth usage!
 - gather and clean the SetOpts after a handle finishes downloading
 - add the other origin types to GetAllHeaders
 - refactor out some pointer chasing during callbacks
-- apply error tracing routine to all methods where it's not in effect
 
 <details><summary>Implemented Functions</summary>
 https://curl.se/libcurl/c/allfuncs.html
