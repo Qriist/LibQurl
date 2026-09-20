@@ -3,6 +3,8 @@ This is a full [libcurl](https://curl.se/) wrap for AHKv2.
 
 Much work has been done to abstract away the need for a full understanding of curl's rather arcane architecture, while still allowing complete access to those inner workings when required.
 
+Check out the [wiki](https://github.com/Qriist/LibQurl/wiki) for indepth usage!
+
 ## Features
 - This is a full direct binding of libcurl, meaning that you have access to all known functions.
 - The vast majority of libcurl's functionality has additionally been wrapped with sensible defaults.
