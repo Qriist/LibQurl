@@ -74,12 +74,16 @@ class LibQurl {
         this.SetOpt("CAINFO", this.crt ??= "", easy_handle)
 
         this.easyHandleMap[easy_handle]["callbacks"] := Map()  ;prepares write callbacks
+
         for k, v in ["body", "header", "read", "progress", "debug", "upload"] {
             this.easyHandleMap[easy_handle]["callbacks"][v] := Map()
             this.easyHandleMap[easy_handle]["callbacks"][v]["CBF"] := ""
         }
+        for k, v in ["body", "header", "progress"] {    ;common to most transfers
+            this._setEasyCallback(easy_handle, v)
+        }
 
-        this._setCallbacks(easy_handle, 1, 1, , 1) ;don't enable debug by default
+        ; this._setCallbacks(easy_handle, 1, 1, , 1) ;don't enable debug by default
         ; this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] ??= []
         this.easyHandleMap[easy_handle]["debug"] := 0
         this.easyHandleMap[easy_handle]["websocket_mode"] := 0
@@ -584,8 +588,8 @@ class LibQurl {
                 mime_type_override := "application/json"    ;always json
 
             case "File":
-                this._setCallbacks(easy_handle, , , 1)
-
+                ; this._setCallbacks(easy_handle, , , 1)
+                this._setEasyCallback(easy_handle, "read")
                 ;generate an independent file handle
                 sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
                 sourceData.Seek(0) ;ensures we're before any BOM (ahk quirk)
@@ -636,8 +640,8 @@ class LibQurl {
 
         switch checkType {
             case "File":
-                this._setCallbacks(easy_handle, , , 1)
-
+                ; this._setCallbacks(easy_handle, , , 1)
+                this._setEasyCallback(easy_handle, "read")
                 ;generate an independent file handle
                 sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
 
@@ -681,10 +685,10 @@ class LibQurl {
                 }
                 passedHandleMap := this.easyHandleMap
                 ; MsgBox strget(sourceData, "UTF-8")
-                MemBufObj := LibQurl.Storage.MemBuffer(sourceData.ptr, sourceData.size, sourceData.size, &passedHandleMap, "upload", easy_handle)
+                MemBufObj := LibQurl.Storage.MemBuffer(sourceData.ptr, sourceData.size, sourceData.size, &passedHandleMap, "read", easy_handle)
                 ; MemBufObj.Open(sourceData)
                 ; msgbox StrGet(sourceData, "UTF-8")
-                this.easyHandleMap[easy_handle]["postFile"] := MemBufObj
+                this.easyHandleMap[easy_handle]["postData"] := MemBufObj
                 ; this._setCallbacks(easy_handle,, , 1)
                 ; this.easyHandleMap[easy_handle]["postData"] := sourceData
                 ; input := this.easyHandleMap[easy_handle]["postFile"]
@@ -1424,7 +1428,8 @@ class LibQurl {
     }
     EnableDebug(easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        this._setCallbacks(easy_handle, , , , , 1)
+        ; this._setCallbacks(easy_handle, , , , , 1)
+        this._setEasyCallback(easy_handle, "debug")
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] ??= []
         this.easyHandleMap[easy_handle]["debug"] := 1
     }
@@ -1787,7 +1792,69 @@ class LibQurl {
         ; Curl._CB_Progress := CallbackCreate(Curl._ProgressCallback)
         ; Curl._CB_Debug    := CallbackCreate(Curl._DebugCallback)
     }
+    _setEasyCallback(easy_handle, cbType, param?) {
     
+        CBF := this.easyHandleMap[easy_handle]["callbacks"][cbType]["CBF"]
+        if IsInteger(CBF) {  ;checks if this callback already exists
+            CallbackFree(CBF)
+            this.writeRefs.delete(CBF)
+        }
+    
+        switch cbType {
+            case "body":    ;DATA/FUNCTION prepared elsewhere
+                CBF := CallbackCreate(
+                    (dataPtr, size, sizeBytes, userdata) =>
+                        this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
+                )
+    
+    
+            case "header":  ;DATA/FUNCTION prepared elsewhere
+                CBF := CallbackCreate(
+                    (dataPtr, size, sizeBytes, userdata) =>
+                        this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
+                )
+    
+    
+            case "read":
+                CBF := CallbackCreate(
+                    (buf, size, nitems, userdata) =>
+                        this._readCallbackFunction(buf, size, nitems, userdata)
+                )
+                this.SetOpt("READDATA", easy_handle, easy_handle)
+                this.SetOpt("READFUNCTION", CBF, easy_handle)
+    
+    
+            case "progress":
+                this.SetOpt("NOPROGRESS", 0, easy_handle)   ;enables progress meter on this handle
+    
+                CBF := CallbackCreate(
+                    (easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded) =>
+                        this._progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded)
+                )
+    
+                this.SetOpt("XFERINFODATA", easy_handle, easy_handle)
+                this.SetOpt("XFERINFOFUNCTION", CBF, easy_handle)
+    
+    
+            case "debug":
+                this.SetOpt("VERBOSE", 1, easy_handle)    ;enables debug on this handle
+    
+                CBF := CallbackCreate(
+                    (easy_handle, infotype, data, size, clientp) =>
+                        this._debugCallbackFunction(easy_handle, infotype, data, size, clientp)
+                )
+    
+                this.SetOpt("DEBUGDATA", easy_handle, easy_handle)
+                this.SetOpt("DEBUGFUNCTION", CBF, easy_handle)
+        }
+    
+        ;assign tracking
+        this.easyHandleMap[easy_handle]["callbacks"][cbType]["CBF"] := CBF
+        this.writeRefs[CBF] := {
+            easy_handle: easy_handle,
+            cbType: cbType
+        }
+    }
     ; Callbacks
     ; =========
     _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
@@ -2574,11 +2641,15 @@ class LibQurl {
                 this._dataPos := 0
                 this.easyHandleMap := handleMap
                 easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-                ; msgbox easy_handle
+    
     
                 this.easy_handle := easy_handle
                 this.storageCategory := storageCategory
                 this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
+                switch storageCategory {
+                    case "read":
+                    default:
+                }
                 this.writeObj["writeType"] := "memory"
     
                 If !IsSet(maxCapacity) || (maxCapacity = 0)

@@ -79,12 +79,16 @@ class LibQurl {
         this.SetOpt("CAINFO", this.crt ??= "", easy_handle)
 
         this.easyHandleMap[easy_handle]["callbacks"] := Map()  ;prepares write callbacks
+
         for k, v in ["body", "header", "read", "progress", "debug", "upload"] {
             this.easyHandleMap[easy_handle]["callbacks"][v] := Map()
             this.easyHandleMap[easy_handle]["callbacks"][v]["CBF"] := ""
         }
+        for k, v in ["body", "header", "progress"] {    ;common to most transfers
+            this._setEasyCallback(easy_handle, v)
+        }
 
-        this._setCallbacks(easy_handle, 1, 1, , 1) ;don't enable debug by default
+        ; this._setCallbacks(easy_handle, 1, 1, , 1) ;don't enable debug by default
         ; this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] ??= []
         this.easyHandleMap[easy_handle]["debug"] := 0
         this.easyHandleMap[easy_handle]["websocket_mode"] := 0
@@ -589,8 +593,8 @@ class LibQurl {
                 mime_type_override := "application/json"    ;always json
 
             case "File":
-                this._setCallbacks(easy_handle, , , 1)
-
+                ; this._setCallbacks(easy_handle, , , 1)
+                this._setEasyCallback(easy_handle, "read")
                 ;generate an independent file handle
                 sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
                 sourceData.Seek(0) ;ensures we're before any BOM (ahk quirk)
@@ -641,8 +645,8 @@ class LibQurl {
 
         switch checkType {
             case "File":
-                this._setCallbacks(easy_handle, , , 1)
-
+                ; this._setCallbacks(easy_handle, , , 1)
+                this._setEasyCallback(easy_handle, "read")
                 ;generate an independent file handle
                 sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
 
@@ -686,10 +690,10 @@ class LibQurl {
                 }
                 passedHandleMap := this.easyHandleMap
                 ; MsgBox strget(sourceData, "UTF-8")
-                MemBufObj := LibQurl.Storage.MemBuffer(sourceData.ptr, sourceData.size, sourceData.size, &passedHandleMap, "upload", easy_handle)
+                MemBufObj := LibQurl.Storage.MemBuffer(sourceData.ptr, sourceData.size, sourceData.size, &passedHandleMap, "read", easy_handle)
                 ; MemBufObj.Open(sourceData)
                 ; msgbox StrGet(sourceData, "UTF-8")
-                this.easyHandleMap[easy_handle]["postFile"] := MemBufObj
+                this.easyHandleMap[easy_handle]["postData"] := MemBufObj
                 ; this._setCallbacks(easy_handle,, , 1)
                 ; this.easyHandleMap[easy_handle]["postData"] := sourceData
                 ; input := this.easyHandleMap[easy_handle]["postFile"]
@@ -1429,7 +1433,8 @@ class LibQurl {
     }
     EnableDebug(easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        this._setCallbacks(easy_handle, , , , , 1)
+        ; this._setCallbacks(easy_handle, , , , , 1)
+        this._setEasyCallback(easy_handle, "debug")
         this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] ??= []
         this.easyHandleMap[easy_handle]["debug"] := 1
     }

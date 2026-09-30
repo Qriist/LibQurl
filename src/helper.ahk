@@ -184,7 +184,69 @@ _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
     ; Curl._CB_Progress := CallbackCreate(Curl._ProgressCallback)
     ; Curl._CB_Debug    := CallbackCreate(Curl._DebugCallback)
 }
+_setEasyCallback(easy_handle, cbType, param?) {
 
+    CBF := this.easyHandleMap[easy_handle]["callbacks"][cbType]["CBF"]
+    if IsInteger(CBF) {  ;checks if this callback already exists
+        CallbackFree(CBF)
+        this.writeRefs.delete(CBF)
+    }
+
+    switch cbType {
+        case "body":    ;DATA/FUNCTION prepared elsewhere
+            CBF := CallbackCreate(
+                (dataPtr, size, sizeBytes, userdata) =>
+                    this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
+            )
+
+
+        case "header":  ;DATA/FUNCTION prepared elsewhere
+            CBF := CallbackCreate(
+                (dataPtr, size, sizeBytes, userdata) =>
+                    this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
+            )
+
+
+        case "read":
+            CBF := CallbackCreate(
+                (buf, size, nitems, userdata) =>
+                    this._readCallbackFunction(buf, size, nitems, userdata)
+            )
+            this.SetOpt("READDATA", easy_handle, easy_handle)
+            this.SetOpt("READFUNCTION", CBF, easy_handle)
+
+
+        case "progress":
+            this.SetOpt("NOPROGRESS", 0, easy_handle)   ;enables progress meter on this handle
+
+            CBF := CallbackCreate(
+                (easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded) =>
+                    this._progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded)
+            )
+
+            this.SetOpt("XFERINFODATA", easy_handle, easy_handle)
+            this.SetOpt("XFERINFOFUNCTION", CBF, easy_handle)
+
+
+        case "debug":
+            this.SetOpt("VERBOSE", 1, easy_handle)    ;enables debug on this handle
+
+            CBF := CallbackCreate(
+                (easy_handle, infotype, data, size, clientp) =>
+                    this._debugCallbackFunction(easy_handle, infotype, data, size, clientp)
+            )
+
+            this.SetOpt("DEBUGDATA", easy_handle, easy_handle)
+            this.SetOpt("DEBUGFUNCTION", CBF, easy_handle)
+    }
+
+    ;assign tracking
+    this.easyHandleMap[easy_handle]["callbacks"][cbType]["CBF"] := CBF
+    this.writeRefs[CBF] := {
+        easy_handle: easy_handle,
+        cbType: cbType
+    }
+}
 ; Callbacks
 ; =========
 _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {

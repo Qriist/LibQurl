@@ -83,11 +83,15 @@ Class Storage {
             this._dataPos := 0
             this.easyHandleMap := handleMap
             easy_handle ??= this.easyHandleMap[0]["easy_handle"]   ;defaults to the last created easy_handle
-            ; msgbox easy_handle
+
 
             this.easy_handle := easy_handle
             this.storageCategory := storageCategory
             this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
+            switch storageCategory {
+                case "read":
+                default:
+            }
             this.writeObj["writeType"] := "memory"
 
             If !IsSet(maxCapacity) || (maxCapacity = 0)
