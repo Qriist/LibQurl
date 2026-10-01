@@ -208,6 +208,8 @@ _setEasyCallback(easy_handle, cbType, param?) {
 
 
         case "read":
+            ; buf := param
+            ; MsgBox strget(buf, "UTF-8")
             CBF := CallbackCreate(
                 (buf, size, nitems, userdata) =>
                     this._readCallbackFunction(buf, size, nitems, userdata)

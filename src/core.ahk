@@ -689,11 +689,15 @@ class LibQurl {
                     sourceData := chunkBuf
                 }
                 passedHandleMap := this.easyHandleMap
+                sourceData.pos := 17
+                ; MsgBox sourceData.pos
                 ; MsgBox strget(sourceData, "UTF-8")
-                MemBufObj := LibQurl.Storage.MemBuffer(sourceData.ptr, sourceData.size, sourceData.size, &passedHandleMap, "read", easy_handle)
+                this._setEasyCallback(easy_handle, "read")
+                MemBufObj := LibQurl.Storage.NewBuffer(easy_handle, sourceData, sourceData.size, &passedHandleMap, "read")
                 ; MemBufObj.Open(sourceData)
                 ; msgbox StrGet(sourceData, "UTF-8")
-                this.easyHandleMap[easy_handle]["postData"] := MemBufObj
+                this.easyHandleMap[easy_handle]["postFile"] := MemBufObj
+                ; this.easyHandleMap[easy_handle]["postFile"] := sourceData
                 ; this._setCallbacks(easy_handle,, , 1)
                 ; this.easyHandleMap[easy_handle]["postData"] := sourceData
                 ; input := this.easyHandleMap[easy_handle]["postFile"]

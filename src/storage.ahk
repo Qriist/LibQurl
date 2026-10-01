@@ -77,6 +77,42 @@ Class Storage {
         }
     }
 
+    Class NewBuffer {
+        ; Wrapper for memory buffer, similar to regular FileObject
+        __New(easy_handle, inBuf, maxCapacity := 50 * 1024 ** 2, &easyHandleMap, storageCategory) {
+            ;maxCapacity defaults to 50mb.
+
+            this.easy_handle := easy_handle
+            this.storageCategory := storageCategory
+            this.easyHandleMap := easyHandleMap
+            this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
+
+            inBuf.offset := 0
+            inBuf.maxCapacity := Max(maxCapacity, inBuf.Size)   ;prevent accidental truncation
+
+            this.writeObj["writeTo"] := inBuf
+            this.writeObj["readFrom"] := inBuf
+            this.writeObj["easy_handle"] := easy_handle
+
+
+        }
+        RawRead(dstDataPtr, dstDataSize) {
+            sourceBuf := this.writeObj["readFrom"]
+            dataLeft := sourceBuf.Size - sourceBuf.offset
+            if (dataLeft <= 0)
+                return 0  ; EOF
+
+            bytesToRead := dstDataSize < dataLeft ? dstDataSize : dataLeft
+
+            DllCall("ntdll\memcpy"
+                , "Ptr", dstDataPtr
+                , "Ptr", sourceBuf.ptr + sourceBuf.offset
+                , "UPtr", bytesToRead)
+
+            sourceBuf.offset += bytesToRead
+            return bytesToRead
+        }
+    }
     Class MemBuffer {
         ; Wrapper for memory buffer, similar to regular FileObject
         __New(dataPtr := 0, maxCapacity?, dataSize := 0, &handleMap?, storageCategory?, easy_handle?) {
@@ -90,10 +126,13 @@ Class Storage {
             this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
             switch storageCategory {
                 case "read":
+                    this.writeObj["writeType"] := "memory-read"
                 default:
+                    this.writeObj["writeType"] := "memory"
             }
-            this.writeObj["writeType"] := "memory"
 
+
+            ;give some starting space
             If !IsSet(maxCapacity) || (maxCapacity = 0)
                 maxCapacity := 50 * 1024 ** 2  ; 50 Mb
 
@@ -109,11 +148,16 @@ Class Storage {
             this.writeObj["curlHandle"] := easy_handle
             this.writeObj["interimPtr"] := 0
 
+            ; MsgBox strget(dataPtr, "UTF-8")
 
             If (dataPtr != 0) {
                 this._dataMax := maxCapacity
                 this._dataSize := dataSize
                 this._dataPtr := dataPtr
+                this.writeObj["readFrom"] := Buffer(this._dataSize, this._dataPtr)
+                this.writeObj["postFile"] := Buffer(this._dataSize, this._dataPtr)
+
+                MsgBox StrGet(this.writeObj["readFrom"].ptr, "UTF-8")
             } Else
             ; No argument, store inside class.
             {
@@ -134,6 +178,34 @@ Class Storage {
             ; msgbox strget(this.writeObj["writeTo"],"UTF-8")
         }
 
+
+        RawRead(dstDataPtr, dstDataSize) {
+            dataLeft := this._dataSize - this._dataPos
+            if (dataLeft <= 0)
+                return 0  ; EOF
+            msgbox curl.printobj(this.writeObj)
+            MsgBox StrGet(this.writeObj["readFrom"], "UTF-8")
+            bytesToRead := dstDataSize < dataLeft ? dstDataSize : dataLeft
+
+            DllCall("ntdll\memcpy"
+                , "Ptr", dstDataPtr
+                ; , "Ptr", this.writeObj["writeTo"].Ptr + this._dataPos
+                , "Ptr", this._dataPtr + this._dataPos
+                , "UPtr", bytesToRead)
+
+            this._dataPos += bytesToRead
+            return bytesToRead
+        }
+        RawWrite(srcDataPtr, srcDataSize) {
+            Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
+            this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
+            DllCall("ntdll\memcpy"
+                , "Ptr", this.writeObj["writeTo"].Ptr + Offset
+                , "Ptr", srcDataPtr + 0
+                , "Int", srcDataSize)
+            this._dataSize := this._dataPtr += srcDataSize
+            Return srcDataSize
+        }
         ; Write(data) {
         ; 	srcDataSize := StrPut(srcText, "CP0")
 
@@ -147,18 +219,6 @@ Class Storage {
 
         ; 	Return srcDataSize
         ; }
-
-        RawWrite(srcDataPtr, srcDataSize) {
-            Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
-            this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
-            DllCall("ntdll\memcpy"
-                , "Ptr", this.writeObj["writeTo"].Ptr + Offset
-                , "Ptr", srcDataPtr + 0
-                , "Int", srcDataSize)
-            this._dataSize := this._dataPtr += srcDataSize
-            Return srcDataSize
-        }
-
         ; GetAsText(encoding := "UTF-8") {
         ; 	isEncodingWide := ((encoding = "UTF-16") || (encoding = "CP1200"))
         ; 	textMaxLength  := this._dataSize / (isEncodingWide ? 2 : 1)
@@ -176,21 +236,7 @@ Class Storage {
 
         ; 	Return dstDataSize
         ; }
-        RawRead(dstDataPtr, dstDataSize) {
-            dataLeft := this._dataSize - this._dataPos
-            if (dataLeft <= 0)
-                return 0  ; EOF
 
-            bytesToRead := dstDataSize < dataLeft ? dstDataSize : dataLeft
-
-            DllCall("ntdll\memcpy"
-                , "Ptr", dstDataPtr
-                , "Ptr", this.writeObj["writeTo"].Ptr + this._dataPos
-                , "UPtr", bytesToRead)
-
-            this._dataPos += bytesToRead
-            return bytesToRead
-        }
 
         ; Seek(offset, origin := 0) {
         ; 	newDataPos := offset
