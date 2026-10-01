@@ -579,10 +579,9 @@ class LibQurl {
             ;   -an Object/Array/Map to dump as JSON
 
             easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-            this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
-            this.easyHandleMap[easy_handle]["postFile"] := unset    ;clears last POST. prolly redundant but eh.
+            this.easyHandleMap[easy_handle]["readFrom"] := unset    ;clears last POST. prolly redundant but eh.
 
-            checkType := Type(sourceData)
+            ; checkType := Type(sourceData)
 
             ;explicitly set the request for more intuitive behavior when switching between uploads and dowloads
             this.SetOpt("POST", 1, easy_handle)
@@ -591,25 +590,26 @@ class LibQurl {
             switch Type(sourceData) {
                 case "String", "Integer":
                     input := this._StrBuf(sourceData)
-                    this.easyHandleMap[easy_handle]["postData"] := input
+                    this.easyHandleMap[easy_handle]["readFrom"] := input
                     this.SetOpt("POSTFIELDS", input, easy_handle)
-                    this.SetOpt("POSTFIELDSIZE_LARGE", input.size - 1, easy_handle)
+                    this.SetOpt("POSTFIELDSIZE_LARGE", input.size, easy_handle)
 
                 case "Object", "Array", "Map":
                     input := this._StrBuf(json.dump(sourceData))
-                    this.easyHandleMap[easy_handle]["postData"] := input
+                    input.size -= 1
+                    this.easyHandleMap[easy_handle]["readFrom"] := input
                     this.SetOpt("POSTFIELDS", input, easy_handle)
-                    this.SetOpt("POSTFIELDSIZE_LARGE", input.size - 1, easy_handle)
+                    this.SetOpt("POSTFIELDSIZE_LARGE", input.size, easy_handle)
                     mime_type_override := "application/json"    ;always json
 
                 case "File":
                     ; this._setCallbacks(easy_handle, , , 1)
-                    this._setEasyCallback(easy_handle, "read")
+                    ; this._setEasyCallback(easy_handle, "read")
                     ;generate an independent file handle
                     sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
                     sourceData.Seek(0) ;ensures we're before any BOM (ahk quirk)
-                    this.easyHandleMap[easy_handle]["postFile"] := sourceData
-                    input := this.easyHandleMap[easy_handle]["postFile"]
+                    this.easyHandleMap[easy_handle]["readFrom"] := sourceData
+                    input := this.easyHandleMap[easy_handle]["readFrom"]
 
                     ;mandatory steps if the last POST was non-File
                     this.SetOpt("POSTFIELDS", 0, easy_handle)
@@ -619,8 +619,8 @@ class LibQurl {
                     this.SetOpt("INFILESIZE_LARGE", sourceData.length, easy_handle)
 
                 case "Buffer":
-                    this.easyHandleMap[easy_handle]["postData"] := sourceData
-                    input := this.easyHandleMap[easy_handle]["postData"]
+                    this.easyHandleMap[easy_handle]["readFrom"] := sourceData
+                    input := this.easyHandleMap[easy_handle]["readFrom"]
                     this.SetOpt("POSTFIELDS", input, easy_handle)
                     this.SetOpt("POSTFIELDSIZE_LARGE", input.size, easy_handle)
 
@@ -645,8 +645,7 @@ class LibQurl {
             ;   -an Object/Array/Map to dump as JSON
 
             easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-            this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
-            this.easyHandleMap[easy_handle]["postFile"] := unset    ;clears last POST. prolly redundant but eh.
+            this.easyHandleMap[easy_handle]["readFrom"] := unset    ;clears last POST. prolly redundant but eh.
 
             checkType := Type(sourceData)
 
@@ -672,8 +671,7 @@ class LibQurl {
                         numBytes := sourceData.Length - startByte
 
                     sourceData.Seek(startByte)
-                    this.easyHandleMap[easy_handle]["postFile"] := sourceData
-                    ; input := this.easyHandleMap[easy_handle]["postFile"]
+                    this.easyHandleMap[easy_handle]["readFrom"] := sourceData
 
                     this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
                 case "Buffer":
@@ -727,8 +725,7 @@ class LibQurl {
             ;reset request type for more intuitive behavior when switching between uploads and downloads
             this.SetOpt("CUSTOMREQUEST", "GET", easy_handle)
 
-            this.easyHandleMap[easy_handle]["postFile"] := unset
-            this.easyHandleMap[easy_handle]["postData"] := unset
+            this.easyHandleMap[easy_handle]["readFrom"] := unset
         }
 
         UrlInit() {
@@ -1841,8 +1838,6 @@ class LibQurl {
                 )
     
             case "read":
-                ; buf := param
-                ; MsgBox strget(buf, "UTF-8")
                 CBF := CallbackCreate(
                     (buf, size, nitems, userdata) =>
                         ; this._readCallbackFunction(buf, size, nitems, userdata)
