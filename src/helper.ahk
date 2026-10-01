@@ -185,24 +185,40 @@ _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
 }
 _setEasyCallback(easy_handle, cbType, param?) {
 
-    CBF := this.easyHandleMap[easy_handle]["callbacks"][cbType]["CBF"]
+    cbLoc := this.easyHandleMap[easy_handle]["callbacks"][cbType]
+    CBF := cbLoc["CBF"]
+
     if IsInteger(CBF) {  ;checks if this callback already exists
         CallbackFree(CBF)
         this.writeRefs.delete(CBF)
     }
 
     switch cbType {
-        case "body":    ;DATA/FUNCTION prepared elsewhere
-            CBF := CallbackCreate(
-                (dataPtr, size, sizeBytes, userdata) =>
-                    this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
-            )
+        case "body":    ;requires param
+            storageHandle := param
 
-        case "header":  ;DATA/FUNCTION prepared elsewhere
             CBF := CallbackCreate(
                 (dataPtr, size, sizeBytes, userdata) =>
-                    this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
+                    this._CBF_write(dataPtr, size, sizeBytes, userdata, storageHandle)
             )
+            writeHandle := storageHandle.writeObj["writeTo"].ptr
+            this.SetOpt("WRITEDATA", writeHandle, easy_handle)
+
+            cbLoc["CBF"] := CBF
+            this.SetOpt("WRITEFUNCTION", cbLoc["CBF"], easy_handle)
+
+        case "header":  ;requires param
+            storageHandle := param
+
+            CBF := CallbackCreate(
+                (dataPtr, size, sizeBytes, userdata) =>
+                    this._CBF_header(dataPtr, size, sizeBytes, userdata, storageHandle)
+            )
+            writeHandle := storageHandle.writeObj["writeTo"].ptr
+            this.SetOpt("HEADERDATA", writeHandle, easy_handle)
+
+            cbLoc["CBF"] := CBF
+            this.SetOpt("HEADERFUNCTION", cbLoc["CBF"], easy_handle)
 
         case "read":
             CBF := CallbackCreate(
@@ -238,7 +254,7 @@ _setEasyCallback(easy_handle, cbType, param?) {
     }
 
     ;assign tracking
-    this.easyHandleMap[easy_handle]["callbacks"][cbType]["CBF"] := CBF
+    cbLoc["CBF"] := CBF
     this.writeRefs[CBF] := {
         easy_handle: easy_handle,
         cbType: cbType
@@ -249,6 +265,11 @@ _setEasyCallback(easy_handle, cbType, param?) {
 _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     dataSize := size * sizeBytes
     return this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].RawWrite(dataPtr, dataSize)
+}
+
+_CBF_write(dataPtr, size, sizeBytes, userdata, storageHandle) {
+    dataSize := size * sizeBytes
+    return storageHandle.RawWrite(dataPtr, dataSize)
 }
 
 ;Note: websocket mode disabled until I find a good test server
@@ -265,7 +286,10 @@ _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     ; return writeObject.RawWrite(dataPtr, dataSize)
     ; Return this.writeTo[easy_handle].RawWrite(dataPtr, dataSize)
 }
-
+_CBF_header(dataPtr, size, sizeBytes, userdata, storageHandle) {
+    dataSize := size * sizeBytes
+    return storageHandle.RawWrite(dataPtr, dataSize)
+}
 _progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded,
     currentBytesUploaded) {
     progressMap := this.easyHandleMap[easy_handle]["callbacks"]["progress"]
@@ -276,19 +300,19 @@ _progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDown
     return 0
 }
 
-_readCallbackFunction(toBuf, size, nitems, easy_handle) {
-    bytes := size * nitems
-    fromBuf := Buffer(bytes)
-    bytesRead := this.easyHandleMap[easy_handle]["postFile"].RawRead(fromBuf, bytes)
-    fromBuf.Size := bytesRead   ;auto-truncates the buffer if needed
+; _readCallbackFunction(toBuf, size, nitems, easy_handle) {
+;     bytes := size * nitems
+;     fromBuf := Buffer(bytes)
+;     bytesRead := this.easyHandleMap[easy_handle]["postFile"].RawRead(fromBuf, bytes)
+;     fromBuf.Size := bytesRead   ;auto-truncates the buffer if needed
 
-    DllCall("RtlMoveMemory"
-        , "Ptr", toBuf    ;destination
-        , "Ptr", fromBuf  ;source
-        , "UPtr", bytesRead)  ;length
+;     DllCall("RtlMoveMemory"
+;         , "Ptr", toBuf    ;destination
+;         , "Ptr", fromBuf  ;source
+;         , "UPtr", bytesRead)  ;length
 
-    return bytesRead
-}
+;     return bytesRead
+; }
 
 _CBF_read(toBuf, size, nitems, easy_handle) {
     bytes := size * nitems

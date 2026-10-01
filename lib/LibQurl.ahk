@@ -78,7 +78,8 @@ class LibQurl {
             this.easyHandleMap[easy_handle]["callbacks"][v] := Map()
             this.easyHandleMap[easy_handle]["callbacks"][v]["CBF"] := ""
         }
-        for k, v in ["body", "header", "read", "progress"] {    ;common to most transfers
+        ; for k, v in ["body", "header", "read", "progress"] {    ;common to most transfers
+        for k, v in ["read", "progress"] {    ;common to most transfers
             this._setEasyCallback(easy_handle, v)
         }
 
@@ -192,27 +193,36 @@ class LibQurl {
     HeaderToMem(maxCapacity := 0, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
-        this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?,
-            maxCapacity := 65536, dataSize?, &passedHandleMap, "header", easy_handle)
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["header"] ;callback location
 
-        writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].writeObj["writeTo"].ptr
-        ; this.writeTo[easy_handle] := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].writeObj["writeTo"]
-        this.SetOpt("HEADERDATA", writeHandle, easy_handle)
-        this.SetOpt("HEADERFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"], easy_handle)
-        return
+        inBuf := Buffer(0)
+        cbLoc["storageHandle"] := LibQurl.Storage.NewBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "header")
+
+        storageHandle := cbLoc["storageHandle"]
+        this._setEasyCallback(easy_handle, "header", storageHandle)
     }
-
     WriteToMem(maxCapacity := 0, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
-        this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?,
-            maxCapacity?, dataSize?, &passedHandleMap, "body", easy_handle)
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
 
-        writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].writeObj["writeTo"].ptr
-        this.SetOpt("WRITEDATA", writeHandle, easy_handle)
-        this.SetOpt("WRITEFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"], easy_handle)
-        return
+        inBuf := Buffer(0)
+        cbLoc["storageHandle"] := LibQurl.Storage.NewBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "body")
+
+        storageHandle := cbLoc["storageHandle"]
+        this._setEasyCallback(easy_handle, "body", storageHandle)
     }
+    ; WriteToMem(maxCapacity := 0, easy_handle?) {
+    ;     easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+    ;     passedHandleMap := this.easyHandleMap
+    ;     this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?,
+    ;         maxCapacity?, dataSize?, &passedHandleMap, "body", easy_handle)
+
+    ;     writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].writeObj["writeTo"].ptr
+    ;     this.SetOpt("WRITEDATA", writeHandle, easy_handle)
+    ;     this.SetOpt("WRITEFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"], easy_handle)
+    ;     return
+    ; }
 
     HeaderToFile(filename, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
@@ -233,11 +243,27 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.File(filename, &
             passedHandleMap, "body", "w", easy_handle)
 
-        writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].writeObj["writeTo"].handle
+        storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
+        this._setEasyCallback(easy_handle, "body", storageHandle)
+
+        writeHandle := storageHandle.writeObj["writeTo"].handle
         this.SetOpt("WRITEDATA", writeHandle, easy_handle)
         this.SetOpt("WRITEFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"], easy_handle)
         return
     }
+
+    ;known good
+    ; WriteToFile(filename, easy_handle?) {
+    ;     easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+    ;     passedHandleMap := this.easyHandleMap
+    ;     this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.File(filename, &
+    ;         passedHandleMap, "body", "w", easy_handle)
+
+    ;     writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].writeObj["writeTo"].handle
+    ;     this.SetOpt("WRITEDATA", writeHandle, easy_handle)
+    ;     this.SetOpt("WRITEFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"], easy_handle)
+    ;     return
+    ; }
     WriteToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
@@ -590,6 +616,7 @@ class LibQurl {
             switch Type(sourceData) {
                 case "String", "Integer":
                     input := this._StrBuf(sourceData)
+                    input.size -= 1
                     this.easyHandleMap[easy_handle]["readFrom"] := input
                     this.SetOpt("POSTFIELDS", input, easy_handle)
                     this.SetOpt("POSTFIELDSIZE_LARGE", input.size, easy_handle)
@@ -650,11 +677,11 @@ class LibQurl {
             checkType := Type(sourceData)
 
             this.SetOpt("UPLOAD", 1, easy_handle)
+            this._setEasyCallback(easy_handle, "read")
 
             switch checkType {
                 case "File":
                     ; this._setCallbacks(easy_handle, , , 1)
-                    this._setEasyCallback(easy_handle, "read")
                     ;generate an independent file handle
                     sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
 
@@ -1818,24 +1845,40 @@ class LibQurl {
     }
     _setEasyCallback(easy_handle, cbType, param?) {
     
-        CBF := this.easyHandleMap[easy_handle]["callbacks"][cbType]["CBF"]
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"][cbType]
+        CBF := cbLoc["CBF"]
+    
         if IsInteger(CBF) {  ;checks if this callback already exists
             CallbackFree(CBF)
             this.writeRefs.delete(CBF)
         }
     
         switch cbType {
-            case "body":    ;DATA/FUNCTION prepared elsewhere
-                CBF := CallbackCreate(
-                    (dataPtr, size, sizeBytes, userdata) =>
-                        this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
-                )
+            case "body":    ;requires param
+                storageHandle := param
     
-            case "header":  ;DATA/FUNCTION prepared elsewhere
                 CBF := CallbackCreate(
                     (dataPtr, size, sizeBytes, userdata) =>
-                        this._headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
+                        this._CBF_write(dataPtr, size, sizeBytes, userdata, storageHandle)
                 )
+                writeHandle := storageHandle.writeObj["writeTo"].ptr
+                this.SetOpt("WRITEDATA", writeHandle, easy_handle)
+    
+                cbLoc["CBF"] := CBF
+                this.SetOpt("WRITEFUNCTION", cbLoc["CBF"], easy_handle)
+    
+            case "header":  ;requires param
+                storageHandle := param
+    
+                CBF := CallbackCreate(
+                    (dataPtr, size, sizeBytes, userdata) =>
+                        this._CBF_header(dataPtr, size, sizeBytes, userdata, storageHandle)
+                )
+                writeHandle := storageHandle.writeObj["writeTo"].ptr
+                this.SetOpt("HEADERDATA", writeHandle, easy_handle)
+    
+                cbLoc["CBF"] := CBF
+                this.SetOpt("HEADERFUNCTION", cbLoc["CBF"], easy_handle)
     
             case "read":
                 CBF := CallbackCreate(
@@ -1871,7 +1914,7 @@ class LibQurl {
         }
     
         ;assign tracking
-        this.easyHandleMap[easy_handle]["callbacks"][cbType]["CBF"] := CBF
+        cbLoc["CBF"] := CBF
         this.writeRefs[CBF] := {
             easy_handle: easy_handle,
             cbType: cbType
@@ -1882,6 +1925,11 @@ class LibQurl {
     _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
         dataSize := size * sizeBytes
         return this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].RawWrite(dataPtr, dataSize)
+    }
+    
+    _CBF_write(dataPtr, size, sizeBytes, userdata, storageHandle) {
+        dataSize := size * sizeBytes
+        return storageHandle.RawWrite(dataPtr, dataSize)
     }
     
     ;Note: websocket mode disabled until I find a good test server
@@ -1898,7 +1946,10 @@ class LibQurl {
         ; return writeObject.RawWrite(dataPtr, dataSize)
         ; Return this.writeTo[easy_handle].RawWrite(dataPtr, dataSize)
     }
-    
+    _CBF_header(dataPtr, size, sizeBytes, userdata, storageHandle) {
+        dataSize := size * sizeBytes
+        return storageHandle.RawWrite(dataPtr, dataSize)
+    }
     _progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded,
         currentBytesUploaded) {
         progressMap := this.easyHandleMap[easy_handle]["callbacks"]["progress"]
@@ -1909,19 +1960,19 @@ class LibQurl {
         return 0
     }
     
-    _readCallbackFunction(toBuf, size, nitems, easy_handle) {
-        bytes := size * nitems
-        fromBuf := Buffer(bytes)
-        bytesRead := this.easyHandleMap[easy_handle]["postFile"].RawRead(fromBuf, bytes)
-        fromBuf.Size := bytesRead   ;auto-truncates the buffer if needed
+    ; _readCallbackFunction(toBuf, size, nitems, easy_handle) {
+    ;     bytes := size * nitems
+    ;     fromBuf := Buffer(bytes)
+    ;     bytesRead := this.easyHandleMap[easy_handle]["postFile"].RawRead(fromBuf, bytes)
+    ;     fromBuf.Size := bytesRead   ;auto-truncates the buffer if needed
     
-        DllCall("RtlMoveMemory"
-            , "Ptr", toBuf    ;destination
-            , "Ptr", fromBuf  ;source
-            , "UPtr", bytesRead)  ;length
+    ;     DllCall("RtlMoveMemory"
+    ;         , "Ptr", toBuf    ;destination
+    ;         , "Ptr", fromBuf  ;source
+    ;         , "UPtr", bytesRead)  ;length
     
-        return bytesRead
-    }
+    ;     return bytesRead
+    ; }
     
     _CBF_read(toBuf, size, nitems, easy_handle) {
         bytes := size * nitems
@@ -2672,7 +2723,7 @@ class LibQurl {
         }
     
         class NewBuffer {
-            ; Wrapper for memory buffer, similar to regular FileObject
+            ; Wrapper for memory buffer, similar to regular FileObject but less general purpose
             __New(easy_handle, inBuf, maxCapacity := 50 * 1024 ** 2, &easyHandleMap, storageCategory) {
                 ;maxCapacity defaults to 50mb.
     
@@ -2688,6 +2739,7 @@ class LibQurl {
                         this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
                         this.writeObj["writeTo"] := inBuf
                         this.writeObj["easy_handle"] := easy_handle
+                        this.writeObj["writeType"] := "memory"
     
                     case "read":
                         this.readObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
@@ -2712,6 +2764,20 @@ class LibQurl {
                 sourceBuf.offset += bytesToRead
                 return bytesToRead
             }
+            RawWrite(srcDataPtr, srcDataSize) {
+                destBuf := this.writeObj["writeTo"]
+                destBuf.size += srcDataSize    ;expand to accomodate incoming data
+                DllCall("ntdll\memcpy"
+                    , "Ptr", destBuf.Ptr + destBuf.offset
+                    , "Ptr", srcDataPtr + 0
+                    , "Int", srcDataSize)
+                destBuf.offset += srcDataSize
+                return srcDataSize
+            }
+            Close() {
+                ; this.writeObj["writeTo"].Size := this._dataSize ;truncates the buffer to the final output size
+            }
+    
         }
         class MemBuffer {
             ; Wrapper for memory buffer, similar to regular FileObject
@@ -3236,7 +3302,7 @@ class LibQurl {
     }
     _curl_easy_option_by_id(id) {
         ;returns from the pre-built array because it was already parsed
-        If this.OptById.Has(id)
+        if this.OptById.Has(id)
             return this.Opt[this.OptById[id]]
         ;no error class
         return 0
@@ -3248,7 +3314,7 @@ class LibQurl {
     }
     _curl_easy_option_by_name(name) {
         ;returns from the pre-built array because it was already parsed
-        If this.Opt.Has(name)
+        if this.Opt.Has(name)
             return this.Opt[name]
         ;no error class
         return 0
@@ -3307,12 +3373,12 @@ class LibQurl {
     _curl_easy_setopt(easy_handle, option, parameter, debug?) {
         if IsSet(debug)
             msgbox this.PrintObj(this.opt[option]) "`n`n`n"
-                . "1 passed easy_handle: " easy_handle "`n"
-                . "2 passed option id: " this.opt[option]["id"] "`n"
-                . "3 passed parameter: " (Type(parameter) = "String" ? parameter
-                    : Type(parameter) = "Integer" ? parameter
+            . "1 passed easy_handle: " easy_handle "`n"
+            . "2 passed option id: " this.opt[option]["id"] "`n"
+            . "3 passed parameter: " (Type(parameter) = "String" ? parameter
+                : Type(parameter) = "Integer" ? parameter
                     : " [" Type(parameter) "]") "`n"
-                . "  passed type: " this.opt[option]["type"] "`n"
+            . "  passed type: " this.opt[option]["type"] "`n"
         static curl_easy_setopt := this._getDllAddress(this.curlDLLpath, "curl_easy_setopt")
         ;CURLcode
         return DllCall(curl_easy_setopt
@@ -3692,7 +3758,7 @@ class LibQurl {
         return StrGet(DllCall(curl_version
             , "char", 0
             , "Ptr")  ;return a ptr from DllCall
-            , "UTF-8")
+        , "UTF-8")
     }
     _curl_version_info() {  ;https://curl.se/libcurl/c/curl_version_info.html
         ;returns run-time libcurl version info
@@ -3748,7 +3814,6 @@ class LibQurl {
             , "Int", num
             , "Ptr")
     }
-    
     
     ;all calls below this line have to do with multi_socket_action
     _curl_multi_assign(multi_handle, sockfd, sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html
@@ -3829,7 +3894,6 @@ class LibQurl {
         return DllCall(curl_multi_wakeup
             , "Int", multi_handle)
     }
-    
     
     _curl_ws_start_frame(curl, flags, frame_len) {   ;untested    ;https://curl.se/libcurl/c/curl_ws_start_frame.html
         static curl_ws_start_frame := this._getDllAddress(this.curlDLLpath, "curl_ws_start_frame")

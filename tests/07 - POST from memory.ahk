@@ -11,9 +11,11 @@ curl.SetOpt("URL", postUrl)
 
 postSource := 1234567890
 curl.SetPost(postSource)
-curl.WriteToFile(A_ScriptDir "\07.integer.json")
+; curl.WriteToFile(A_ScriptDir "\07.integer.json")
 curl.Sync()
-
+msgbox curl.GetLastBody()
+msgbox curl.GetLastHeaders()
+ExitApp
 postSource := "abcdefghij"
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.string.json")

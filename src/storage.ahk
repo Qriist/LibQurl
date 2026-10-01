@@ -78,7 +78,7 @@ class Storage {
     }
 
     class NewBuffer {
-        ; Wrapper for memory buffer, similar to regular FileObject
+        ; Wrapper for memory buffer, similar to regular FileObject but less general purpose
         __New(easy_handle, inBuf, maxCapacity := 50 * 1024 ** 2, &easyHandleMap, storageCategory) {
             ;maxCapacity defaults to 50mb.
 
@@ -94,6 +94,7 @@ class Storage {
                     this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
                     this.writeObj["writeTo"] := inBuf
                     this.writeObj["easy_handle"] := easy_handle
+                    this.writeObj["writeType"] := "memory"
 
                 case "read":
                     this.readObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
@@ -118,6 +119,20 @@ class Storage {
             sourceBuf.offset += bytesToRead
             return bytesToRead
         }
+        RawWrite(srcDataPtr, srcDataSize) {
+            destBuf := this.writeObj["writeTo"]
+            destBuf.size += srcDataSize    ;expand to accomodate incoming data
+            DllCall("ntdll\memcpy"
+                , "Ptr", destBuf.Ptr + destBuf.offset
+                , "Ptr", srcDataPtr + 0
+                , "Int", srcDataSize)
+            destBuf.offset += srcDataSize
+            return srcDataSize
+        }
+        Close() {
+            ; this.writeObj["writeTo"].Size := this._dataSize ;truncates the buffer to the final output size
+        }
+
     }
     class MemBuffer {
         ; Wrapper for memory buffer, similar to regular FileObject
