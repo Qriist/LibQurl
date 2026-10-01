@@ -105,9 +105,9 @@ Class Storage {
             bytesToRead := dstDataSize < dataLeft ? dstDataSize : dataLeft
 
             DllCall("ntdll\memcpy"
-                , "Ptr", dstDataPtr
-                , "Ptr", sourceBuf.ptr + sourceBuf.offset
-                , "UPtr", bytesToRead)
+                , "Ptr", dstDataPtr ;destination
+                , "Ptr", sourceBuf.ptr + sourceBuf.offset   ;source
+                , "UPtr", bytesToRead)  ;length
 
             sourceBuf.offset += bytesToRead
             return bytesToRead

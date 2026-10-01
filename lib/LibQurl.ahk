@@ -677,15 +677,14 @@ class LibQurl {
                 if (startByte != 0)
                     || (sourceData.size - numBytes != 0) {
                     chunkBuf := Buffer(numBytes)
-                    DllCall("RtlMoveMemory"
+                    DllCall("ntdll\memcpy"
                         , "Ptr", chunkBuf    ;destination
                         , "Ptr", sourceData.ptr + startByte  ;source
                         , "UPtr", numBytes)  ;length
                     sourceData := chunkBuf
                 }
                 passedHandleMap := this.easyHandleMap
-                sourceData.pos := 17
-                ; MsgBox sourceData.pos
+
                 ; MsgBox strget(sourceData, "UTF-8")
                 this._setEasyCallback(easy_handle, "read")
                 MemBufObj := LibQurl.Storage.NewBuffer(easy_handle, sourceData, sourceData.size, &passedHandleMap, "read")
@@ -2669,9 +2668,9 @@ class LibQurl {
                 bytesToRead := dstDataSize < dataLeft ? dstDataSize : dataLeft
     
                 DllCall("ntdll\memcpy"
-                    , "Ptr", dstDataPtr
-                    , "Ptr", sourceBuf.ptr + sourceBuf.offset
-                    , "UPtr", bytesToRead)
+                    , "Ptr", dstDataPtr ;destination
+                    , "Ptr", sourceBuf.ptr + sourceBuf.offset   ;source
+                    , "UPtr", bytesToRead)  ;length
     
                 sourceBuf.offset += bytesToRead
                 return bytesToRead

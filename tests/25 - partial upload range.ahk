@@ -42,7 +42,7 @@ curl.autoResetToGET := 0
 
 ;prepare Buffer source
 postSource := curl._StrBuf(postText)
-
+postSource.size -= 1
 
 curl.SetUpload(postSource, 41, 3, easy_handle) ;extracting "dog" from the buffer    ;broken
 curl.WriteToFile(A_ScriptDir "\25.buffer.response.json")
