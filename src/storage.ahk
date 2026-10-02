@@ -85,9 +85,11 @@ class Storage {
             this.easy_handle := easy_handle
             this.storageCategory := storageCategory
             this.easyHandleMap := easyHandleMap
+            this.allocChunkSize := 50 * 1024 ** 2
 
             inBuf.offset := 0
             inBuf.maxCapacity := Max(maxCapacity, inBuf.Size)   ;prevent accidental truncation
+            ; inBuf.trueSize := inBuf.size
 
             switch storageCategory {
                 case "header", "body":
@@ -121,16 +123,26 @@ class Storage {
         }
         RawWrite(srcDataPtr, srcDataSize) {
             destBuf := this.writeObj["writeTo"]
-            destBuf.size += srcDataSize    ;expand to accomodate incoming data
+
+            ;allocation check
+            requiredSize := destBuf.offset + srcDataSize
+            if requiredSize > destBuf.size {
+                destBuf.size := Ceil(requiredSize / this.allocChunkSize) * this.allocChunkSize
+            }
+
+            ; destBuf.size += srcDataSize    ;expand to accomodate incoming data
             DllCall("ntdll\memcpy"
                 , "Ptr", destBuf.Ptr + destBuf.offset
                 , "Ptr", srcDataPtr + 0
                 , "Int", srcDataSize)
             destBuf.offset += srcDataSize
+            ; destBuf.trueSize += srcDataSize
             return srcDataSize
         }
         Close() {
-            ; this.writeObj["writeTo"].Size := this._dataSize ;truncates the buffer to the final output size
+            ;truncates the buffer to the final output size
+            destBuf := this.writeObj["writeTo"]
+            destBuf.size := destBuf.offset
         }
 
     }
@@ -281,7 +293,7 @@ class Storage {
 
     class Magic {
         ; transparently merges MemBuffer and File modes for an ideal solution to temp files
-        __New(flushFilename, flushThreshold := 50 * 1024 ** 2, &handleMap?, storageCategory?, easy_handle?) {
+        __New(easy_handle, flushFilename, flushThreshold := 50 * 1024 ** 2, &handleMap?, storageCategory?) {
             ;object begins life as a MemBuffer clone
             this._dataPos := 0
             this.easyHandleMap := handleMap

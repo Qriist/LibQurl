@@ -67,6 +67,7 @@ class LibQurl {
         this.SetOpt("SSH_COMPRESSION", 1, easy_handle)    ;enables compressed transfers without affecting input headers
         this.SetOpt("FOLLOWLOCATION", 1, easy_handle)    ;allows curl to follow redirects
         this.SetOpt("MAXREDIRS", 30, easy_handle)    ;limits redirects to 30 (matches recent curl default)
+        this.SetOpt("BUFFERSIZE", 1 * 1024 ** 2, easy_handle)    ;bumps preferred buffer size to reduce dll calls
 
         ;auto-load curl's cert bundle
         ;can still be set per easy_handle
@@ -212,73 +213,40 @@ class LibQurl {
         storageHandle := cbLoc["storageHandle"]
         this._setEasyCallback(easy_handle, "body", storageHandle)
     }
-    ; WriteToMem(maxCapacity := 0, easy_handle?) {
-    ;     easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-    ;     passedHandleMap := this.easyHandleMap
-    ;     this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?,
-    ;         maxCapacity?, dataSize?, &passedHandleMap, "body", easy_handle)
-
-    ;     writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].writeObj["writeTo"].ptr
-    ;     this.SetOpt("WRITEDATA", writeHandle, easy_handle)
-    ;     this.SetOpt("WRITEFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"], easy_handle)
-    ;     return
-    ; }
 
     HeaderToFile(filename, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
-        this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.File(filename, &
-            passedHandleMap, "header", "w", easy_handle)
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["header"] ;callback location
 
-        writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].writeObj["writeTo"].handle
-        ; this.writeTo[easy_handle] := writeObj["writeTo"]
-        this.SetOpt("HEADERDATA", writeHandle, easy_handle)
-        this.SetOpt("HEADERFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"], easy_handle)
-        return
+        cbLoc["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "header", "w", easy_handle)
+
+        storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"]
+        this._setEasyCallback(easy_handle, "header", storageHandle, "handle")
     }
 
     WriteToFile(filename, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
-        this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.File(filename, &
-            passedHandleMap, "body", "w", easy_handle)
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
+
+        cbLoc["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "body", "w", easy_handle)
 
         storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
-        this._setEasyCallback(easy_handle, "body", storageHandle)
-
-        writeHandle := storageHandle.writeObj["writeTo"].handle
-        this.SetOpt("WRITEDATA", writeHandle, easy_handle)
-        this.SetOpt("WRITEFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"], easy_handle)
-        return
+        this._setEasyCallback(easy_handle, "body", storageHandle, "handle")
     }
-
-    ;known good
-    ; WriteToFile(filename, easy_handle?) {
-    ;     easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-    ;     passedHandleMap := this.easyHandleMap
-    ;     this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.File(filename, &
-    ;         passedHandleMap, "body", "w", easy_handle)
-
-    ;     writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].writeObj["writeTo"].handle
-    ;     this.SetOpt("WRITEDATA", writeHandle, easy_handle)
-    ;     this.SetOpt("WRITEFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"], easy_handle)
-    ;     return
-    ; }
     WriteToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
 
         ;predetermine the file to dump to if flushThreshold is reached
         flushFilename := A_Temp "\LibQurl\" A_NowUTC "." easy_handle
 
-        body := this.easyHandleMap[easy_handle]["callbacks"]["body"]
-        body["storageHandle"] := LibQurl.Storage.Magic(flushFilename, flushThreshold, &passedHandleMap, "body",
-            easy_handle)
+        cbLoc["storageHandle"] := LibQurl.Storage.Magic(easy_handle, flushFilename, flushThreshold, &passedHandleMap, "body")
 
-        writeHandle := body["storageHandle"].writeObj["writeTo"].ptr
-        this.SetOpt("WRITEDATA", writeHandle, easy_handle)
-        this.SetOpt("WRITEFUNCTION", body["CBF"], easy_handle)
-        return
+        storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
+        this._setEasyCallback(easy_handle, "body", storageHandle, "ptr")
     }
     ReadyAsync(inEasyHandles?, multi_handle?) {    ;Add any number of easy_handles to the multi pool. Accepts integers or object.
         inEasyHandles ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
@@ -672,8 +640,8 @@ class LibQurl {
             ;   -an Object/Array/Map to dump as JSON
 
             easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
             this.easyHandleMap[easy_handle]["readFrom"] := unset    ;clears last POST. prolly redundant but eh.
-
             checkType := Type(sourceData)
 
             this.SetOpt("UPLOAD", 1, easy_handle)
@@ -730,6 +698,7 @@ class LibQurl {
                     MemBufObj := LibQurl.Storage.NewBuffer(easy_handle, sourceData, sourceData.size, &passedHandleMap, "read")
                     this.easyHandleMap[easy_handle]["readFrom"] := MemBufObj
                     this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
+
                 default:
                     throw ValueError("Unknown object type passed as UPLOAD data: " Type(sourceData))
             }
@@ -1843,7 +1812,7 @@ class LibQurl {
         ; Curl._CB_Progress := CallbackCreate(Curl._ProgressCallback)
         ; Curl._CB_Debug    := CallbackCreate(Curl._DebugCallback)
     }
-    _setEasyCallback(easy_handle, cbType, param?) {
+    _setEasyCallback(easy_handle, cbType, param?, paramprop := "ptr") {
     
         cbLoc := this.easyHandleMap[easy_handle]["callbacks"][cbType]
         CBF := cbLoc["CBF"]
@@ -1861,7 +1830,7 @@ class LibQurl {
                     (dataPtr, size, sizeBytes, userdata) =>
                         this._CBF_write(dataPtr, size, sizeBytes, userdata, storageHandle)
                 )
-                writeHandle := storageHandle.writeObj["writeTo"].ptr
+                writeHandle := storageHandle.writeObj["writeTo"].%paramprop%
                 this.SetOpt("WRITEDATA", writeHandle, easy_handle)
     
                 cbLoc["CBF"] := CBF
@@ -1874,7 +1843,7 @@ class LibQurl {
                     (dataPtr, size, sizeBytes, userdata) =>
                         this._CBF_header(dataPtr, size, sizeBytes, userdata, storageHandle)
                 )
-                writeHandle := storageHandle.writeObj["writeTo"].ptr
+                writeHandle := storageHandle.writeObj["writeTo"].%paramprop%
                 this.SetOpt("HEADERDATA", writeHandle, easy_handle)
     
                 cbLoc["CBF"] := CBF
@@ -2730,9 +2699,11 @@ class LibQurl {
                 this.easy_handle := easy_handle
                 this.storageCategory := storageCategory
                 this.easyHandleMap := easyHandleMap
+                this.allocChunkSize := 50 * 1024 ** 2
     
                 inBuf.offset := 0
                 inBuf.maxCapacity := Max(maxCapacity, inBuf.Size)   ;prevent accidental truncation
+                ; inBuf.trueSize := inBuf.size
     
                 switch storageCategory {
                     case "header", "body":
@@ -2766,16 +2737,26 @@ class LibQurl {
             }
             RawWrite(srcDataPtr, srcDataSize) {
                 destBuf := this.writeObj["writeTo"]
-                destBuf.size += srcDataSize    ;expand to accomodate incoming data
+    
+                ;allocation check
+                requiredSize := destBuf.offset + srcDataSize
+                if requiredSize > destBuf.size {
+                    destBuf.size := Ceil(requiredSize / this.allocChunkSize) * this.allocChunkSize
+                }
+    
+                ; destBuf.size += srcDataSize    ;expand to accomodate incoming data
                 DllCall("ntdll\memcpy"
                     , "Ptr", destBuf.Ptr + destBuf.offset
                     , "Ptr", srcDataPtr + 0
                     , "Int", srcDataSize)
                 destBuf.offset += srcDataSize
+                ; destBuf.trueSize += srcDataSize
                 return srcDataSize
             }
             Close() {
-                ; this.writeObj["writeTo"].Size := this._dataSize ;truncates the buffer to the final output size
+                ;truncates the buffer to the final output size
+                destBuf := this.writeObj["writeTo"]
+                destBuf.size := destBuf.offset
             }
     
         }
@@ -2926,7 +2907,7 @@ class LibQurl {
     
         class Magic {
             ; transparently merges MemBuffer and File modes for an ideal solution to temp files
-            __New(flushFilename, flushThreshold := 50 * 1024 ** 2, &handleMap?, storageCategory?, easy_handle?) {
+            __New(easy_handle, flushFilename, flushThreshold := 50 * 1024 ** 2, &handleMap?, storageCategory?) {
                 ;object begins life as a MemBuffer clone
                 this._dataPos := 0
                 this.easyHandleMap := handleMap

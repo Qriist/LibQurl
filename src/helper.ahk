@@ -183,7 +183,7 @@ _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
     ; Curl._CB_Progress := CallbackCreate(Curl._ProgressCallback)
     ; Curl._CB_Debug    := CallbackCreate(Curl._DebugCallback)
 }
-_setEasyCallback(easy_handle, cbType, param?) {
+_setEasyCallback(easy_handle, cbType, param?, paramprop := "ptr") {
 
     cbLoc := this.easyHandleMap[easy_handle]["callbacks"][cbType]
     CBF := cbLoc["CBF"]
@@ -201,7 +201,7 @@ _setEasyCallback(easy_handle, cbType, param?) {
                 (dataPtr, size, sizeBytes, userdata) =>
                     this._CBF_write(dataPtr, size, sizeBytes, userdata, storageHandle)
             )
-            writeHandle := storageHandle.writeObj["writeTo"].ptr
+            writeHandle := storageHandle.writeObj["writeTo"].%paramprop%
             this.SetOpt("WRITEDATA", writeHandle, easy_handle)
 
             cbLoc["CBF"] := CBF
@@ -214,7 +214,7 @@ _setEasyCallback(easy_handle, cbType, param?) {
                 (dataPtr, size, sizeBytes, userdata) =>
                     this._CBF_header(dataPtr, size, sizeBytes, userdata, storageHandle)
             )
-            writeHandle := storageHandle.writeObj["writeTo"].ptr
+            writeHandle := storageHandle.writeObj["writeTo"].%paramprop%
             this.SetOpt("HEADERDATA", writeHandle, easy_handle)
 
             cbLoc["CBF"] := CBF
