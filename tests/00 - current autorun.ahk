@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := 25
+current := 20
 
 current := Format("{:02}", current)
 loop files A_ScriptDir "\*.ahk"

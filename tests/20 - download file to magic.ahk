@@ -41,7 +41,7 @@ curl.Sync()
 results["increased_threshold"] := addResults(curl.GetLastBody("Object"))
 
 FileOpen(A_ScriptDir "\20.results.txt", "w").Write(curl.PrintObj(results))
-msgbox curl.PrintObj(results)
+MsgBox
 ExitApp
 addResults(bodyObj) {
     r := retObj := Map()
@@ -53,5 +53,6 @@ addResults(bodyObj) {
             r["type"] := "File"
             r["size"] := bodyObj.length
     }
+    r["speed"] := curl.GetInfo("SPEED_DOWNLOAD_T")
     return r
 }

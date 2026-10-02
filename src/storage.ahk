@@ -77,7 +77,7 @@ class Storage {
         }
     }
 
-    class NewBuffer {
+    class MemBuffer {
         ; Wrapper for memory buffer, similar to regular FileObject but less general purpose
         __New(easy_handle, inBuf, maxCapacity := 50 * 1024 ** 2, &easyHandleMap, storageCategory) {
             ;maxCapacity defaults to 50mb.
@@ -146,7 +146,7 @@ class Storage {
         }
 
     }
-    class MemBuffer {
+    class MemBuffer_old {
         ; Wrapper for memory buffer, similar to regular FileObject
         __New(dataPtr := 0, maxCapacity?, dataSize := 0, &handleMap?, storageCategory?, easy_handle?) {
             this._dataPos := 0
@@ -292,6 +292,94 @@ class Storage {
     }
 
     class Magic {
+        ; transparently merges MemBuffer and File modes for an ideal solution to temp files
+        __New(easy_handle, flushFilename, flushThreshold := 50 * 1024 ** 2, &easyHandleMap, storageCategory) {
+            this.easy_handle := easy_handle
+            this.storageCategory := storageCategory
+            this.easyHandleMap := easyHandleMap
+            this.allocChunkSize := 50 * 1024 ** 2
+            this.flushFilename := flushFilename
+
+            flushThreshold := max(flushThreshold, 1024 ** 2) ;min 1mb
+            this.flushThreshold := flushThreshold
+
+            ;prepare initial buffer
+            inBuf := Buffer(0)
+            inBuf.offset := 0
+
+            switch storageCategory {
+                case "header", "body":
+                    this.writeObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
+                    this.writeObj["writeTo"] := inBuf
+                    this.writeObj["easy_handle"] := easy_handle
+                    this.writeObj["writeType"] := "magic-memory"
+
+                case "read":
+                    this.readObj := this.easyHandleMap[easy_handle]["callbacks"][storageCategory]
+                    this.readObj["readFrom"] := inBuf
+                    this.readObj["easy_handle"] := easy_handle
+            }
+        }
+        RawWrite(srcDataPtr, srcDataSize) {
+            destObj := this.writeObj
+            destBin := destObj["writeTo"]
+
+            ;initial buffer conditions
+            if (destObj["writeType"] = "magic-memory") {
+                if (this.flushThreshold > (destBin.offset + srcDataSize)) {
+                    ;allocation check
+                    requiredSize := destBin.offset + srcDataSize
+                    if requiredSize > destBin.size {
+                        destBin.size := Ceil(requiredSize / this.allocChunkSize) * this.allocChunkSize
+                    }
+
+                    ; destBin.size += srcDataSize    ;expand to accomodate incoming data
+                    DllCall("ntdll\memcpy"
+                        , "Ptr", destBin.Ptr + destBin.offset
+                        , "Ptr", srcDataPtr + 0
+                        , "Int", srcDataSize)
+                    destBin.offset += srcDataSize
+                    ; destBuf.trueSize += srcDataSize
+                    return srcDataSize
+                }
+
+                ;threshold met, perform one-time flush to disk
+
+                destObj["writeType"] := "magic-file"
+                destObj["filename"] := this.flushFilename
+                this.flushFilename := unset
+                SplitPath(destObj["filename"], , &fileDirPath)
+                if fileDirPath
+                    DirCreate fileDirPath
+                tempObj := FileOpen(destObj["filename"], destObj["accessMode"] := "w", "CP0")
+
+                flushBytes := destBin.offset
+                tempObj.RawWrite(destObj["writeTo"], flushBytes)
+
+                destObj["writeTo"] := tempObj
+                destBin := destObj["writeTo"]
+                destBin.offset := flushBytes
+
+                ;don't return yet because the incoming data still needs to be written to file
+            }
+
+            ; this._dataSize := this._dataPtr += srcDataSize
+            destBin.offset += srcDataSize
+            return destBin.RawWrite(srcDataPtr + 0, srcDataSize)
+        }
+
+        Length() {
+            return this._dataSize
+        }
+        Close() {
+            if (this.writeObj["writeType"] = "magic-memory")
+                this.writeObj["writeTo"].Size := this.writeObj["writeTo"].offset ;truncates the buffer to the final output size
+            else ;magic-file
+                this.writeObj["writeTo"].Close()
+        }
+    }
+
+    class Magic_old {
         ; transparently merges MemBuffer and File modes for an ideal solution to temp files
         __New(easy_handle, flushFilename, flushThreshold := 50 * 1024 ** 2, &handleMap?, storageCategory?) {
             ;object begins life as a MemBuffer clone

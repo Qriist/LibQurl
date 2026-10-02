@@ -202,7 +202,7 @@ class LibQurl {
         cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["header"] ;callback location
 
         inBuf := Buffer(0)
-        cbLoc["storageHandle"] := LibQurl.Storage.NewBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "header")
+        cbLoc["storageHandle"] := LibQurl.Storage.MemBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "header")
 
         storageHandle := cbLoc["storageHandle"]
         this._setEasyCallback(easy_handle, "header", storageHandle)
@@ -213,7 +213,7 @@ class LibQurl {
         cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
 
         inBuf := Buffer(0)
-        cbLoc["storageHandle"] := LibQurl.Storage.NewBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "body")
+        cbLoc["storageHandle"] := LibQurl.Storage.MemBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "body")
 
         storageHandle := cbLoc["storageHandle"]
         this._setEasyCallback(easy_handle, "body", storageHandle)
@@ -700,7 +700,7 @@ class LibQurl {
                     ; MsgBox strget(sourceData, "UTF-8")
 
                     ;establish read callback
-                    MemBufObj := LibQurl.Storage.NewBuffer(easy_handle, sourceData, sourceData.size, &passedHandleMap, "read")
+                    MemBufObj := LibQurl.Storage.MemBuffer(easy_handle, sourceData, sourceData.size, &passedHandleMap, "read")
                     this.easyHandleMap[easy_handle]["readFrom"] := MemBufObj
                     this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
 
