@@ -325,33 +325,53 @@ class LibQurl {
 
             return sent
         }
+
         RawReceive(easy_handle?) {
             easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
             retBuffer := Buffer(0)   ;makes no assumptions on incoming size
+            retBuffer.offset := 0
             replyBuffer := Buffer(32 * 1024 * 1024)    ;allocates 32mb for wash loop, same as curl
             got := 0
-            offset := 0
             loop {
-                if ret := this._curl_easy_recv(easy_handle, replyBuffer, replyBuffer.size, &got)
-                    this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_recv", ret, this.easyHandleMap[easy_handle][
-                        "error buffer"], easy_handle)
+                ret := this._curl_easy_recv(easy_handle, replyBuffer, replyBuffer.size, &got)
+                ;error catching is below for logical reasons
+                switch ret {
+                    case 0:
+                        if got = 0
+                            return replyBuffer
+                        offsetPtr := retBuffer.ptr + got
 
-                offsetPtr := retBuffer.ptr + got
+                        ;append data to buffer if any was received
+                        if (retBuffer.size + got > retBuffer.size) {
+                            ;resize buffer to accomodate new data
+                            retBuffer.Size += got
 
-                ;append data to buffer if any was received
-                if (retBuffer.size + got > retBuffer.size) {
-                    ;resize buffer to accomodate new data
-                    retBuffer.Size += got
+                            ;do the copy
+                            DllCall("kernel32.dll\RtlMoveMemory"
+                                , "Ptr", retBuffer.ptr + retBuffer.offset    ;destination
+                                , "Ptr", replyBuffer  ;source
+                                , "UPtr", got)  ;length
 
-                    ;do the copy
-                    DllCall("kernel32.dll\RtlMoveMemory", "Ptr", retBuffer.ptr + offset, "Ptr", replyBuffer, "UInt",
-                        got, "Cdecl")
+                            ;update offset by the bytes copied
+                            retBuffer.offset += got
+                        }
+                    case 81:
+                        ;normal traffic so only capture with debug enabled
+                        if (this.easyHandleMap[easy_handle]["debug"] = 1)
+                            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_recv", ret,
+                                this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
 
-                    ;update offset by the bytes copied
-                    offset += got
+                        if retBuffer.offset > 0 && got = 0
+                            return retBuffer
+                    Default:
+                        this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_recv", ret
+                            , this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+                        return retBuffer
                 }
-            } until (got = 0)   ;break on no data received
-            return retBuffer
+
+            }
+            ; return retBuffer
+
         }
         WebSocketSend(content, flagArr := ["TEXT"], easy_handle?) {
             easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle

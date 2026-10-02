@@ -8,7 +8,7 @@ out := "Test URL: "
 url := "https://www.google.com/"
 out .= url "`n`n`n"
 
-url := "oh my"
+;url := "oh my"
 
 urlHandle := curl.UrlInit()
 out .= "URL handle: " urlHandle "`n`n`n"
