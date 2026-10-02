@@ -58,7 +58,7 @@ class LibQurl {
         this.easyHandleMap[0].push(easy_handle) ;easyHandleMap[0][1] is a dynamic reference to the first created easy_handle
         this.easyHandleMap[easy_handle] := Map()
 
-        If !this.easyHandleMap[easy_handle]
+        if !this.easyHandleMap[easy_handle]
             throw ValueError("Problem in 'curl_easy_init'! Unable to init easy interface!", -1, this.curlDLLpath)
 
         this.easyHandleMap[easy_handle]["easy_handle"] := easy_handle
@@ -72,19 +72,24 @@ class LibQurl {
         this.SetOpt("SSH_COMPRESSION", 1, easy_handle)    ;enables compressed transfers without affecting input headers
         this.SetOpt("FOLLOWLOCATION", 1, easy_handle)    ;allows curl to follow redirects
         this.SetOpt("MAXREDIRS", 30, easy_handle)    ;limits redirects to 30 (matches recent curl default)
-
+        this.SetOpt("BUFFERSIZE", 1 * 1024 ** 2, easy_handle)    ;bumps preferred buffer size to reduce dll calls
 
         ;auto-load curl's cert bundle
         ;can still be set per easy_handle
         this.SetOpt("CAINFO", this.crt ??= "", easy_handle)
 
         this.easyHandleMap[easy_handle]["callbacks"] := Map()  ;prepares write callbacks
-        for k, v in ["body", "header", "read", "progress", "debug", "upload"] {
+
+        for k, v in ["body", "header", "read", "progress", "debug"] {
             this.easyHandleMap[easy_handle]["callbacks"][v] := Map()
             this.easyHandleMap[easy_handle]["callbacks"][v]["CBF"] := ""
         }
+        ; for k, v in ["body", "header", "read", "progress"] {    ;common to most transfers
+        for k, v in ["read", "progress"] {    ;common to most transfers
+            this._setEasyCallback(easy_handle, v)
+        }
 
-        this._setCallbacks(easy_handle, 1, 1, , 1) ;don't enable debug by default
+        ; this._setCallbacks(easy_handle, 1, 1, , 1) ;don't enable debug by default
         ; this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] ??= []
         this.easyHandleMap[easy_handle]["debug"] := 0
         this.easyHandleMap[easy_handle]["websocket_mode"] := 0
@@ -115,11 +120,11 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
         ;todo - move the EasyOpts to the standardized Constants array
-        If this.Opt.Has(option) {    ;determine if the option is known
+        if this.Opt.Has(option) {    ;determine if the option is known
             ;nothing to be done
         } else if InStr(option, "CURLOPT_") && this.Opt.Has(StrReplace("CURLOPT_", option)) {
             option := StrReplace("CURLOPT_", option)
-        } else If this.OptById.Has(option) {
+        } else if this.OptById.Has(option) {
             option := this.OptById[option]
         } else {
             throw ValueError("Problem in 'curl_easy_setopt'! Unknown option: " option, -1, this.curlDLLpath)
@@ -128,7 +133,8 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["options"][option] := parameter
 
         if ret := this._curl_easy_setopt(easy_handle, option, parameter, debug?)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_setopt", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_setopt", ret, this.easyHandleMap[easy_handle][
+                "error buffer"], easy_handle)
         return ret
     }
     GetOpt(option, easy_handle?) {
@@ -141,7 +147,7 @@ class LibQurl {
     MultiSetOpt(option, parameter, multi_handle?) {
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
-        If this.mOpt.Has(option) {
+        if this.mOpt.Has(option) {
             ;nothing to be done
         } else if InStr(option, "CURLMOPT_") && this.mOpt.Has(StrReplace("CURLMOPT_", option)) {
             option := StrReplace("CURLMOPT_", option)
@@ -151,7 +157,8 @@ class LibQurl {
 
         this.multiHandleMap[multi_handle]["options"][option] := parameter
         if ret := this._curl_multi_setopt(multi_handle, option, parameter)
-            this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_setopt", ret, this.multiHandleMap[multi_handle]["error buffer"], multi_handle)
+            this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_setopt", ret, this.multiHandleMap[multi_handle][
+                "error buffer"], multi_handle)
         return
     }
     MultiGetOpt(option, multi_handle?) {
@@ -192,69 +199,65 @@ class LibQurl {
     HeaderToMem(maxCapacity := 0, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
-        this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity := 65536, dataSize?, &passedHandleMap, "header", easy_handle)
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["header"] ;callback location
 
-        writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].writeObj["writeTo"].ptr
-        ; this.writeTo[easy_handle] := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].writeObj["writeTo"]
-        this.SetOpt("HEADERDATA", writeHandle, easy_handle)
-        this.SetOpt("HEADERFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"], easy_handle)
-        Return
+        inBuf := Buffer(0)
+        cbLoc["storageHandle"] := LibQurl.Storage.MemBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "header")
+
+        storageHandle := cbLoc["storageHandle"]
+        this._setEasyCallback(easy_handle, "header", storageHandle)
     }
-
-
     WriteToMem(maxCapacity := 0, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
-        this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.MemBuffer(dataPtr?, maxCapacity?, dataSize?, &passedHandleMap, "body", easy_handle)
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
 
-        writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].writeObj["writeTo"].ptr
-        this.SetOpt("WRITEDATA", writeHandle, easy_handle)
-        this.SetOpt("WRITEFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"], easy_handle)
-        Return
+        inBuf := Buffer(0)
+        cbLoc["storageHandle"] := LibQurl.Storage.MemBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "body")
+
+        storageHandle := cbLoc["storageHandle"]
+        this._setEasyCallback(easy_handle, "body", storageHandle)
     }
 
     HeaderToFile(filename, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
-        this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "header", "w", easy_handle)
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["header"] ;callback location
 
-        writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].writeObj["writeTo"].handle
-        ; this.writeTo[easy_handle] := writeObj["writeTo"]
-        this.SetOpt("HEADERDATA", writeHandle, easy_handle)
-        this.SetOpt("HEADERFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"], easy_handle)
-        Return
+        cbLoc["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "header", "w", easy_handle)
+
+        storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"]
+        this._setEasyCallback(easy_handle, "header", storageHandle, "handle")
     }
 
     WriteToFile(filename, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
-        this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "body", "w", easy_handle)
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
 
-        writeHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].writeObj["writeTo"].handle
-        this.SetOpt("WRITEDATA", writeHandle, easy_handle)
-        this.SetOpt("WRITEFUNCTION", this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"], easy_handle)
-        Return
+        cbLoc["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "body", "w", easy_handle)
+
+        storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
+        this._setEasyCallback(easy_handle, "body", storageHandle, "handle")
     }
     WriteToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         passedHandleMap := this.easyHandleMap
+        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
 
         ;predetermine the file to dump to if flushThreshold is reached
         flushFilename := A_Temp "\LibQurl\" A_NowUTC "." easy_handle
 
-        body := this.easyHandleMap[easy_handle]["callbacks"]["body"]
-        body["storageHandle"] := LibQurl.Storage.Magic(flushFilename, flushThreshold, &passedHandleMap, "body", easy_handle)
+        cbLoc["storageHandle"] := LibQurl.Storage.Magic(easy_handle, flushFilename, flushThreshold, &passedHandleMap, "body")
 
-        writeHandle := body["storageHandle"].writeObj["writeTo"].ptr
-        this.SetOpt("WRITEDATA", writeHandle, easy_handle)
-        this.SetOpt("WRITEFUNCTION", body["CBF"], easy_handle)
-        Return
+        storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
+        this._setEasyCallback(easy_handle, "body", storageHandle, "ptr")
     }
     ReadyAsync(inEasyHandles?, multi_handle?) {    ;Add any number of easy_handles to the multi pool. Accepts integers or object.
         inEasyHandles ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
-        If (Type(inEasyHandles) = "Integer")
+        if (Type(inEasyHandles) = "Integer")
             inEasyHandles := [inEasyHandles]
         for k, v in (Type(inEasyHandles) != "Object" ? inEasyHandles : inEasyHandles.OwnProps()) { ;itemize Objects if required
             this._fallbackWrite(v)
@@ -266,7 +269,8 @@ class LibQurl {
 
         ;tell curl to process the downloads
         if retCode := this._curl_multi_perform(multi_handle, &still_running)
-            this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_perform", retCode, this.multiHandleMap[multi_handle]["error buffer"], multi_handle)
+            this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_perform", retCode, this.multiHandleMap[multi_handle
+                ]["error buffer"], multi_handle)
 
         ;check if any downloads require cleanup
         infoObj := this.MultiInfoRead(multi_handle)
@@ -287,1331 +291,1373 @@ class LibQurl {
     ; }
     Sync(easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        multi_handle := this.easyHandleMap[easy_handle]["associated_multi_handle"]? ;Intentionally does NOT default
-        If IsSet(multi_handle) {
-            this.RemoveEasyFromMulti(easy_handle, multi_handle)
-        }
-
-        this._fallbackWrite(easy_handle)
-
-        If ret := this._Perform(easy_handle?)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_perform", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-
-        ; MsgBox ret
-        return ret
-    }
-    RawSend(outgoing, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-
-        switch Type(outgoing) {
-            case "String", "Integer":
-                outBuffer := this._StrBuf(outgoing)
-            case "Object", "Array", "Map":
-                outBuffer := this._StrBuf(json.dump(outgoing))
-            case "File":
-                outBuffer := Buffer(outgoing.length)  ;create the buffer with the right size
-                outgoing.RawRead(outBuffer) ;read the file into the buffer
-            case "Buffer":
-                outBuffer := outgoing
-            Default:
-                throw ValueError("Unknown object type passed to RawSend: " Type(outgoing))
-        }
-        sent := 0
-        if ret := this._curl_easy_send(easy_handle, outBuffer, outBuffer.size, &sent)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_send", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-
-        return sent
-    }
-    RawReceive(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        retBuffer := Buffer(0)   ;makes no assumptions on incoming size
-        replyBuffer := Buffer(32 * 1024 * 1024)    ;allocates 32mb for wash loop, same as curl
-        got := 0
-        offset := 0
-        loop {
-            if ret := this._curl_easy_recv(easy_handle, replyBuffer, replyBuffer.size, &got)
-                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_recv", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-
-            offsetPtr := retBuffer.ptr + got
-
-            ;append data to buffer if any was received
-            if (retBuffer.size + got > retBuffer.size) {
-                ;resize buffer to accomodate new data
-                retBuffer.Size += got
-
-                ;do the copy
-                DllCall("kernel32.dll\RtlMoveMemory", "Ptr", retBuffer.ptr + offset, "Ptr", replyBuffer, "UInt", got, "Cdecl")
-
-                ;update offset by the bytes copied
-                offset += got
+        multi_handle := this.easyHandleMap[easy_handle]["associated_multi_handle"] ? ;Intentionally does NOT default
+            if IsSet(multi_handle) {
+                this.RemoveEasyFromMulti(easy_handle, multi_handle)
             }
-        } until (got = 0)   ;break on no data received
-        return retBuffer
-    }
-    WebSocketSend(content, flagArr := ["TEXT"], easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+                this._fallbackWrite(easy_handle)
+            if ret := this._Perform(easy_handle?)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_perform", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+                ; MsgBox ret
+            return ret
+                }
+        RawSend(outgoing, easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
-        ;push a lone flag string into a a flagArr
-        if (Type(flagArr) = "String")
-            flagArr := [flags]
+            switch Type(outgoing) {
+                case "String", "Integer":
+                    outBuffer := this._StrBuf(outgoing)
+                case "Object", "Array", "Map":
+                    outBuffer := this._StrBuf(json.dump(outgoing))
+                case "File":
+                    outBuffer := Buffer(outgoing.length)  ;create the buffer with the right size
+                    outgoing.RawRead(outBuffer) ;read the file into the buffer
+                case "Buffer":
+                    outBuffer := outgoing
+                Default:
+                    throw ValueError("Unknown object type passed to RawSend: " Type(outgoing))
+            }
+            sent := 0
+            if ret := this._curl_easy_send(easy_handle, outBuffer, outBuffer.size, &sent)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_send", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
 
-        ;parse the flags
-        flags := 0
-        for k, v in flagArr
-            flags += this.constants["CURLWS"][v]
-
-        switch Type(content) {
-            case "String", "Integer":
-                buf := this._StrBuf(content, "UTF-8")
-                buf.size -= 1   ;truncates a trailing binary zero
-            case "Object", "Array", "Map":
-                buf := this._StrBuf(json.dump(content), "UTF-8")
-                buf.size -= 1   ;truncates a trailing binary zero
-            case "File":
-                filePath := this._GetFilePathFromFileObject(content)
-                buf := FileRead(filePath)
-            case "Buffer":
-                buf := content
-            Default:
-                throw ValueError("Unknown object type passed as WebSocketSend content: " Type(content))
+            return sent
         }
 
-        fragsize := 0
-        maxframesize := this.easyHandleMap[easy_handle]["frame_size"]
-        iterations := Ceil(buf.size / maxframesize)
+        RawReceive(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            retBuffer := Buffer(0)   ;makes no assumptions on incoming size
+            retBuffer.offset := 0
+            replyBuffer := Buffer(32 * 1024 * 1024)    ;allocates 32mb for wash loop, same as curl
+            got := 0
+            loop {
+                ret := this._curl_easy_recv(easy_handle, replyBuffer, replyBuffer.size, &got)
+                ;error catching is below for logical reasons
+                switch ret {
+                    case 0:
+                        if got = 0
+                            return replyBuffer
+                        offsetPtr := retBuffer.ptr + got
 
-        if iterations > 1 {
-            fragsize := buf.size
-            flags += this.constants["CURLWS"]["OFFSET"]
+                        ;append data to buffer if any was received
+                        if (retBuffer.size + got > retBuffer.size) {
+                            ;resize buffer to accomodate new data
+                            retBuffer.Size += got
+
+                            ;do the copy
+                            DllCall("kernel32.dll\RtlMoveMemory"
+                                , "Ptr", retBuffer.ptr + retBuffer.offset    ;destination
+                                , "Ptr", replyBuffer  ;source
+                                , "UPtr", got)  ;length
+
+                            ;update offset by the bytes copied
+                            retBuffer.offset += got
+                        }
+                    case 81:
+                        ;normal traffic so only capture with debug enabled
+                        if (this.easyHandleMap[easy_handle]["debug"] = 1)
+                            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_recv", ret,
+                                this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+
+                        if retBuffer.offset > 0 && got = 0
+                            return retBuffer
+                    Default:
+                        this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_recv", ret
+                            , this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+                        return retBuffer
+                }
+
+            }
+            ; return retBuffer
+
         }
+        WebSocketSend(content, flagArr := ["TEXT"], easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
-        offset := 0
+            ;push a lone flag string into a a flagArr
+            if (Type(flagArr) = "String")
+                flagArr := [flags]
 
-        loop iterations {
-            if ret := this._curl_ws_send(easy_handle, buf.ptr + offset, min(buf.size - offset, maxframesize), &sent := 0, fragsize, flags)
-                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_ws_send", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+            ;parse the flags
+            flags := 0
+            for k, v in flagArr
+                flags += this.constants["CURLWS"][v]
+
+            switch Type(content) {
+                case "String", "Integer":
+                    buf := this._StrBuf(content, "UTF-8")
+                    buf.size -= 1   ;truncates a trailing binary zero
+                case "Object", "Array", "Map":
+                    buf := this._StrBuf(json.dump(content), "UTF-8")
+                    buf.size -= 1   ;truncates a trailing binary zero
+                case "File":
+                    filePath := this._GetFilePathFromFileObject(content)
+                    buf := FileRead(filePath)
+                case "Buffer":
+                    buf := content
+                Default:
+                    throw ValueError("Unknown object type passed as WebSocketSend content: " Type(content))
+            }
+
             fragsize := 0
-            offset += sent
-        } until !sent
-        return ret
-    }
-    WebSocketReceive(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            maxframesize := this.easyHandleMap[easy_handle]["frame_size"]
+            iterations := Ceil(buf.size / maxframesize)
 
-        outBuf := Buffer(0)
-        loop {
-            ret := this._curl_ws_recv(easy_handle, outbuf, outbuf.size, &recv, &meta)
-            ;error catching is below for logical reasons
-
-            switch ret {
-                case 0:
-                    metaMap := this.struct.curl_ws_frame(meta)
-                    if metaMap["bytesleft"]
-                        outBuf.Size += metaMap["bytesleft"]
-                    else
-                        break
-                case 81:    ;waiting for ready state
-                    ;normal traffic so only capture with debug enabled
-                    If (this.easyHandleMap[easy_handle]["debug"] = 1)
-                        this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_ws_recv", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-
-                    ;short sleep before checking again for ready
-                    Sleep(50)
-                    continue
-
-                Default:    ;any other error
-                    this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_ws_recv", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-                    return ret
+            if iterations > 1 {
+                fragsize := buf.size
+                flags += this.constants["CURLWS"]["OFFSET"]
             }
 
+            offset := 0
+
+            loop iterations {
+                if ret := this._curl_ws_send(easy_handle, buf.ptr + offset, min(buf.size - offset, maxframesize), &sent :=
+                0, fragsize, flags)
+                    this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_ws_send", ret, this.easyHandleMap[easy_handle][
+                        "error buffer"], easy_handle)
+                fragsize := 0
+                offset += sent
+            } until !sent
+            return ret
         }
-        this.easyHandleMap[easy_handle]["lastBody"] := outBuf
-        return ret
-    }
+        WebSocketReceive(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
-    SetWebSocketFrameSize(frame_size := 10 * 1024, easy_handle?) { ;outgoing traffic will be auto-split at this size
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        this.easyHandleMap[easy_handle]["frame_size"] := frame_size
-    }
-    WebSocketConvert(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            outBuf := Buffer(0)
+            loop {
+                ret := this._curl_ws_recv(easy_handle, outbuf, outbuf.size, &recv, &meta)
+                ;error catching is below for logical reasons
 
-        ;prepare the handle options
-        this.SetOpt("CONNECT_ONLY", 2, easy_handle)
-        this.SetWebSocketFrameSize(10 * 1024, easy_handle?)
-        this.easyHandleMap[easy_handle]["websocket_mode"] := 1
-        this.Sync(easy_handle)
-    }
+                switch ret {
+                    case 0:
+                        metaMap := this.struct.curl_ws_frame(meta)
+                        if metaMap["bytesleft"]
+                            outBuf.Size += metaMap["bytesleft"]
+                        else
+                            break
+                    case 81:    ;waiting for ready state
+                        ;normal traffic so only capture with debug enabled
+                        if (this.easyHandleMap[easy_handle]["debug"] = 1)
+                            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_ws_recv", ret, this.easyHandleMap[
+                                easy_handle]["error buffer"], easy_handle)
 
-    GetLastHeaders(returnAsEncoding := "UTF-8", easy_handle?) {
-        If IsInteger(returnAsEncoding) && !IsSet(easy_handle)
-            easy_handle := returnAsEncoding
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        lastHeaders := this.easyHandleMap[easy_handle]["lastHeaders"]
+                        ;short sleep before checking again for ready
+                        Sleep(50)
+                        continue
 
-        if ((returnAsEncoding = "Object") && IsObject(lastHeaders))
+                    Default:    ;any other error
+                        this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_ws_recv", ret, this.easyHandleMap[easy_handle][
+                            "error buffer"], easy_handle)
+                        return ret
+                }
+
+            }
+            this.easyHandleMap[easy_handle]["lastBody"] := outBuf
+            return ret
+        }
+
+        SetWebSocketFrameSize(frame_size := 10 * 1024, easy_handle?) { ;outgoing traffic will be auto-split at this size
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            this.easyHandleMap[easy_handle]["frame_size"] := frame_size
+        }
+        WebSocketConvert(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+            ;prepare the handle options
+            this.SetOpt("CONNECT_ONLY", 2, easy_handle)
+            this.SetWebSocketFrameSize(10 * 1024, easy_handle?)
+            this.easyHandleMap[easy_handle]["websocket_mode"] := 1
+            this.Sync(easy_handle)
+        }
+
+        GetLastHeaders(returnAsEncoding := "UTF-8", easy_handle?) {
+            if IsInteger(returnAsEncoding) && !IsSet(easy_handle)
+                easy_handle := returnAsEncoding
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            lastHeaders := this.easyHandleMap[easy_handle]["lastHeaders"]
+
+            if ((returnAsEncoding = "Object") && IsObject(lastHeaders))
             || ((returnAsEncoding = "File") && (Type(lastHeaders) = "File"))
             || ((returnAsEncoding = "Buffer") && (Type(lastHeaders) = "Buffer"))
-            return lastHeaders
+                return lastHeaders
 
-        RegexMatch(returnAsEncoding, "i)(?:Object|File|Buffer|(\S+))", &f) ;filter object types
-        return (Type(lastHeaders) = "File" ? (lastHeaders.seek(0, 0) = 1 ? "" : "") lastHeaders.read()
-            : StrGet(lastHeaders, (f[1] = returnAsEncoding ? f[1] : "UTF-8")))
-    }
-    GetLastBody(returnAsEncoding := "UTF-8", easy_handle?) {
-        If IsInteger(returnAsEncoding) && !IsSet(easy_handle)
-            easy_handle := returnAsEncoding
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        lastBody := this.easyHandleMap[easy_handle]["lastBody"]
+            RegexMatch(returnAsEncoding, "i)(?:Object|File|Buffer|(\S+))", &f) ;filter object types
+            return (Type(lastHeaders) = "File" ? (lastHeaders.seek(0, 0) = 1 ? "" : "") lastHeaders.read()
+                : StrGet(lastHeaders, (f[1] = returnAsEncoding ? f[1] : "UTF-8")))
+        }
+        GetLastBody(returnAsEncoding := "UTF-8", easy_handle?) {
+            if IsInteger(returnAsEncoding) && !IsSet(easy_handle)
+                easy_handle := returnAsEncoding
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            lastBody := this.easyHandleMap[easy_handle]["lastBody"]
 
-        if ((returnAsEncoding = "Object") && IsObject(lastBody))
+            if ((returnAsEncoding = "Object") && IsObject(lastBody))
             || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
             || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
-            return lastBody
+                return lastBody
 
-        RegexMatch(returnAsEncoding, "i)(?:Object|File|Buffer|(\S+))", &f) ;filter object types
-        return (Type(lastBody) = "File" ? (lastBody.seek(0, 0) = 1 ? "" : "") lastBody.read()
-            : StrGet(lastBody, (f[1] = returnAsEncoding ? f[1] : "UTF-8")))
-    }
-    GetLastStatus(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        return this.easyHandleMap[easy_handle]["statusCode"]
-    }
-
-    Cleanup(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        for k, v in this.easyHandleMap[easy_handle]["callbacks"]
-            if IsInteger(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
-                CallbackFree(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
-
-        ; make sure the easy_handle is disassociated from its multi_handle, if applicable
-        If this.easyHandleMap[easy_handle].has("associated_multi_handle") {
-            multi_handle := this.easyHandleMap[easy_handle]["associated_multi_handle"] ;Intentionally does NOT default
-            this.RemoveEasyFromMulti(easy_handle, multi_handle)
+            RegexMatch(returnAsEncoding, "i)(?:Object|File|Buffer|(\S+))", &f) ;filter object types
+            return (Type(lastBody) = "File" ? (lastBody.seek(0, 0) = 1 ? "" : "") lastBody.read()
+                : StrGet(lastBody, (f[1] = returnAsEncoding ? f[1] : "UTF-8")))
+        }
+        GetLastStatus(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            return this.easyHandleMap[easy_handle]["statusCode"]
         }
 
-        this.easyHandleMap.Delete(easy_handle)
-        for k, v in this.easyHandleMap[0] {
-            if (v = easy_handle) {
-                this.easyHandleMap[0].RemoveAt(k)
-                break
+        Cleanup(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            for k, v in this.easyHandleMap[easy_handle]["callbacks"]
+                if IsInteger(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
+                    CallbackFree(this.easyHandleMap[easy_handle]["callbacks"][k]["CBF"])
+
+            ; make sure the easy_handle is disassociated from its multi_handle, if applicable
+            if this.easyHandleMap[easy_handle].has("associated_multi_handle") {
+                multi_handle := this.easyHandleMap[easy_handle]["associated_multi_handle"] ;Intentionally does NOT default
+                this.RemoveEasyFromMulti(easy_handle, multi_handle)
             }
-        }
 
-        this._curl_easy_cleanup(easy_handle)    ;no error code return
-        if (this.easyHandleMap[0].length = 0)   ;ensures there's always a usable easy_handle
-            this.EasyInit()
-    }
-    EasyCleanup(easy_handle?) {   ;alias for Cleanup
-        this.Cleanup(easy_handle?)
-    }
-    MultiCleanup(multi_handle?) {
-        ;Gracefully closes a multi_handle *plus* all associated easy_handles.
-        ;Any easy_handles you want to keep should be manually removed prior.
-        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
-
-        ;Process the associated easy_handles first
-        for k, v in this.MultiGetHandles() {
-            easy_handle := v
-            this.RemoveEasyFromMulti(easy_handle, multi_handle)
-            this.EasyCleanup(easy_handle)
-        }
-        if ret := this._curl_multi_cleanup(multi_handle)
-            this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_cleanup", ret, this.multiHandleMap[multi_handle]["error buffer"], multi_handle)
-        if (this.multiHandleMap[0].length = 0)   ;ensures there's always a usable multi_handle
-            this.MultiInit()
-        return ret
-    }
-    Pause(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-
-        if ret := this._curl_easy_pause(easy_handle, PauseMode := 5)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_pause", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-        return ret
-    }
-    UnPause(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-
-        if ret := this._curl_easy_pause(easy_handle, PauseMode := 0)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_pause", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-        return ret
-    }
-    Upkeep(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-
-        if ret := this._curl_easy_upkeep(easy_handle)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_upkeep", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-        return ret
-    }
-    ; UrlEscape(){
-    ;     ;todo - write a Unicode-aware string escaper
-    ; }
-    ; UrlUnescape(){
-
-    ; }
-
-    SetHeaders(headersObject, easy_handle?) {    ;Sets custom HTTP headers for request.
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-
-        headersArray := this._formatHeaders(headersObject)
-        headersPtr := this._ArrayToSList(headersArray)
-        Return this.SetOpt("HTTPHEADER", headersPtr, easy_handle?)
-    }
-
-    SetPost(sourceData, easy_handle?) {    ;properly encapsulates data to be POSTed
-        ;you can pass:
-        ;   -normal text/numbers
-        ;   -a File/Buffer object to upload as binary
-        ;   -an Object/Array/Map to dump as JSON
-
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
-        this.easyHandleMap[easy_handle]["postFile"] := unset    ;clears last POST. prolly redundant but eh.
-
-        checkType := Type(sourceData)
-
-        ;explicitly set the request for more intuitive behavior when switching between uploads and dowloads
-        this.SetOpt("POST", 1, easy_handle)
-        this.SetOpt("CUSTOMREQUEST", "POST", easy_handle)
-
-        switch Type(sourceData) {
-            case "String", "Integer":
-                input := this._StrBuf(sourceData)
-                this.easyHandleMap[easy_handle]["postData"] := input
-                this.SetOpt("POSTFIELDS", input, easy_handle)
-                this.SetOpt("POSTFIELDSIZE_LARGE", input.size - 1, easy_handle)
-
-            case "Object", "Array", "Map":
-                input := this._StrBuf(json.dump(sourceData))
-                this.easyHandleMap[easy_handle]["postData"] := input
-                this.SetOpt("POSTFIELDS", input, easy_handle)
-                this.SetOpt("POSTFIELDSIZE_LARGE", input.size - 1, easy_handle)
-                mime_type_override := "application/json"    ;always json
-
-            case "File":
-                this._setCallbacks(easy_handle, , , 1)
-
-                ;generate an independent file handle
-                sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
-                sourceData.Seek(0) ;ensures we're before any BOM (ahk quirk)
-                this.easyHandleMap[easy_handle]["postFile"] := sourceData
-                input := this.easyHandleMap[easy_handle]["postFile"]
-
-                ;mandatory steps if the last POST was non-File
-                this.SetOpt("POSTFIELDS", 0, easy_handle)
-                this.SetOpt("POSTFIELDSIZE_LARGE", sourceData.length, easy_handle)
-
-                ;File-specific upload settings
-                this.SetOpt("INFILESIZE_LARGE", sourceData.length, easy_handle)
-
-            case "Buffer":
-                this.easyHandleMap[easy_handle]["postData"] := sourceData
-                input := this.easyHandleMap[easy_handle]["postData"]
-                this.SetOpt("POSTFIELDS", input, easy_handle)
-                this.SetOpt("POSTFIELDSIZE_LARGE", input.size, easy_handle)
-
-            Default:
-                throw ValueError("Unknown object type passed as POST data: " Type(sourceData))
-        }
-
-        ;normal return, most exit here
-        If !IsSet(mime_type_override)
-            return this.magic.mime(input)
-
-        ;manual mime_type override because dumped objects are json and libmagic reports text/plain
-        ;technically extensible later on other edgecases by setting other overrides above.
-        return mime_type_override
-    }
-    SetUpload(sourceData, startByte?, numBytes?, easy_handle?) {
-        ;you can pass:
-        ;   -a File/Buffer object to upload as binary
-
-        ;you cannot pass:
-        ;   -normal text/numbers
-        ;   -an Object/Array/Map to dump as JSON
-
-
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        this.easyHandleMap[easy_handle]["postData"] := unset    ;clears last POST. prolly redundant but eh.
-        this.easyHandleMap[easy_handle]["postFile"] := unset    ;clears last POST. prolly redundant but eh.
-
-        checkType := Type(sourceData)
-
-        this.SetOpt("UPLOAD", 1, easy_handle)
-
-        switch checkType {
-            case "File":
-                this._setCallbacks(easy_handle, , , 1)
-
-                ;generate an independent file handle
-                sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
-
-                ;set defaults if required
-                startByte ??= 0
-                numBytes ??= sourceData.Length
-
-                ;sanity checks
-                if startByte > sourceData.Length
-                    startByte := sourceData.Length
-                else if startByte < 0
-                    startByte := 0
-                if (startByte + numBytes) > sourceData.Length
-                    numBytes := sourceData.Length - startByte
-
-                sourceData.Seek(startByte)
-                this.easyHandleMap[easy_handle]["postFile"] := sourceData
-                ; input := this.easyHandleMap[easy_handle]["postFile"]
-
-                this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
-            case "Buffer":
-                ;set defaults if required
-                startByte ??= 0
-                numBytes ??= sourceData.size
-
-                ;sanity checks
-                if startByte > sourceData.size
-                    startByte := sourceData.size
-                else if startByte < 0
-                    startByte := 0
-                if (startByte + numBytes) > sourceData.size
-                    numBytes := sourceData.size - startByte
-                if (startByte != 0)
-                    || (sourceData.size - numBytes != 0) {
-                    chunkBuf := Buffer(numBytes)
-                    DllCall("RtlMoveMemory"
-                        , "Ptr", chunkBuf    ;destination
-                        , "Ptr", sourceData.ptr + startByte  ;source
-                        , "UPtr", numBytes)  ;length
-                    sourceData := chunkBuf
-                }
-                passedHandleMap := this.easyHandleMap
-                ; MsgBox strget(sourceData, "UTF-8")
-                MemBufObj := LibQurl.Storage.MemBuffer(sourceData.ptr, sourceData.size, sourceData.size, &passedHandleMap, "upload", easy_handle)
-                ; MemBufObj.Open(sourceData)
-                ; msgbox StrGet(sourceData, "UTF-8")
-                this.easyHandleMap[easy_handle]["postFile"] := MemBufObj
-                ; this._setCallbacks(easy_handle,, , 1)
-                ; this.easyHandleMap[easy_handle]["postData"] := sourceData
-                ; input := this.easyHandleMap[easy_handle]["postFile"]
-                this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
-                ; this.SetOpt("POSTFIELDS", input.ptr, easy_handle)
-            default:
-                throw ValueError("Unknown object type passed as UPLOAD data: " Type(sourceData))
-        }
-    }
-
-    ClearPost(easy_handle?) {    ;clears any lingering POST data
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-
-        this.SetOpt("HTTPPOST", 0, easy_handle)
-        this.SetOpt("MIMEPOST", 0, easy_handle)
-        this.SetOpt("HTTPGET", 1, easy_handle)
-        this.SetOpt("UPLOAD", 0, easy_handle)
-
-        this.SetOpt("POSTFIELDS", 0, easy_handle)
-        this.SetOpt("POSTFIELDSIZE", 0, easy_handle)
-        this.SetOpt("POSTFIELDSIZE_LARGE", 0, easy_handle)
-        this.SetOpt("INFILESIZE", -1, easy_handle)    ;-1 = disabled
-        this.SetOpt("INFILESIZE_LARGE", -1, easy_handle)  ;-1 = disabled
-
-        ;reset request type for more intuitive behavior when switching between uploads and downloads
-        this.SetOpt("CUSTOMREQUEST", "GET", easy_handle)
-
-        this.easyHandleMap[easy_handle]["postFile"] := unset
-        this.easyHandleMap[easy_handle]["postData"] := unset
-    }
-
-    UrlInit() {
-        url_handle := this._curl_url()  ;no error class
-        this.urlHandleMap[0].push(url_handle) ;urlHandleMap[0][1] is a dynamic reference to the first created url_handle
-        this.urlHandleMap[url_handle] := Map()
-        this.urlHandleMap[url_handle]["url_handle"] := url_handle
-        this.urlHandleMap[url_handle]["timestamp"] := A_NowUTC
-        this.urlHandleMap[url_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE)
-        this.urlHandleMap[url_handle]["options"] := Map()
-        this.UrlPartReturnsNull(true, url_handle)
-        return url_handle
-    }
-    UrlCleanup(url_handle?) {
-        url_handle ??= (this.urlHandleMap[0][1])   ;defaults to the first created url_handle
-        this._curl_url_cleanup(url_handle)  ;no error class
-        this.urlHandleMap.Delete(url_handle)
-        for k, v in this.urlHandleMap[0] {
-            if (v = url_handle) {
-                this.urlHandleMap[0].RemoveAt(k)
-                break
-            }
-        }
-        if (this.urlHandleMap[0].length = 0)    ;ensures there's always a handle available
-            this.UrlInit()
-    }
-    DupeUrl(url_handle?) {
-        url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
-        newUrl := this._curl_url_dup(url_handle)    ;no error class
-        this.urlHandleMap[0].push(newUrl)
-        this.urlHandleMap[newUrl] := this._DeepClone(this.urlHandleMap[url_handle])
-        this.urlHandleMap[newUrl]["timestamp"] := A_NowUTC
-    }
-
-    UrlSet(part, content, flags := [], url_handle?) {
-        url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
-
-        flagBitmask := 0
-        o := this.urlHandleMap[url_handle]["options"] := Map()
-        f := this.constants["CURLUflags"]
-        for k, v in flags {
-            flagBitmask += f[v]
-            o[v] := 1
-        }
-
-        partConstant := this.constants["CURLUPart"][part]
-        if ret := this._curl_url_set(url_handle, partConstant, content, flagBitmask)
-            this._ErrorHandler(A_ThisFunc, "CURLUcode", "curl_url_set", ret, this.urlHandleMap[url_handle]["error buffer"], url_handle)
-        return ret
-    }
-    UrlGet(part, flags := [], url_handle?) {
-        url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
-
-        flagBitmask := 0
-        o := this.urlHandleMap[url_handle]["options"] := Map()
-        f := this.constants["CURLUflags"]
-        for k, v in flags {
-            flagBitmask += f[v]
-            o[v] := 1
-        }
-
-        partConstant := this.constants["CURLUPart"][part]
-        retCode := this._curl_url_get(url_handle, partConstant, &content := 0, flagBitmask)    ;no error class
-        if content
-            ret := StrGet(content, "UTF-8")
-        else
-            return this.urlHandleMap[url_handle]["null return"]
-        this._curl_free(content)    ;no error class
-        return ret
-    }
-    UrlPartReturnsNull(behavior := true, url_handle?) {
-        url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
-
-        if behavior = true
-            this.urlHandleMap[url_handle]["null return"] := Null()
-        else
-            this.urlHandleMap[url_handle]["null return"] := ""
-    }
-
-    MultiInfoRead(multi_handle?) {
-        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
-        retObj := []
-        while (retCode := this._curl_multi_info_read(multi_handle, &msgsInQueue)) {  ;no error class
-            retObj.push(this.struct.curl_CURLMsg(retCode))
-        }
-
-        return retObj
-        ; msgbox this.PrintObj(retObj)
-        ; msgbox retCode "`n" msgsInQueue
-    }
-
-    MultiInit() {    ;auto-invoked during register()
-        multi_handle := this._curl_multi_init() ;no error class
-        this.multiHandleMap[0].push(multi_handle) ;multiHandleMap[0][1] is a dynamic reference to the last created multi_handle
-        this.multiHandleMap[multi_handle] := Map()
-        this.multiHandleMap[multi_handle]["options"] := Map()
-        this.multiHandleMap[multi_handle]["associatedEasyHandles"] := Map()
-
-        ;Establish event-based async callbacks
-        ; this.MultiSetOpt("SOCKETFUNCTION",)
-        return multi_handle
-    }
-    AddEasyToMulti(easy_handle?, multi_handle?) { ;auto-invoked during EasyInit()
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
-
-        if ret := this._curl_multi_add_handle(multi_handle, easy_handle)
-            this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_add_handle", ret, this.multiHandleMap[multi_handle]["error buffer"], multi_handle)
-        this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
-        this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
-        ; this.multiHandleMap["pending_callbacks"].push(easy_handle)
-        return ret
-    }
-    _fallbackWrite(easy_handle) {
-        static checkTypes := ["WRITE", "HEADER"]
-        for k, v in checkTypes
-            If !this.easyHandleMap[easy_handle]["options"].Has(v "DATA")
-                this.%v%ToMem(, easy_handle)
-    }
-    RemoveEasyFromMulti(easy_handle?, multi_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
-        If ret := this._curl_multi_remove_handle(multi_handle, easy_handle)
-            this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_remove_handle", ret, this.multiHandleMap[multi_handle]["error buffer"], multi_handle)
-        this.easyHandleMap[easy_handle]["associated_multi_handle"] := unset
-        this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := unset
-        return ret
-    }
-    SwapMultiPools(easyHandleArr, oldMultiHandle, newMultiHandle) {   ;used to transfer easy_handles between multi_handles
-        for k, v in easyHandleArr {   ;array of easy_handles
-            this.RemoveEasyFromMulti(v, oldMultiHandle)
-            this.AddEasyToMulti(v, newMultiHandle)
-        }
-    }
-    GetInfo(infoOption, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        if ret := this._curl_easy_getinfo(easy_handle, infoOption, &info := 0)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_getinfo", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-
-        switch this.constants["CURLINFO"][infoOption]["infoType"] {
-            case "STRING":
-                return StrGet(info, "UTF-8")
-            case "PTR":
-                return (info != 0 ? numget(info, "ptr") : 0)
-            default:
-                return info
-        }
-    }
-    GetMultiInfo(multi_handle?) { ;returns a map of all known info about the given multi_handle
-        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
-        infoMap := Map()
-        infoMap["multi_handle"] := multi_handle
-        value := 0
-
-        infoToGather := [
-            "current",
-            "running",
-            "pending",
-            "done",
-            "added"
-        ]
-
-        for k, v in infoToGather {
-            requestedValue := v
-            if ret := this._curl_multi_get_offt(multi_handle, requestedValue, &value)
-                this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_get_offt", ret, this.multiHandleMap[multi_handle]["error buffer"], multi_handle)
-            else
-                infoMap[requestedValue] := value
-        }
-
-        return infoMap
-    }
-    GetAllHeaders(easy_handle?) {   ;use GetLastHeaders() unless you need to examine the headers from a redirect
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        static c := this.constants["CURLH_ORIGINS"]
-
-        redirects := this.GetInfo("REDIRECT_COUNT")
-        retObj := []
-
-        ;todo - check out the other origin types
-        origin ??= c["HEADER"]
-
-        loop redirects + 1 {
-            request := a_index - 1
-            previous_curl_header := 0
-            retObj.Push([])
-            specificRetObj := retObj[retObj.Length]
-
-            loop {
-                headerPtr := this._curl_easy_nextheader(easy_handle, origin, request, previous_curl_header)    ;no error class
-                If !headerPtr
+            this.easyHandleMap.Delete(easy_handle)
+            for k, v in this.easyHandleMap[0] {
+                if (v = easy_handle) {
+                    this.easyHandleMap[0].RemoveAt(k)
                     break
-                specificRetObj.Push(this.struct.curl_header(headerPtr))
-                previous_curl_header := headerPtr
-            }
-        }
-        return retObj
-    }
-    InspectHeader(name, index := 0, origin?, request := -1, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        static c := this.constants["CURLH_ORIGINS"]
-        origin ??= c["HEADER"]
-
-        ;todo - add CURLHcode handling
-        If ret := this._curl_easy_header(easy_handle, name, index, origin, request, &curl_header := 0)
-            this._ErrorHandler(A_ThisFunc, "CURLHcode", "curl_easy_header", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-        If curl_header
-            return this.struct.curl_header(curl_header)["value"]
-        return unset
-    }
-    PrintObj(ObjectMapOrArray, depth := 5, indentLevel := "") {
-        ; static self := StrSplit(A_ThisFunc,".")[StrSplit(A_ThisFunc,".").Length]
-        list := ""
-        For k, v in (Type(ObjectMapOrArray) != "Object" ? ObjectMapOrArray : ObjectMapOrArray.OwnProps()) {
-            list .= indentLevel "[" k "]"
-            Switch Type(v) {
-                case "Map", "Array", "Object":
-                    list .= "`n" this.PrintObj(v, depth - 1, indentLevel "    ")
-                case "Buffer", "LibQurl.Storage.MemBuffer":
-                    list .= " => [BUFFER] "
-                case "File", "LibQurl.Storage.File":
-                    list .= " => [FILE] "
-                case "LibQurl.Storage.Magic":
-                    list .= " => [MAGIC] "
-                Default:
-                    list .= " => " v
-            }
-            list := RTrim(list, "`r`n`r ") "`n"
-        }
-        return RTrim(list)
-    }
-    ;dummied code that doesn't work right yet
-
-
-    DupeInit(old_easy_handle?) {
-        ;NOTE: curl_easy_duphandle was not playing well with this class.
-        ;I was unable to figure out why. It was probably something stupid.
-        ;Regardless, Init() is called instead.
-        ;The end result is the same as long as you haven't bypassed SetOpt/etc.
-        old_easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        new_easy_handle := this.Init()
-
-        ;filter file/header writing callback functions as those got setup in Init
-        for k, v in this.easyHandleMap[old_easy_handle]["options"] {
-            switch k {
-                case "WRITEDATA", "WRITEFUNCTION":
-                    continue
-                case "HEADERDATA", "HEADERFUNCTION":
-                    continue
-                default:
-                    this.SetOpt(k, v, new_easy_handle)
-            }
-        }
-        ; MsgBox this.PrintObj(this.easyHandleMap[new_easy_handle]["options"])
-        this.WriteToMem(0, new_easy_handle)    ;automatically save lastBody to memory
-        return new_easy_handle
-    }
-
-    MultiGetHandles(multi_handle?) {
-        ;Returns array of all easy_handles in the multi_handle.
-        ;This matches the multiHandleMap unless you've bypassed class methods.
-        multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
-
-        ;gets the pointer array
-        ret := this._curl_multi_get_handles(multi_handle)   ;no error class
-
-
-        ;walk the pointer array
-        out := []
-        loop {
-            ptr := NumGet(ret, (a_index - 1) * A_PtrSize, "Ptr")
-            if (ptr = 0)    ;no more
-                break
-            out.Push(ptr)
-        }
-        return out
-    }
-
-    GetDate(dateString, returnEpoch?) {
-        ret := this._curl_getdate(dateString)   ;no error class
-
-        if returnEpoch ??= 0
-            return ret
-        return DateAdd(1970, ret, 'S')
-    }
-
-    ShareInit() {
-        share_handle := this._curl_share_init() ;no error class
-        this.shareHandleMap[0].push(share_handle) ;shareHandleMap[0][1] is a dynamic reference to the first created share_handle
-        this.shareHandleMap[share_handle] := Map()
-        this.shareHandleMap[share_handle]["options"] := Map()
-        this.shareHandleMap[share_handle]["associatedEasyHandles"] := Map()
-        this.shareHandleMap[share_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE)
-        return share_handle
-    }
-    AddEasyToShare(easy_handle?, share_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
-
-        if ret := this.SetOpt("SHARE", share_handle, easy_handle)
-            this._ErrorHierarchy(A_ThisFunc, "CURLSHcode", share_handle)
-                , this._ErrorHierarchy(A_ThisFunc, "CURLcode", easy_handle)
-        this.easyHandleMap[easy_handle]["associated_share_handle"] := share_handle
-        this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
-        return ret
-    }
-    RemoveEasyFromShare(easy_handle?, share_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
-
-        if ret := this.SetOpt("SHARE", 0, easy_handle)
-            this._ErrorHierarchy(A_ThisFunc, "CURLSHcode", share_handle)
-
-        this.easyHandleMap[easy_handle]["associated_share_handle"] := unset
-        this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := unset
-        return ret
-    }
-    ShareCleanup(share_handle?) {
-        share_handle := this.shareHandleMap[0][1]   ;defaults to the first created share_handle
-        if ret := this._curl_share_cleanup(share_handle)
-            this._ErrorHandler(A_ThisFunc, "CURLSHcode", "curl_share_cleanup", ret, , share_handle)
-        return ret
-    }
-
-    ShareSetOpt(option, parameter, share_handle?) {
-        share_handle := this.shareHandleMap[0][1]   ;defaults to the first created share_handle
-
-        If this.sOpt.Has(option) {
-            ;nothing to be done
-        } else if InStr(option, "CURLSHOPT_") && this.sOpt.Has(StrReplace("CURLSHOPT_", option)) {
-            option := StrReplace("CURLSHOPT_", option)
-        } else {
-            throw ValueError("Problem in 'curl_share_setopt'! Unknown option: " option, -1, this.curlDLLpath)
-        }
-
-        parameter := this.constants["curl_lock"][parameter]
-        this.shareHandleMap[share_handle]["options"][option] := parameter
-
-        if ret := this._curl_share_setopt(share_handle, option, parameter)
-            this._ErrorHandler(A_ThisFunc, "CURLSHcode", "curl_share_setopt", ret, this.shareHandleMap[share_handle]["error buffer"], share_handle)
-        return ret
-    }
-    ShareGetOpt(option, share_handle?) {
-        share_handle := this.shareHandleMap[0][1]   ;defaults to the first created share_handle
-
-        if this.shareHandleMap[share_handle]["options"].has(option)
-            return this.shareHandleMap[share_handle]["options"][option]
-        Return Null()
-    }
-
-
-    MimeInit(easy_handle?) {    ;curl requires associating mime_handles to an easy_handle
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        mime_handle := this._curl_mime_init(easy_handle)    ;no error class
-
-        this.mimeHandleMap[0].push(mime_handle)
-        this.mimeHandleMap[mime_handle] := Map()
-        this.mimeHandleMap[mime_handle]["associated_easy_handle"] := easy_handle
-        this.mimeHandleMap[mime_handle]["associated_mime_parts"] := Map()
-
-        this.easyHandleMap[easy_handle]["active_mime_handle"] := mime_handle
-        this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := 1
-        this.mimeHandleMap[mime_handle]["nested"] := 0
-        this.SetOpt("MIMEPOST", mime_handle, easy_handle)
-
-        return mime_handle
-    }
-    MimeAddPart(mime_handle?) {
-        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
-
-        mime_part := this._curl_mime_addpart(mime_handle)   ;no error class
-        this.mimePartMap[mime_part] := partMap := Map()
-
-        partMap["associated_mime_handle"] := mime_handle
-        partMap["associated_easy_handle"] := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
-
-        this.mimeHandleMap[mime_handle]["associated_mime_parts"][mime_part] := 1
-
-        return mime_part
-    }
-    MimePartName(mime_part, partName) {
-        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
-        if ret := this._curl_mime_name(mime_part, partName)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_name", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-        this.mimePartMap[mime_part]["name"] := partName
-    }
-    MimePartData(mime_part, partContent) {
-        ;File doesn't use this callback but still checks for the Map during cleanup
-        partMap := this.mimePartMap[mime_part]
-        partMap["callbacks"] := CBFmap := Map()
-
-        ;get the data into the correct format
-        switch Type(partContent) {
-            case "String", "Integer":
-                buf := this._StrBuf(partContent, "UTF-8")
-                buf.size -= 1   ;truncates a trailing binary zero
-                ; this._curl_mime_data(mime_part,buf,-1)
-            case "Object", "Array", "Map":
-                buf := this._StrBuf(json.dump(partContent), "UTF-8")
-                buf.size -= 1   ;truncates a trailing binary zero
-                ; this._curl_mime_data(mime_part,buf,buf.size-1)
-            case "File":
-                filePath := this._GetFilePathFromFileObject(partContent)
-                If ret := this._curl_mime_filedata(mime_part, filePath) {
-                    easy_handle := partMap["associated_easy_handle"]
-                    this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_data_cb", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
                 }
-                return ret  ;early return because there's no need to store anything
-            case "Buffer":
-                buf := partContent
-                ; this._curl_mime_data(mime_part,buf,partContent.size)
-            Default:
-                throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
+            }
+
+            this._curl_easy_cleanup(easy_handle)    ;no error code return
+            if (this.easyHandleMap[0].length = 0)   ;ensures there's always a usable easy_handle
+                this.EasyInit()
+        }
+        EasyCleanup(easy_handle?) {   ;alias for Cleanup
+            this.Cleanup(easy_handle?)
+        }
+        MultiCleanup(multi_handle?) {
+            ;Gracefully closes a multi_handle *plus* all associated easy_handles.
+            ;Any easy_handles you want to keep should be manually removed prior.
+            multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+
+            ;Process the associated easy_handles first
+            for k, v in this.MultiGetHandles() {
+                easy_handle := v
+                this.RemoveEasyFromMulti(easy_handle, multi_handle)
+                this.EasyCleanup(easy_handle)
+            }
+            if ret := this._curl_multi_cleanup(multi_handle)
+                this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_cleanup", ret, this.multiHandleMap[multi_handle
+                    ]["error buffer"], multi_handle)
+            if (this.multiHandleMap[0].length = 0)   ;ensures there's always a usable multi_handle
+                this.MultiInit()
+            return ret
+        }
+        Pause(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+            if ret := this._curl_easy_pause(easy_handle, PauseMode := 5)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_pause", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+            return ret
+        }
+        UnPause(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+            if ret := this._curl_easy_pause(easy_handle, PauseMode := 0)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_pause", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+            return ret
+        }
+        Upkeep(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+            if ret := this._curl_easy_upkeep(easy_handle)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_upkeep", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+            return ret
+        }
+        ; UrlEscape(){
+        ;     ;todo - write a Unicode-aware string escaper
+        ; }
+        ; UrlUnescape(){
+
+        ; }
+
+        SetHeaders(headersObject, easy_handle?) {    ;Sets custom HTTP headers for request.
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+
+            headersArray := this._formatHeaders(headersObject)
+            headersPtr := this._ArrayToSList(headersArray)
+            return this.SetOpt("HTTPHEADER", headersPtr, easy_handle?)
         }
 
-        ;store the data in the correct location
-        partMap["content"] ??= buf
+        SetPost(sourceData, easy_handle?) {    ;properly encapsulates data to be POSTed
+            ;you can pass:
+            ;   -normal text/numbers
+            ;   -a File/Buffer object to upload as binary
+            ;   -an Object/Array/Map to dump as JSON
 
-        ;create the callbacks
-        partMap["offset"] := 0
-        rCBF := CBFmap["read"] := CallbackCreate(
-            (buf, size, nitems, mime_part) =>
-                this._mimeDataReadCallbackFunction(buf, size, nitems, mime_part)
-        )
-        sCBF := CBFmap["seek"] := CallbackCreate(
-            (mime_part, offset, origin) =>
-                this._mimeDataSeekCallbackFunction(mime_part, offset, origin)
-        )
-        fCBF := CBFmap["free"] := CallbackCreate(
-            (mime_part) =>
-                this._mimeDataFreeCallbackFunction(mime_part)
-        )
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            this.easyHandleMap[easy_handle]["readFrom"] := unset    ;clears last POST. prolly redundant but eh.
 
-        ;hand off everything to libcurl
-        If ret := this._curl_mime_data_cb(mime_part, buf.size, rCBF, sCBF, fCBF, mime_part) {
-            easy_handle := partMap["associated_easy_handle"]
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_data_cb", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+            ; checkType := Type(sourceData)
+
+            ;explicitly set the request for more intuitive behavior when switching between uploads and dowloads
+            this.SetOpt("POST", 1, easy_handle)
+            this.SetOpt("CUSTOMREQUEST", "POST", easy_handle)
+
+            switch Type(sourceData) {
+                case "String", "Integer":
+                    input := this._StrBuf(sourceData)
+                    input.size -= 1
+                    this.easyHandleMap[easy_handle]["readFrom"] := input
+                    this.SetOpt("POSTFIELDS", input, easy_handle)
+                    this.SetOpt("POSTFIELDSIZE_LARGE", input.size, easy_handle)
+
+                case "Object", "Array", "Map":
+                    input := this._StrBuf(json.dump(sourceData))
+                    input.size -= 1
+                    this.easyHandleMap[easy_handle]["readFrom"] := input
+                    this.SetOpt("POSTFIELDS", input, easy_handle)
+                    this.SetOpt("POSTFIELDSIZE_LARGE", input.size, easy_handle)
+                    mime_type_override := "application/json"    ;always json
+
+                case "File":
+                    ; this._setCallbacks(easy_handle, , , 1)
+                    ; this._setEasyCallback(easy_handle, "read")
+                    ;generate an independent file handle
+                    sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
+                    sourceData.Seek(0) ;ensures we're before any BOM (ahk quirk)
+                    this.easyHandleMap[easy_handle]["readFrom"] := sourceData
+                    input := this.easyHandleMap[easy_handle]["readFrom"]
+
+                    ;mandatory steps if the last POST was non-File
+                    this.SetOpt("POSTFIELDS", 0, easy_handle)
+                    this.SetOpt("POSTFIELDSIZE_LARGE", sourceData.length, easy_handle)
+
+                    ;File-specific upload settings
+                    this.SetOpt("INFILESIZE_LARGE", sourceData.length, easy_handle)
+
+                case "Buffer":
+                    this.easyHandleMap[easy_handle]["readFrom"] := sourceData
+                    input := this.easyHandleMap[easy_handle]["readFrom"]
+                    this.SetOpt("POSTFIELDS", input, easy_handle)
+                    this.SetOpt("POSTFIELDSIZE_LARGE", input.size, easy_handle)
+
+                Default:
+                    throw ValueError("Unknown object type passed as POST data: " Type(sourceData))
+            }
+
+            ;normal return, most exit here
+            if !IsSet(mime_type_override)
+                return this.magic.mime(input)
+
+            ;manual mime_type override because dumped objects are json and libmagic reports text/plain
+            ;technically extensible later on other edgecases by setting other overrides above.
+            return mime_type_override
+        }
+        SetUpload(sourceData, startByte?, numBytes?, easy_handle?) {
+            ;you can pass:
+            ;   -a File/Buffer object to upload as binary
+
+            ;you cannot pass:
+            ;   -normal text/numbers
+            ;   -an Object/Array/Map to dump as JSON
+
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
+            this.easyHandleMap[easy_handle]["readFrom"] := unset    ;clears last POST. prolly redundant but eh.
+            checkType := Type(sourceData)
+
+            this.SetOpt("UPLOAD", 1, easy_handle)
+            this._setEasyCallback(easy_handle, "read")
+
+            switch checkType {
+                case "File":
+                    ; this._setCallbacks(easy_handle, , , 1)
+                    ;generate an independent file handle
+                    sourceData := FileOpen(this._GetFilePathFromFileObject(sourceData), "r")
+
+                    ;set defaults if required
+                    startByte ??= 0
+                    numBytes ??= sourceData.Length
+
+                    ;sanity checks
+                    if startByte > sourceData.Length
+                        startByte := sourceData.Length
+                    else if startByte < 0
+                        startByte := 0
+                    if (startByte + numBytes) > sourceData.Length
+                        numBytes := sourceData.Length - startByte
+
+                    sourceData.Seek(startByte)
+                    this.easyHandleMap[easy_handle]["readFrom"] := sourceData
+
+                    this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
+                case "Buffer":
+                    ;set defaults if required
+                    startByte ??= 0
+                    numBytes ??= sourceData.size
+
+                    ;sanity checks
+                    if startByte > sourceData.size
+                        startByte := sourceData.size
+                    else if startByte < 0
+                        startByte := 0
+                    if (startByte + numBytes) > sourceData.size
+                        numBytes := sourceData.size - startByte
+                    if (startByte != 0)
+                    || (sourceData.size - numBytes != 0) {
+                        chunkBuf := Buffer(numBytes)
+                        DllCall("ntdll\memcpy"
+                            , "Ptr", chunkBuf    ;destination
+                            , "Ptr", sourceData.ptr + startByte  ;source
+                            , "UPtr", numBytes)  ;length
+                        sourceData := chunkBuf
+                    }
+                    passedHandleMap := this.easyHandleMap
+
+                    ; MsgBox strget(sourceData, "UTF-8")
+
+                    ;establish read callback
+                    MemBufObj := LibQurl.Storage.MemBuffer(easy_handle, sourceData, sourceData.size, &passedHandleMap, "read")
+                    this.easyHandleMap[easy_handle]["readFrom"] := MemBufObj
+                    this.SetOpt("INFILESIZE_LARGE", numBytes, easy_handle)
+
+                default:
+                    throw ValueError("Unknown object type passed as UPLOAD data: " Type(sourceData))
+            }
         }
 
-        return ret
-    }
-    MimePartType(mime_part, partContent?, override?) {
-        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+        ClearPost(easy_handle?) {    ;clears any lingering POST data
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
-        If IsSet(override?) {
-            if ret := this._curl_mime_type(mime_part, override)
-                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_type", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+            this.SetOpt("HTTPPOST", 0, easy_handle)
+            this.SetOpt("MIMEPOST", 0, easy_handle)
+            this.SetOpt("HTTPGET", 1, easy_handle)
+            this.SetOpt("UPLOAD", 0, easy_handle)
+
+            this.SetOpt("POSTFIELDS", 0, easy_handle)
+            this.SetOpt("POSTFIELDSIZE", 0, easy_handle)
+            this.SetOpt("POSTFIELDSIZE_LARGE", 0, easy_handle)
+            this.SetOpt("INFILESIZE", -1, easy_handle)    ;-1 = disabled
+            this.SetOpt("INFILESIZE_LARGE", -1, easy_handle)  ;-1 = disabled
+
+            ;reset request type for more intuitive behavior when switching between uploads and downloads
+            this.SetOpt("CUSTOMREQUEST", "GET", easy_handle)
+
+            this.easyHandleMap[easy_handle]["readFrom"] := unset
+        }
+
+        UrlInit() {
+            url_handle := this._curl_url()  ;no error class
+            this.urlHandleMap[0].push(url_handle) ;urlHandleMap[0][1] is a dynamic reference to the first created url_handle
+            this.urlHandleMap[url_handle] := Map()
+            this.urlHandleMap[url_handle]["url_handle"] := url_handle
+            this.urlHandleMap[url_handle]["timestamp"] := A_NowUTC
+            this.urlHandleMap[url_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE)
+            this.urlHandleMap[url_handle]["options"] := Map()
+            this.UrlPartReturnsNull(true, url_handle)
+            return url_handle
+        }
+        UrlCleanup(url_handle?) {
+            url_handle ??= (this.urlHandleMap[0][1])   ;defaults to the first created url_handle
+            this._curl_url_cleanup(url_handle)  ;no error class
+            this.urlHandleMap.Delete(url_handle)
+            for k, v in this.urlHandleMap[0] {
+                if (v = url_handle) {
+                    this.urlHandleMap[0].RemoveAt(k)
+                    break
+                }
+            }
+            if (this.urlHandleMap[0].length = 0)    ;ensures there's always a handle available
+                this.UrlInit()
+        }
+        DupeUrl(url_handle?) {
+            url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
+            newUrl := this._curl_url_dup(url_handle)    ;no error class
+            this.urlHandleMap[0].push(newUrl)
+            this.urlHandleMap[newUrl] := this._DeepClone(this.urlHandleMap[url_handle])
+            this.urlHandleMap[newUrl]["timestamp"] := A_NowUTC
+        }
+
+        UrlSet(part, content, flags := [], url_handle?) {
+            url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
+
+            flagBitmask := 0
+            o := this.urlHandleMap[url_handle]["options"] := Map()
+            f := this.constants["CURLUflags"]
+            for k, v in flags {
+                flagBitmask += f[v]
+                o[v] := 1
+            }
+
+            partConstant := this.constants["CURLUPart"][part]
+            if ret := this._curl_url_set(url_handle, partConstant, content, flagBitmask)
+                this._ErrorHandler(A_ThisFunc, "CURLUcode", "curl_url_set", ret, this.urlHandleMap[url_handle][
+                    "error buffer"], url_handle)
+            return ret
+        }
+        UrlGet(part, flags := [], url_handle?) {
+            url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
+
+            flagBitmask := 0
+            o := this.urlHandleMap[url_handle]["options"] := Map()
+            f := this.constants["CURLUflags"]
+            for k, v in flags {
+                flagBitmask += f[v]
+                o[v] := 1
+            }
+
+            partConstant := this.constants["CURLUPart"][part]
+            retCode := this._curl_url_get(url_handle, partConstant, &content := 0, flagBitmask)    ;no error class
+            if content
+                ret := StrGet(content, "UTF-8")
+            else
+                return this.urlHandleMap[url_handle]["null return"]
+            this._curl_free(content)    ;no error class
+            return ret
+        }
+        UrlPartReturnsNull(behavior := true, url_handle?) {
+            url_handle ??= this.urlHandleMap[0][1]   ;defaults to the first created url_handle
+
+            if behavior = true
+                this.urlHandleMap[url_handle]["null return"] := Null()
+            else
+                this.urlHandleMap[url_handle]["null return"] := ""
+        }
+
+        MultiInfoRead(multi_handle?) {
+            multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+            retObj := []
+            while (retCode := this._curl_multi_info_read(multi_handle, &msgsInQueue)) {  ;no error class
+                retObj.push(this.struct.curl_CURLMsg(retCode))
+            }
+
+            return retObj
+            ; msgbox this.PrintObj(retObj)
+            ; msgbox retCode "`n" msgsInQueue
+        }
+
+        MultiInit() {    ;auto-invoked during register()
+            multi_handle := this._curl_multi_init() ;no error class
+            this.multiHandleMap[0].push(multi_handle) ;multiHandleMap[0][1] is a dynamic reference to the last created multi_handle
+            this.multiHandleMap[multi_handle] := Map()
+            this.multiHandleMap[multi_handle]["options"] := Map()
+            this.multiHandleMap[multi_handle]["associatedEasyHandles"] := Map()
+
+            ;Establish event-based async callbacks
+            ; this.MultiSetOpt("SOCKETFUNCTION",)
+            return multi_handle
+        }
+        AddEasyToMulti(easy_handle?, multi_handle?) { ;auto-invoked during EasyInit()
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+
+            if ret := this._curl_multi_add_handle(multi_handle, easy_handle)
+                this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_add_handle", ret, this.multiHandleMap[
+                    multi_handle]["error buffer"], multi_handle)
+            this.easyHandleMap[easy_handle]["associated_multi_handle"] := multi_handle
+            this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
+            ; this.multiHandleMap["pending_callbacks"].push(easy_handle)
+            return ret
+        }
+        _fallbackWrite(easy_handle) {
+            static checkTypes := ["WRITE", "HEADER"]
+            for k, v in checkTypes
+                if !this.easyHandleMap[easy_handle]["options"].Has(v "DATA")
+                    this.%v%ToMem(, easy_handle)
+        }
+        RemoveEasyFromMulti(easy_handle?, multi_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+            if ret := this._curl_multi_remove_handle(multi_handle, easy_handle)
+                this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_remove_handle", ret, this.multiHandleMap[
+                    multi_handle]["error buffer"], multi_handle)
+            this.easyHandleMap[easy_handle]["associated_multi_handle"] := unset
+            this.multiHandleMap[multi_handle]["associatedEasyHandles"][easy_handle] := unset
+            return ret
+        }
+        SwapMultiPools(easyHandleArr, oldMultiHandle, newMultiHandle) {   ;used to transfer easy_handles between multi_handles
+            for k, v in easyHandleArr {   ;array of easy_handles
+                this.RemoveEasyFromMulti(v, oldMultiHandle)
+                this.AddEasyToMulti(v, newMultiHandle)
+            }
+        }
+        GetInfo(infoOption, easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            if ret := this._curl_easy_getinfo(easy_handle, infoOption, &info := 0)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_getinfo", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+
+            switch this.constants["CURLINFO"][infoOption]["infoType"] {
+                case "STRING":
+                    return StrGet(info, "UTF-8")
+                case "PTR":
+                    return (info != 0 ? numget(info, "ptr") : 0)
+                default:
+                    return info
+            }
+        }
+        GetMultiInfo(multi_handle?) { ;returns a map of all known info about the given multi_handle
+            multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+            infoMap := Map()
+            infoMap["multi_handle"] := multi_handle
+            value := 0
+
+            infoToGather := [
+                "current",
+                "running",
+                "pending",
+                "done",
+                "added"
+            ]
+
+            for k, v in infoToGather {
+                requestedValue := v
+                if ret := this._curl_multi_get_offt(multi_handle, requestedValue, &value)
+                    this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_get_offt", ret, this.multiHandleMap[
+                        multi_handle]["error buffer"], multi_handle)
+                else
+                    infoMap[requestedValue] := value
+            }
+
+            return infoMap
+        }
+        GetAllHeaders(easy_handle?) {   ;use GetLastHeaders() unless you need to examine the headers from a redirect
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            static c := this.constants["CURLH_ORIGINS"]
+
+            redirects := this.GetInfo("REDIRECT_COUNT")
+            retObj := []
+
+            ;todo - check out the other origin types
+            origin ??= c["HEADER"]
+
+            loop redirects + 1 {
+                request := a_index - 1
+                previous_curl_header := 0
+                retObj.Push([])
+                specificRetObj := retObj[retObj.Length]
+
+                loop {
+                    headerPtr := this._curl_easy_nextheader(easy_handle, origin, request, previous_curl_header)    ;no error class
+                    if !headerPtr
+                        break
+                    specificRetObj.Push(this.struct.curl_header(headerPtr))
+                    previous_curl_header := headerPtr
+                }
+            }
+            return retObj
+        }
+        InspectHeader(name, index := 0, origin?, request := -1, easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            static c := this.constants["CURLH_ORIGINS"]
+            origin ??= c["HEADER"]
+
+            ;todo - add CURLHcode handling
+            if ret := this._curl_easy_header(easy_handle, name, index, origin, request, &curl_header := 0)
+                this._ErrorHandler(A_ThisFunc, "CURLHcode", "curl_easy_header", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+            if curl_header
+                return this.struct.curl_header(curl_header)["value"]
+            return unset
+        }
+        PrintObj(ObjectMapOrArray, depth := 5, indentLevel := "") {
+            ; static self := StrSplit(A_ThisFunc,".")[StrSplit(A_ThisFunc,".").Length]
+            list := ""
+            for k, v in (Type(ObjectMapOrArray) != "Object" ? ObjectMapOrArray : ObjectMapOrArray.OwnProps()) {
+                list .= indentLevel "[" k "]"
+                switch Type(v) {
+                    case "Map", "Array", "Object":
+                        list .= "`n" this.PrintObj(v, depth - 1, indentLevel "    ")
+                    case "Buffer", "LibQurl.Storage.MemBuffer":
+                        list .= " => [BUFFER] "
+                    case "File", "LibQurl.Storage.File":
+                        list .= " => [FILE] "
+                    case "LibQurl.Storage.Magic":
+                        list .= " => [MAGIC] "
+                    Default:
+                        list .= " => " v
+                }
+                list := RTrim(list, "`r`n`r ") "`n"
+            }
+            return RTrim(list)
+        }
+        ;dummied code that doesn't work right yet
+
+        DupeInit(old_easy_handle?) {
+            ;NOTE: curl_easy_duphandle was not playing well with this class.
+            ;I was unable to figure out why. It was probably something stupid.
+            ;Regardless, Init() is called instead.
+            ;The end result is the same as long as you haven't bypassed SetOpt/etc.
+            old_easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            new_easy_handle := this.Init()
+
+            ;filter file/header writing callback functions as those got setup in Init
+            for k, v in this.easyHandleMap[old_easy_handle]["options"] {
+                switch k {
+                    case "WRITEDATA", "WRITEFUNCTION":
+                        continue
+                    case "HEADERDATA", "HEADERFUNCTION":
+                        continue
+                    default:
+                        this.SetOpt(k, v, new_easy_handle)
+                }
+            }
+            ; MsgBox this.PrintObj(this.easyHandleMap[new_easy_handle]["options"])
+            this.WriteToMem(0, new_easy_handle)    ;automatically save lastBody to memory
+            return new_easy_handle
+        }
+
+        MultiGetHandles(multi_handle?) {
+            ;Returns array of all easy_handles in the multi_handle.
+            ;This matches the multiHandleMap unless you've bypassed class methods.
+            multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
+
+            ;gets the pointer array
+            ret := this._curl_multi_get_handles(multi_handle)   ;no error class
+
+            ;walk the pointer array
+            out := []
+            loop {
+                ptr := NumGet(ret, (a_index - 1) * A_PtrSize, "Ptr")
+                if (ptr = 0)    ;no more
+                    break
+                out.Push(ptr)
+            }
+            return out
+        }
+
+        GetDate(dateString, returnEpoch?) {
+            ret := this._curl_getdate(dateString)   ;no error class
+
+            if returnEpoch ??= 0
+                return ret
+            return DateAdd(1970, ret, 'S')
+        }
+
+        ShareInit() {
+            share_handle := this._curl_share_init() ;no error class
+            this.shareHandleMap[0].push(share_handle) ;shareHandleMap[0][1] is a dynamic reference to the first created share_handle
+            this.shareHandleMap[share_handle] := Map()
+            this.shareHandleMap[share_handle]["options"] := Map()
+            this.shareHandleMap[share_handle]["associatedEasyHandles"] := Map()
+            this.shareHandleMap[share_handle]["error buffer"] := Buffer(this.CURL_ERROR_SIZE)
+            return share_handle
+        }
+        AddEasyToShare(easy_handle?, share_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
+
+            if ret := this.SetOpt("SHARE", share_handle, easy_handle)
+                this._ErrorHierarchy(A_ThisFunc, "CURLSHcode", share_handle)
+                , this._ErrorHierarchy(A_ThisFunc, "CURLcode", easy_handle)
+            this.easyHandleMap[easy_handle]["associated_share_handle"] := share_handle
+            this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
+            return ret
+        }
+        RemoveEasyFromShare(easy_handle?, share_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
+
+            if ret := this.SetOpt("SHARE", 0, easy_handle)
+                this._ErrorHierarchy(A_ThisFunc, "CURLSHcode", share_handle)
+
+            this.easyHandleMap[easy_handle]["associated_share_handle"] := unset
+            this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := unset
+            return ret
+        }
+        ShareCleanup(share_handle?) {
+            share_handle := this.shareHandleMap[0][1]   ;defaults to the first created share_handle
+            if ret := this._curl_share_cleanup(share_handle)
+                this._ErrorHandler(A_ThisFunc, "CURLSHcode", "curl_share_cleanup", ret, , share_handle)
             return ret
         }
 
+        ShareSetOpt(option, parameter, share_handle?) {
+            share_handle := this.shareHandleMap[0][1]   ;defaults to the first created share_handle
 
-        switch Type(partContent) {  ;libcurl errors will be proc'd below
-            case "String", "Integer":
-                mime_type := this.magic.mime(mime_part)
-                ret := this._curl_mime_type(mime_part, mime_type)
-            case "Object", "Array", "Map":
-                mime_type := this.magic.mime(json.dump(partContent))
-                ret := this._curl_mime_type(mime_part, mime_type)
-            case "File":
-                mime_type := this.magic.mime(partContent)
-                ret := this._curl_mime_type(mime_part, mime_type)
-            case "Buffer":
-                mime_type := this.magic.mime(mime_part)
-                ret := this._curl_mime_type(mime_part, mime_type)
-            Default:
-                throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
+            if this.sOpt.Has(option) {
+                ;nothing to be done
+            } else if InStr(option, "CURLSHOPT_") && this.sOpt.Has(StrReplace("CURLSHOPT_", option)) {
+                option := StrReplace("CURLSHOPT_", option)
+            } else {
+                throw ValueError("Problem in 'curl_share_setopt'! Unknown option: " option, -1, this.curlDLLpath)
+            }
+
+            parameter := this.constants["curl_lock"][parameter]
+            this.shareHandleMap[share_handle]["options"][option] := parameter
+
+            if ret := this._curl_share_setopt(share_handle, option, parameter)
+                this._ErrorHandler(A_ThisFunc, "CURLSHcode", "curl_share_setopt", ret, this.shareHandleMap[share_handle
+                    ]["error buffer"], share_handle)
+            return ret
+        }
+        ShareGetOpt(option, share_handle?) {
+            share_handle := this.shareHandleMap[0][1]   ;defaults to the first created share_handle
+
+            if this.shareHandleMap[share_handle]["options"].has(option)
+                return this.shareHandleMap[share_handle]["options"][option]
+            return Null()
         }
 
-        if ret  ;eval the error code from the switch above
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_type", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+        MimeInit(easy_handle?) {    ;curl requires associating mime_handles to an easy_handle
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            mime_handle := this._curl_mime_init(easy_handle)    ;no error class
 
-        this.mimePartMap[mime_part]["type"] := mime_type
-    }
-    AttachMimePart(partName, partContent, mime_handle?) {
-        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
+            this.mimeHandleMap[0].push(mime_handle)
+            this.mimeHandleMap[mime_handle] := Map()
+            this.mimeHandleMap[mime_handle]["associated_easy_handle"] := easy_handle
+            this.mimeHandleMap[mime_handle]["associated_mime_parts"] := Map()
 
-        mime_part := this.MimeAddPart(mime_handle)
+            this.easyHandleMap[easy_handle]["active_mime_handle"] := mime_handle
+            this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := 1
+            this.mimeHandleMap[mime_handle]["nested"] := 0
+            this.SetOpt("MIMEPOST", mime_handle, easy_handle)
 
-        this.MimePartName(mime_part, partName)
-        this.MimePartData(mime_part, partContent)
-        this.MimePartType(mime_part, partContent)
-
-        return mime_part
-    }
-    MimeCleanup(mime_handle?) {
-        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
-
-        ;prevent cleaning up nested mime_handles
-        if this.mimeHandleMap[mime_handle]["nested"]
-            return
-
-        ;break easy_handle association
-        easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
-        if (this.easyHandleMap[easy_handle]["active_mime_handle"] = mime_handle) {
-            this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;don't want to auto-revert for the user
+            return mime_handle
         }
-        this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := unset
+        MimeAddPart(mime_handle?) {
+            mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
 
+            mime_part := this._curl_mime_addpart(mime_handle)   ;no error class
+            this.mimePartMap[mime_part] := partMap := Map()
 
-        ;cull tracked mime_part info
-        for k, v in this.mimeHandleMap[mime_handle]["associated_mime_parts"] {
-            ; this.mimePartMap.Delete(k)
-            this._mimePartCleanup(k)
+            partMap["associated_mime_handle"] := mime_handle
+            partMap["associated_easy_handle"] := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
+
+            this.mimeHandleMap[mime_handle]["associated_mime_parts"][mime_part] := 1
+
+            return mime_part
+        }
+        MimePartName(mime_part, partName) {
+            easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+            if ret := this._curl_mime_name(mime_part, partName)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_name", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+            this.mimePartMap[mime_part]["name"] := partName
+        }
+        MimePartData(mime_part, partContent) {
+            ;File doesn't use this callback but still checks for the Map during cleanup
+            partMap := this.mimePartMap[mime_part]
+            partMap["callbacks"] := CBFmap := Map()
+
+            ;get the data into the correct format
+            switch Type(partContent) {
+                case "String", "Integer":
+                    buf := this._StrBuf(partContent, "UTF-8")
+                    buf.size -= 1   ;truncates a trailing binary zero
+                    ; this._curl_mime_data(mime_part,buf,-1)
+                case "Object", "Array", "Map":
+                    buf := this._StrBuf(json.dump(partContent), "UTF-8")
+                    buf.size -= 1   ;truncates a trailing binary zero
+                    ; this._curl_mime_data(mime_part,buf,buf.size-1)
+                case "File":
+                    filePath := this._GetFilePathFromFileObject(partContent)
+                    if ret := this._curl_mime_filedata(mime_part, filePath) {
+                        easy_handle := partMap["associated_easy_handle"]
+                        this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_data_cb", ret, this.easyHandleMap[
+                            easy_handle]["error buffer"], easy_handle)
+                    }
+                    return ret  ;early return because there's no need to store anything
+                case "Buffer":
+                    buf := partContent
+                    ; this._curl_mime_data(mime_part,buf,partContent.size)
+                Default:
+                    throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
+            }
+
+            ;store the data in the correct location
+            partMap["content"] ??= buf
+
+            ;create the callbacks
+            partMap["offset"] := 0
+            rCBF := CBFmap["read"] := CallbackCreate(
+                (buf, size, nitems, mime_part) =>
+                    this._mimeDataReadCallbackFunction(buf, size, nitems, mime_part)
+            )
+            sCBF := CBFmap["seek"] := CallbackCreate(
+                (mime_part, offset, origin) =>
+                    this._mimeDataSeekCallbackFunction(mime_part, offset, origin)
+            )
+            fCBF := CBFmap["free"] := CallbackCreate(
+                (mime_part) =>
+                    this._mimeDataFreeCallbackFunction(mime_part)
+            )
+
+            ;hand off everything to libcurl
+            if ret := this._curl_mime_data_cb(mime_part, buf.size, rCBF, sCBF, fCBF, mime_part) {
+                easy_handle := partMap["associated_easy_handle"]
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_data_cb", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+            }
+
+            return ret
+        }
+        MimePartType(mime_part, partContent?, override?) {
+            easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+
+            if IsSet(override?) {
+                if ret := this._curl_mime_type(mime_part, override)
+                    this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_type", ret, this.easyHandleMap[easy_handle][
+                        "error buffer"], easy_handle)
+                return ret
+            }
+
+            switch Type(partContent) {  ;libcurl errors will be proc'd below
+                case "String", "Integer":
+                    mime_type := this.magic.mime(mime_part)
+                    ret := this._curl_mime_type(mime_part, mime_type)
+                case "Object", "Array", "Map":
+                    mime_type := this.magic.mime(json.dump(partContent))
+                    ret := this._curl_mime_type(mime_part, mime_type)
+                case "File":
+                    mime_type := this.magic.mime(partContent)
+                    ret := this._curl_mime_type(mime_part, mime_type)
+                case "Buffer":
+                    mime_type := this.magic.mime(mime_part)
+                    ret := this._curl_mime_type(mime_part, mime_type)
+                Default:
+                    throw ValueError("Unknown object type passed as mime_part content: " Type(partContent))
+            }
+
+            if ret  ;eval the error code from the switch above
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_type", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+
+            this.mimePartMap[mime_part]["type"] := mime_type
+        }
+        AttachMimePart(partName, partContent, mime_handle?) {
+            mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
+
+            mime_part := this.MimeAddPart(mime_handle)
+
+            this.MimePartName(mime_part, partName)
+            this.MimePartData(mime_part, partContent)
+            this.MimePartType(mime_part, partContent)
+
+            return mime_part
+        }
+        MimeCleanup(mime_handle?) {
+            mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
+
+            ;prevent cleaning up nested mime_handles
+            if this.mimeHandleMap[mime_handle]["nested"]
+                return
+
+            ;break easy_handle association
+            easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
+            if (this.easyHandleMap[easy_handle]["active_mime_handle"] = mime_handle) {
+                this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;don't want to auto-revert for the user
+            }
+            this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := unset
+
+            ;cull tracked mime_part info
+            for k, v in this.mimeHandleMap[mime_handle]["associated_mime_parts"] {
+                ; this.mimePartMap.Delete(k)
+                this._mimePartCleanup(k)
+            }
+
+            ;stop tracking the mime_handle
+            this.mimeHandleMap.Delete(mime_handle)
+            for k, v in this.mimeHandleMap[0] {
+                if (v = mime_handle) {
+                    this.mimeHandleMap[0].RemoveAt(k)
+                    break
+                }
+            }
+
+            ;delete the mime_handle
+            this._curl_mime_free(mime_handle)   ;no error class
+
+            ;free the staged callbacks
+            loop this.mimePartCBFcleanupArr.Length
+                CallbackFree(this.mimePartCBFcleanupArr.Pop())
+        }
+        MimePartEncoder(mime_part, encoding := "") {
+            ;I honestly have no idea how to use this.
+            easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+
+            if ret := this._curl_mime_encoder(mime_part, encoding)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_encoder", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+            return ret
+        }
+        MimeTreatPartAsFile(mime_part, filename := "") {
+            ;Used to have the remote server treat a mime_part as a file
+            ;Not required when Attaching FileObjects as curl does it internally.
+            ;Pass an empty filename string to disable this mode for this mime_part, even for real files.
+            easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+
+            ret := this._curl_mime_filename(mime_part, filename)
+            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_filename", ret, this.easyHandleMap[easy_handle][
+                "error buffer"], easy_handle)
+            return ret
         }
 
-        ;stop tracking the mime_handle
-        this.mimeHandleMap.Delete(mime_handle)
-        for k, v in this.mimeHandleMap[0] {
-            if (v = mime_handle) {
-                this.mimeHandleMap[0].RemoveAt(k)
-                break
+        AttachMimeAsPart(partName, mime_to_embed, mime_handle?) {
+            ;this attaches an entire other mime_handle to the given mime_part
+            mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
+            easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
+
+            ;prevent attempting to nest the mime_handle within itself
+            if (mime_to_embed = mime_handle)
+                return
+
+            mime_part := this.AttachMimePart(partName, "", mime_handle)
+
+            if ret := this._curl_mime_subparts(mime_part, mime_to_embed)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_subparts", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+
+            ;tag the tracked mime_handle as nested
+            this.mimeHandleMap[mime_to_embed]["nested"] := mime_handle
+            this.mimePartMap[mime_part]["associated_mime_parts"] := this.mimeHandleMap[mime_to_embed][
+                "associated_mime_parts"]
+
+            return mime_part
+        }
+        SetMimePartHeaders(mime_part, headersObject) {    ;Sets custom HTTP headers for request.
+            easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
+
+            headersArray := this._formatHeaders(headersObject)
+            headersPtr := this._ArrayToSList(headersArray)
+
+            if ret := this._curl_mime_headers(mime_part, headersPtr, 1)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_headers", ret, this.easyHandleMap[easy_handle][
+                    "error buffer"], easy_handle)
+            return ret
+        }
+        GetMimeType(sourceData) { ;Analyzes the input's mimetype without any other operations
+            switch Type(sourceData) {
+                case "String", "Integer":
+                    return this.magic.mime(sourceData)
+                case "Object", "Array", "Map":
+                    return this.magic.mime(json.dump(sourceData))
+                case "File":
+                    return this.magic.mime(sourceData)
+                case "Buffer":
+                    return this.magic.mime(sourceData)
+                Default:
+                    throw ValueError("Unknown object type passed as mime_part content: " Type(sourceData))
             }
         }
-
-        ;delete the mime_handle
-        this._curl_mime_free(mime_handle)   ;no error class
-
-        ;free the staged callbacks
-        loop this.mimePartCBFcleanupArr.Length
-            CallbackFree(this.mimePartCBFcleanupArr.Pop())
-    }
-    MimePartEncoder(mime_part, encoding := "") {
-        ;I honestly have no idea how to use this.
-        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
-
-        if ret := this._curl_mime_encoder(mime_part, encoding)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_encoder", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-        return ret
-    }
-    MimeTreatPartAsFile(mime_part, filename := "") {
-        ;Used to have the remote server treat a mime_part as a file
-        ;Not required when Attaching FileObjects as curl does it internally.
-        ;Pass an empty filename string to disable this mode for this mime_part, even for real files.
-        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
-
-        ret := this._curl_mime_filename(mime_part, filename)
-        this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_filename", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-        return ret
-    }
-
-    AttachMimeAsPart(partName, mime_to_embed, mime_handle?) {
-        ;this attaches an entire other mime_handle to the given mime_part
-        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
-        easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
-
-        ;prevent attempting to nest the mime_handle within itself
-        if (mime_to_embed = mime_handle)
-            return
-
-        mime_part := this.AttachMimePart(partName, "", mime_handle)
-
-        if ret := this._curl_mime_subparts(mime_part, mime_to_embed)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_subparts", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-
-        ;tag the tracked mime_handle as nested
-        this.mimeHandleMap[mime_to_embed]["nested"] := mime_handle
-        this.mimePartMap[mime_part]["associated_mime_parts"] := this.mimeHandleMap[mime_to_embed]["associated_mime_parts"]
-
-        return mime_part
-    }
-    SetMimePartHeaders(mime_part, headersObject) {    ;Sets custom HTTP headers for request.
-        easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
-
-        headersArray := this._formatHeaders(headersObject)
-        headersPtr := this._ArrayToSList(headersArray)
-
-        if ret := this._curl_mime_headers(mime_part, headersPtr, 1)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_headers", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
-        Return ret
-    }
-    GetMimeType(sourceData) { ;Analyzes the input's mimetype without any other operations
-        switch Type(sourceData) {
-            case "String", "Integer":
-                return this.magic.mime(sourceData)
-            case "Object", "Array", "Map":
-                return this.magic.mime(json.dump(sourceData))
-            case "File":
-                return this.magic.mime(sourceData)
-            case "Buffer":
-                return this.magic.mime(sourceData)
-            Default:
-                throw ValueError("Unknown object type passed as mime_part content: " Type(sourceData))
+        StrCompare(str1, str2, maxLength?) {
+            ;returns 1 on match
+            if IsSet(maxLength?)
+                return this._curl_strnequal(str1, str2, maxLength?)   ;no error class
+            return this._curl_strequal(str1, str2)   ;no error class
         }
-    }
-    StrCompare(str1, str2, maxLength?) {
-        ;returns 1 on match
-        If IsSet(maxLength?)
-            return this._curl_strnequal(str1, str2, maxLength?)   ;no error class
-        return this._curl_strequal(str1, str2)   ;no error class
-    }
-    GetEnv(input) {  ;gets the specified system variable
-        retPtr := this._curl_getenv(input)  ;no error class
-        if !retPtr
-            return
-        retStr := StrGet(retPtr, "UTF-8")
-        this._curl_free(retPtr) ;no error class
-        return retStr
-    }
-    EncodeBase64(input) {
-        ;prepare the buffer to convert to base64
-        switch Type(input) {
-            case "String", "Integer":
-                sourceBuf := this._StrBuf(input, "UTF-8")
-                sourceBuf.size := StrLen(input)
-            case "Object", "Array", "Map":
-                inputJson := json.dump(input)
-                sourceBuf := this._StrBuf(inputJson, "UTF-8")
-                sourceBuf.size := StrLen(inputJson)
-            case "File":
-                sourceBuf := Buffer(input.length)  ;create the buffer with the right size
-                input.Seek(0)   ;reset to the start of the file
-                input.RawRead(sourceBuf) ;read the file into the buffer
-            case "Buffer":
-                sourceBuf := input
-            Default:
-                throw ValueError("Unknown object type passed to EncodeBase64: " Type(input))
+        GetEnv(input) {  ;gets the specified system variable
+            retPtr := this._curl_getenv(input)  ;no error class
+            if !retPtr
+                return
+            retStr := StrGet(retPtr, "UTF-8")
+            this._curl_free(retPtr) ;no error class
+            return retStr
         }
-
-        ;calculate required output buffer size
-        DllCall("crypt32\CryptBinaryToString"
-            , "Ptr", sourceBuf
-            , "UInt", sourceBuf.size
-            , "UInt", 0x40000001  ; = base64 without headers + no CRLF
-            , "Ptr", 0
-            , "Uint*", &nSize := 0)
-        VarSetStrCapacity(&retStr := 0, nSize << 1)
-
-        ;generate the string
-        DllCall("crypt32\CryptBinaryToString"
-            , "Ptr", sourceBuf
-            , "UInt", sourceBuf.size
-            , "UInt", 0x40000001  ; = base64 without headers + no CRLF
-            , "Str", retStr
-            , "Uint*", &nSize)
-
-        return retStr
-    }
-    DecodeBase64(str, returnBuffer?, Base64URL?) {
-        if IsSet(Base64URL?) {
-            ;revert to Base64
-            str := StrReplace(str, "-", "+")
-            str := StrReplace(str, "_", "/")
-
-            ;append to valid length
-            pad := Mod(StrLen(str), 4)
-            if (pad)
-                str .= SubStr("====", 1, 4 - pad)
-        }
-
-        ;calculate required output buffer size
-        DllCall("crypt32\CryptStringToBinary"
-            , "Str", str
-            , "UInt", 0
-            , "UInt", 0x00000001
-            , "Ptr", 0
-            , "Uint*", &SizeOut := 0
-            , "Ptr", 0
-            , "Ptr", 0)
-
-        ;generate the buffer
-        DllCall("Crypt32\CryptStringToBinary"
-            , "Str", str
-            , "UInt", 0
-            , "UInt", 0x00000001
-            , "Ptr", VarOut := Buffer(SizeOut)
-            , "Uint*", &SizeOut
-            , "Ptr", 0
-            , "Ptr", 0)
-
-        if IsSet(returnBuffer)
-            return VarOut
-
-        return StrGet(VarOut, "UTF-8")
-    }
-    DecodeJwt(input) {
-        parts := StrSplit(input, ".")
-
-        retMap := Map()
-        for k, v in ["header", "payload"] {
-            ;decode/attach
-            part := parts[a_index]
-            partJson := this.DecodeBase64(part, , 1)
-            try retMap[v] := JSON.Load(partJson)
-        }
-
-        retMap["signature"] := parts[3]
-        return retMap
-    }
-    GetProgress(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        retObj := this._DeepClone(this.easyHandleMap[easy_handle]["callbacks"]["progress"])
-        retObj.delete("CBF")
-        return retObj
-    }
-    DownloadPercent(easy_handle?) {  ;convenience method for parsing GetProgress
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        ret := this.GetProgress(easy_handle)
-        if (ret["expectedBytesDownloaded"] = 0)
-            return 0
-        return Round((ret["currentBytesDownloaded"] / ret["expectedBytesDownloaded"]) * 100, 2)
-    }
-    UploadPercent(easy_handle?) {    ;convenience method for parsing GetProgress
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        ret := this.GetProgress(easy_handle)
-        if (ret["expectedBytesUploaded"] = 0)
-            return 0
-        return Round((ret["currentBytesUploaded"] / ret["expectedBytesUploaded"]) * 100, 2)
-    }
-    EnableDebug(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        this._setCallbacks(easy_handle, , , , , 1)
-        this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] ??= []
-        this.easyHandleMap[easy_handle]["debug"] := 1
-    }
-    ConfigureDebug(config := ["-all"]) {
-        ;You can use no prefix ("all"), plus ("+all"), or minus ("-all") to control the debug level for any component.
-        ;"-all" is equivalent to not calling this in the first place.
-        switch Type(config) {
-            case "Array":
-                configLevel := adash.join(config, ",")
-            case "String":
-                configLevel := config
-        }
-        this._curl_global_trace(configLevel)    ;no error class
-    }
-    PollDebug(easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        static infotypes := Map(
-            0, "text",
-            1, "header_in",
-            2, "header_out",
-            3, "data_in",
-            4, "data_out",
-            5, "ssl_data_in",
-            6, "ssl_data_out"
-        )
-        logArr := this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"]
-        out := ""
-        PadLen := StrLen(logArr.length)
-        For k, v in logArr {
-            if v["infotype"] < 3 {
-                index := Format("{:0" PadLen "}", a_index)
-                info := Format("{:-13}", infotypes[v["infotype"]])
-                out .= index ")  " v["timestamp"] "  [" info "]:  " v["data"]
+        EncodeBase64(input) {
+            ;prepare the buffer to convert to base64
+            switch Type(input) {
+                case "String", "Integer":
+                    sourceBuf := this._StrBuf(input, "UTF-8")
+                    sourceBuf.size := StrLen(input)
+                case "Object", "Array", "Map":
+                    inputJson := json.dump(input)
+                    sourceBuf := this._StrBuf(inputJson, "UTF-8")
+                    sourceBuf.size := StrLen(inputJson)
+                case "File":
+                    sourceBuf := Buffer(input.length)  ;create the buffer with the right size
+                    input.Seek(0)   ;reset to the start of the file
+                    input.RawRead(sourceBuf) ;read the file into the buffer
+                case "Buffer":
+                    sourceBuf := input
+                Default:
+                    throw ValueError("Unknown object type passed to EncodeBase64: " Type(input))
             }
+
+            ;calculate required output buffer size
+            DllCall("crypt32\CryptBinaryToString"
+                , "Ptr", sourceBuf
+                , "UInt", sourceBuf.size
+                , "UInt", 0x40000001  ; = base64 without headers + no CRLF
+                , "Ptr", 0
+                , "Uint*", &nSize := 0)
+            VarSetStrCapacity(&retStr := 0, nSize << 1)
+
+            ;generate the string
+            DllCall("crypt32\CryptBinaryToString"
+                , "Ptr", sourceBuf
+                , "UInt", sourceBuf.size
+                , "UInt", 0x40000001  ; = base64 without headers + no CRLF
+                , "Str", retStr
+                , "Uint*", &nSize)
+
+            return retStr
         }
-        return out
-    }
-    Timestamp(tsFormat := "Readable", scale := "float-seconds") {
-        ; https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
-        static GetSystemTimePreciseAsFileTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", "kernel32", "Ptr")
+        DecodeBase64(str, returnBuffer?, Base64URL?) {
+            if IsSet(Base64URL?) {
+                ;revert to Base64
+                str := StrReplace(str, "-", "+")
+                str := StrReplace(str, "_", "/")
+
+                ;append to valid length
+                pad := Mod(StrLen(str), 4)
+                if (pad)
+                    str .= SubStr("====", 1, 4 - pad)
+            }
+
+            ;calculate required output buffer size
+            DllCall("crypt32\CryptStringToBinary"
+                , "Str", str
+                , "UInt", 0
+                , "UInt", 0x00000001
+                , "Ptr", 0
+                , "Uint*", &SizeOut := 0
+                , "Ptr", 0
+                , "Ptr", 0)
+
+            ;generate the buffer
+            DllCall("Crypt32\CryptStringToBinary"
+                , "Str", str
+                , "UInt", 0
+                , "UInt", 0x00000001
+                , "Ptr", VarOut := Buffer(SizeOut)
+                , "Uint*", &SizeOut
+                , "Ptr", 0
+                , "Ptr", 0)
+
+            if IsSet(returnBuffer)
+                return VarOut
+
+            return StrGet(VarOut, "UTF-8")
+        }
+        DecodeJwt(input) {
+            parts := StrSplit(input, ".")
+
+            retMap := Map()
+            for k, v in ["header", "payload"] {
+                ;decode/attach
+                part := parts[a_index]
+                partJson := this.DecodeBase64(part, , 1)
+                try retMap[v] := JSON.Load(partJson)
+            }
+
+            retMap["signature"] := parts[3]
+            return retMap
+        }
+        GetProgress(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            retObj := this._DeepClone(this.easyHandleMap[easy_handle]["callbacks"]["progress"])
+            retObj.delete("CBF")
+            return retObj
+        }
+        DownloadPercent(easy_handle?) {  ;convenience method for parsing GetProgress
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            ret := this.GetProgress(easy_handle)
+            if (ret["expectedBytesDownloaded"] = 0)
+                return 0
+            return Round((ret["currentBytesDownloaded"] / ret["expectedBytesDownloaded"]) * 100, 2)
+        }
+        UploadPercent(easy_handle?) {    ;convenience method for parsing GetProgress
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            ret := this.GetProgress(easy_handle)
+            if (ret["expectedBytesUploaded"] = 0)
+                return 0
+            return Round((ret["currentBytesUploaded"] / ret["expectedBytesUploaded"]) * 100, 2)
+        }
+        EnableDebug(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            ; this._setCallbacks(easy_handle, , , , , 1)
+            this._setEasyCallback(easy_handle, "debug")
+            this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"] ??= []
+            this.easyHandleMap[easy_handle]["debug"] := 1
+        }
+        ConfigureDebug(config := ["-all"]) {
+            ;You can use no prefix ("all"), plus ("+all"), or minus ("-all") to control the debug level for any component.
+            ;"-all" is equivalent to not calling this in the first place.
+            switch Type(config) {
+                case "Array":
+                    configLevel := adash.join(config, ",")
+                case "String":
+                    configLevel := config
+            }
+            this._curl_global_trace(configLevel)    ;no error class
+        }
+        PollDebug(easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            static infotypes := Map(
+                0, "text",
+                1, "header_in",
+                2, "header_out",
+                3, "data_in",
+                4, "data_out",
+                5, "ssl_data_in",
+                6, "ssl_data_out"
+            )
+            logArr := this.easyHandleMap[easy_handle]["callbacks"]["debug"]["log"]
+            out := ""
+            PadLen := StrLen(logArr.length)
+            for k, v in logArr {
+                if v["infotype"] < 3 {
+                    index := Format("{:0" PadLen "}", a_index)
+                    info := Format("{:-13}", infotypes[v["infotype"]])
+                    out .= index ")  " v["timestamp"] "  [" info "]:  " v["data"]
+                }
+            }
+            return out
+        }
+        Timestamp(tsFormat := "Readable", scale := "float-seconds") {
+            ; https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
+            static GetSystemTimePreciseAsFileTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str",
+                "kernel32", "Ptr")
             , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")
 
-        ;formatting arrays
-        static days := ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-        static days3 := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-        static months := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-        static months3 := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+            ;formatting arrays
+            static days := ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+            static days3 := ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+            static months := ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+                "October", "November", "December"]
+            static months3 := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-        ;offset lookups
-        static unixEpochOffset := Map(
-            "Unix", 0,
-            "NTP", -22089888000000000,
-            "GPS", 3159648000000000,
-            "Cocoa", 9783072000000000
-        )
-        static unixScaleMap := Map(
-            "float-seconds", 10000000.0,
-            "float-ms", 10000.0,
-            "float-ns", 100.0,
-            "float-us", 10.0,
-            "seconds", 10000000,
-            "ms", 10000,
-            "ns", 100,
-            "us", 10
-        )
+            ;offset lookups
+            static unixEpochOffset := Map(
+                "Unix", 0,
+                "NTP", -22089888000000000,
+                "GPS", 3159648000000000,
+                "Cocoa", 9783072000000000
+            )
+            static unixScaleMap := Map(
+                "float-seconds", 10000000.0,
+                "float-ms", 10000.0,
+                "float-ns", 100.0,
+                "float-us", 10.0,
+                "seconds", 10000000,
+                "ms", 10000,
+                "ns", 100,
+                "us", 10
+            )
 
-        ft := Buffer(8, 0)
-        DllCall(GetSystemTimePreciseAsFileTime, "Ptr", ft, "Cdecl")
+            ft := Buffer(8, 0)
+            DllCall(GetSystemTimePreciseAsFileTime, "Ptr", ft, "Cdecl")
 
-        ; Convert FILETIME (100ns intervals since 1601-01-01) to SYSTEMTIME (UTC)
-        ; SystemTimeFromFileTime is available via Kernel32
-        static FileTimeToSystemTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str", "kernel32", "Ptr")
+            ; Convert FILETIME (100ns intervals since 1601-01-01) to SYSTEMTIME (UTC)
+            ; SystemTimeFromFileTime is available via Kernel32
+            static FileTimeToSystemTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str",
+                "kernel32", "Ptr")
             , "AStr", "FileTimeToSystemTime", "Ptr")
 
-        st := Buffer(16)  ; SYSTEMTIME is 16 WORDs = 16 * 2 = 32 bytes
-        DllCall(FileTimeToSystemTime, "Ptr", ft, "Ptr", st)
+            st := Buffer(16)  ; SYSTEMTIME is 16 WORDs = 16 * 2 = 32 bytes
+            DllCall(FileTimeToSystemTime, "Ptr", ft, "Ptr", st)
 
-        ; Extract and format SYSTEMTIME fields
-        year := NumGet(st, 0, "UShort")
-        month := NumGet(st, 2, "UShort")
-        day := NumGet(st, 6, "UShort")
-        hour := NumGet(st, 8, "UShort")
-        minute := NumGet(st, 10, "UShort")
-        second := NumGet(st, 12, "UShort")
-        ms := NumGet(st, 14, "UShort")
+            ; Extract and format SYSTEMTIME fields
+            year := NumGet(st, 0, "UShort")
+            month := NumGet(st, 2, "UShort")
+            day := NumGet(st, 6, "UShort")
+            hour := NumGet(st, 8, "UShort")
+            minute := NumGet(st, 10, "UShort")
+            second := NumGet(st, 12, "UShort")
+            ms := NumGet(st, 14, "UShort")
 
-        ;could/should probably use FormatTime but eh
+            ;could/should probably use FormatTime but eh
 
-        ;all examples use the same equivalent timestamp
-        switch tsFormat {
-            case "Readable", "SQL", "ODBC":    ;2025-07-27 15:36:07.746
-                return Format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}"
-                    , year, month, day, hour, minute, second, ms)
+            ;all examples use the same equivalent timestamp
+            switch tsFormat {
+                case "Readable", "SQL", "ODBC":    ;2025-07-27 15:36:07.746
+                    return Format("{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}"
+                        , year, month, day, hour, minute, second, ms)
 
-            case "RFC 3339":    ;2025-07-27T15:36:07.746Z
-                return Format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z"
-                    , year, month, day, hour, minute, second, ms)
+                case "RFC 3339":    ;2025-07-27T15:36:07.746Z
+                    return Format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z"
+                        , year, month, day, hour, minute, second, ms)
 
-            case "Unix", "NTP", "GPS", "Cocoa":    ;1753630567.746
-                ; Convert FILETIME to Unix epoch seconds
-                ft64 := NumGet(ft, 0, "Int64")
-                return (ft64 - 116444736000000000 + unixEpochOffset[tsFormat]) / unixScaleMap[scale]
+                case "Unix", "NTP", "GPS", "Cocoa":    ;1753630567.746
+                    ; Convert FILETIME to Unix epoch seconds
+                    ft64 := NumGet(ft, 0, "Int64")
+                    return (ft64 - 116444736000000000 + unixEpochOffset[tsFormat]) / unixScaleMap[scale]
 
-            case "asctime":    ;Sun Jul 27 15:36:07 2025
-                dow := NumGet(st, 4, "UShort")
-                return Format("{} {} {:02} {:02}:{:02}:{:02} {:04}"
-                    , days3[dow + 1], months3[month], day, hour, minute, second, year)
+                case "asctime":    ;Sun Jul 27 15:36:07 2025
+                    dow := NumGet(st, 4, "UShort")
+                    return Format("{} {} {:02} {:02}:{:02}:{:02} {:04}"
+                        , days3[dow + 1], months3[month], day, hour, minute, second, year)
 
-            case "RFC 1123":    ;Sun, 27 Jul 2025 15:36:07 GMT
-                dow := NumGet(st, 4, "UShort")
-                return Format("{}, {:02} {} {:04} {:02}:{:02}:{:02} GMT"
-                    , days3[dow + 1], day, months3[month], year, hour, minute, second)
+                case "RFC 1123":    ;Sun, 27 Jul 2025 15:36:07 GMT
+                    dow := NumGet(st, 4, "UShort")
+                    return Format("{}, {:02} {} {:04} {:02}:{:02}:{:02} GMT"
+                        , days3[dow + 1], day, months3[month], year, hour, minute, second)
 
-            case "RFC 2822":    ;Sun, 27 Jul 2025 15:36:07 +0000
-                dow := NumGet(st, 4, "UShort")
-                return Format("{}, {:02} {} {:04} {:02}:{:02}:{:02} +0000"
-                    , days3[dow + 1], day, months3[month], year, hour, minute, second)
+                case "RFC 2822":    ;Sun, 27 Jul 2025 15:36:07 +0000
+                    dow := NumGet(st, 4, "UShort")
+                    return Format("{}, {:02} {} {:04} {:02}:{:02}:{:02} +0000"
+                        , days3[dow + 1], day, months3[month], year, hour, minute, second)
 
-            case "FILETIME":    ;133502602077460000
-                return NumGet(ft, 0, "Int64")
+                case "FILETIME":    ;133502602077460000
+                    return NumGet(ft, 0, "Int64")
 
-            case "EXIF":    ;2025:07:27 15:36:07
-                return Format("{:04}:{:02}:{:02} {:02}:{:02}:{:02}"
-                    , year, month, day, hour, minute, second)
+                case "EXIF":    ;2025:07:27 15:36:07
+                    return Format("{:04}:{:02}:{:02} {:02}:{:02}:{:02}"
+                        , year, month, day, hour, minute, second)
 
-            case "RFC 850":  ;Sunday, 27-Jul-25 15:36:07 GMT
-                dow := NumGet(st, 4, "UShort")
-                return Format("{}, {:02}-{}-{:02} {:02}:{:02}:{:02} GMT"
-                    , days[dow + 1], day, months[month], Mod(year, 100), hour, minute, second)
+                case "RFC 850":  ;Sunday, 27-Jul-25 15:36:07 GMT
+                    dow := NumGet(st, 4, "UShort")
+                    return Format("{}, {:02}-{}-{:02} {:02}:{:02}:{:02} GMT"
+                        , days[dow + 1], day, months[month], Mod(year, 100), hour, minute, second)
 
-            default:
-                throw ValueError("Unsupported timestamp format: " tsFormat)
+                default:
+                    throw ValueError("Unsupported timestamp format: " tsFormat)
+            }
         }
-    }
-    ExportSSLs(easy_handle?, share_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
+        ExportSSLs(easy_handle?, share_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            share_handle ??= this.shareHandleMap[0][1] ;defaults to the first created share_handle
 
-        retArr := []
-        retArrPtr := ObjPtr(retArr)
+            retArr := []
+            retArrPtr := ObjPtr(retArr)
 
-        ;create the callback to the export function
-        CBF := CallbackCreate(
-            (easy_handle, retArr, session_key, shmac, shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max) =>
-                this._SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac, shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max)
-        )
+            ;create the callback to the export function
+            CBF := CallbackCreate(
+                (easy_handle, retArr, session_key, shmac, shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max) =>
+                    this._SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac, shmac_len, sdata,
+                        sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max)
+            )
 
-        ;proc the export
-        If ret := this._curl_easy_ssls_export(easy_handle, CBF, share_handle)
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_ssls_export", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+            ;proc the exports
+            if ret := this._curl_easy_ssls_export(easy_handle, CBF, share_handle)
+                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_ssls_export", ret, this.easyHandleMap[easy_handle
+                    ]["error buffer"], easy_handle)
 
-        ;callback doesn't need to be stored as this is a one-shot operation
-        CallbackFree(CBF)
+            ;callback doesn't need to be stored as this is a one-shot operation
+            CallbackFree(CBF)
 
-        return retArr
-    }
-    ImportSSLs(importArr, easy_handle?) {
-        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        for k, v in importArr {
-            importMap := v
-            if importMap.has("session_key")
-                session_key := importMap["session_key"]
-            shmac := this.DecodeBase64(importMap["shmac"], 1)
-            sdata := this.DecodeBase64(importMap["sdata"], 1)
-            if ret := this._curl_easy_ssls_import(easy_handle, session_key ??= 0, shmac, sdata)
-                this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_ssls_import", ret, this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
+            return retArr
         }
+        ImportSSLs(importArr, easy_handle?) {
+            easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+            for k, v in importArr {
+                importMap := v
+                if importMap.has("session_key")
+                    session_key := importMap["session_key"]
+                shmac := this.DecodeBase64(importMap["shmac"], 1)
+                sdata := this.DecodeBase64(importMap["sdata"], 1)
+                if ret := this._curl_easy_ssls_import(easy_handle, session_key ??= 0, shmac, sdata)
+                    this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_ssls_import", ret, this.easyHandleMap[
+                        easy_handle]["error buffer"], easy_handle)
+            }
+        }
+        ; */
+
+        ; WriteToNone() {
+        ; 	Return (this._writeTo := "")
+        ; }
+
+        ; HeaderToNone() {
+        ; 	Return (this._headerTo := "")
+        ; }
+
+        ;#compile:helper
+        ;#compile:_struct
+        ;#compile:storage
+        ;#compile:_declareConstants
+        ;#compile:dll
     }
-    ; */
-
-    ; WriteToNone() {
-    ; 	Return (this._writeTo := "")
-    ; }
-
-
-    ; HeaderToNone() {
-    ; 	Return (this._headerTo := "")
-    ; }
-
-    ;#compile:helper
-    ;#compile:_struct
-    ;#compile:storage
-    ;#compile:_declareConstants
-    ;#compile:dll
-}

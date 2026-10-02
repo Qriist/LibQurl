@@ -53,7 +53,7 @@ _curl_easy_nextheader(easy_handle, origin, request, previous_curl_header) { ;htt
 }
 _curl_easy_option_by_id(id) {
     ;returns from the pre-built array because it was already parsed
-    If this.OptById.Has(id)
+    if this.OptById.Has(id)
         return this.Opt[this.OptById[id]]
     ;no error class
     return 0
@@ -65,7 +65,7 @@ _curl_easy_option_by_id(id) {
 }
 _curl_easy_option_by_name(name) {
     ;returns from the pre-built array because it was already parsed
-    If this.Opt.Has(name)
+    if this.Opt.Has(name)
         return this.Opt[name]
     ;no error class
     return 0
@@ -124,12 +124,12 @@ _curl_easy_send(easy_handle, dataBuffer, buflen, &bytes := 0) { ;https://curl.se
 _curl_easy_setopt(easy_handle, option, parameter, debug?) {
     if IsSet(debug)
         msgbox this.PrintObj(this.opt[option]) "`n`n`n"
-            . "1 passed easy_handle: " easy_handle "`n"
-            . "2 passed option id: " this.opt[option]["id"] "`n"
-            . "3 passed parameter: " (Type(parameter) = "String" ? parameter
-                : Type(parameter) = "Integer" ? parameter
+        . "1 passed easy_handle: " easy_handle "`n"
+        . "2 passed option id: " this.opt[option]["id"] "`n"
+        . "3 passed parameter: " (Type(parameter) = "String" ? parameter
+            : Type(parameter) = "Integer" ? parameter
                 : " [" Type(parameter) "]") "`n"
-            . "  passed type: " this.opt[option]["type"] "`n"
+        . "  passed type: " this.opt[option]["type"] "`n"
     static curl_easy_setopt := this._getDllAddress(this.curlDLLpath, "curl_easy_setopt")
     ;CURLcode
     return DllCall(curl_easy_setopt
@@ -509,7 +509,7 @@ _curl_version() {   ;https://curl.se/libcurl/c/curl_version.html
     return StrGet(DllCall(curl_version
         , "char", 0
         , "Ptr")  ;return a ptr from DllCall
-        , "UTF-8")
+    , "UTF-8")
 }
 _curl_version_info() {  ;https://curl.se/libcurl/c/curl_version_info.html
     ;returns run-time libcurl version info
@@ -565,7 +565,6 @@ _curl_pushheader_bynum(headerStruct, num) { ;untested   https://curl.se/libcurl/
         , "Int", num
         , "Ptr")
 }
-
 
 ;all calls below this line have to do with multi_socket_action
 _curl_multi_assign(multi_handle, sockfd, sockptr) {   ;untested   https://curl.se/libcurl/c/curl_multi_assign.html
@@ -646,7 +645,6 @@ _curl_multi_wakeup(multi_handle) {  ;untested   https://curl.se/libcurl/c/curl_m
     return DllCall(curl_multi_wakeup
         , "Int", multi_handle)
 }
-
 
 _curl_ws_start_frame(curl, flags, frame_len) {   ;untested    ;https://curl.se/libcurl/c/curl_ws_start_frame.html
     static curl_ws_start_frame := this._getDllAddress(this.curlDLLpath, "curl_ws_start_frame")

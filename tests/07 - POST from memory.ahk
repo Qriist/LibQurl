@@ -7,6 +7,8 @@ curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
 postUrl := "https://httpbin.org/post" ;site we're POSTing to
 curl.SetOpt("URL", postUrl)
 
+;simple POSTs without setting mime_type
+
 postSource := 1234567890
 curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.integer.json")
@@ -27,17 +29,26 @@ curl.SetPost(postSource)
 curl.WriteToFile(A_ScriptDir "\07.array.json")
 curl.Sync()
 
+;the rest demonstrate explicitly setting mime_type
+headerObj := Map()  ;reusable
+
 postSource := Map("MapToDump", "dummyValue3")
-curl.SetPost(postSource)
+mime_type := curl.SetPost(postSource)
+headerObj["Content-Type"] := mime_type
+curl.SetHeaders(headerObj)
 curl.WriteToFile(A_ScriptDir "\07.map.json")
 curl.Sync()
 
 postSource := Buffer(17, 81) ;17 Q's
-curl.SetPost(postSource)
+mime_type := curl.SetPost(postSource)
+headerObj["Content-Type"] := mime_type
+curl.SetHeaders(headerObj)
 curl.WriteToFile(A_ScriptDir "\07.buffer.json")
 curl.Sync()
 
 postSource := FileOpen(A_ScriptDir "\07.binary.upload.zip", "r")
-curl.SetPost(postSource)
+mime_type := curl.SetPost(postSource)
+headerObj["Content-Type"] := mime_type
+curl.SetHeaders(headerObj)
 curl.WriteToFile(A_ScriptDir "\07.binary.json")
 curl.Sync()

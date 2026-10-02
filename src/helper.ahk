@@ -5,16 +5,16 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
     this.Opt.CaseSense := "Off"
     optPtr := 0
     argTypes := Map(0, Map("type", "Int", "easyType", "CURLOT_LONG")
-        , 1, Map("type", "Int", "easyType", "CURLOT_VALUES")
-        , 2, Map("type", "Int64", "easyType", "CURLOT_OFF_T")
-        , 3, Map("type", "Ptr", "easyType", "CURLOT_OBJECT")
-        , 4, Map("type", "Astr", "easyType", "CURLOT_STRING")
-        , 5, Map("type", "Ptr", "easyType", "CURLOT_SLIST")
-        , 6, Map("type", "Ptr", "easyType", "CURLOT_CBPTR")
-        , 7, Map("type", "Ptr", "easyType", "CURLOT_BLOB")
-        , 8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
+    , 1, Map("type", "Int", "easyType", "CURLOT_VALUES")
+    , 2, Map("type", "Int64", "easyType", "CURLOT_OFF_T")
+    , 3, Map("type", "Ptr", "easyType", "CURLOT_OBJECT")
+    , 4, Map("type", "Astr", "easyType", "CURLOT_STRING")
+    , 5, Map("type", "Ptr", "easyType", "CURLOT_SLIST")
+    , 6, Map("type", "Ptr", "easyType", "CURLOT_CBPTR")
+    , 7, Map("type", "Ptr", "easyType", "CURLOT_BLOB")
+    , 8, Map("type", "Ptr", "easyType", "CURLOT_FUNCTION"))
 
-    Loop {
+    loop {
         optPtr := this._curl_easy_option_next(optPtr)   ;no error class
         if (optPtr = 0)
             break
@@ -43,7 +43,7 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
         o["easyType"] := argTypes[o["rawCurlType"]]["easyType"]
 
         this.Opt[o["name"]] := o
-        If !this.OptById.Has(o["id"])   ;the DLL was giving an errorneous "ENCODING" option, maybe others, idk
+        if !this.OptById.Has(o["id"])   ;the DLL was giving an errorneous "ENCODING" option, maybe others, idk
             this.OptById[o["id"]] := o["name"]
     }
     ; msgbox this.PrintObj(this.opt)
@@ -93,7 +93,6 @@ _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
         ; else
         ; this.writeRefs[CBF] += 1
     }
-
 
     if IsSet(header) {
         CBF := this.easyHandleMap[easy_handle]["callbacks"]["header"]["CBF"]
@@ -146,7 +145,8 @@ _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
 
         this.easyHandleMap[easy_handle]["callbacks"]["progress"]["CBF"] := CBF := CallbackCreate(
             (easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded) =>
-                this._progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded)
+                this._progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded,
+                    expectedBytesUploaded, currentBytesUploaded)
         )
 
         this.SetOpt("XFERINFODATA", easy_handle, easy_handle)
@@ -173,7 +173,6 @@ _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
         this.writeRefs[CBF] := 1
     }
 
-
     ;non-lambda rewrite
     ;   actualCallbackFunction(dataPtr, size, sizeBytes, userdata) {
     ;     return this._writeCallbackFunction(dataPtr, size, sizeBytes, userdata, passed_curl_handle)
@@ -184,12 +183,93 @@ _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
     ; Curl._CB_Progress := CallbackCreate(Curl._ProgressCallback)
     ; Curl._CB_Debug    := CallbackCreate(Curl._DebugCallback)
 }
+_setEasyCallback(easy_handle, cbType, param?, paramprop := "ptr") {
 
+    cbLoc := this.easyHandleMap[easy_handle]["callbacks"][cbType]
+    CBF := cbLoc["CBF"]
+
+    if IsInteger(CBF) {  ;checks if this callback already exists
+        CallbackFree(CBF)
+        this.writeRefs.delete(CBF)
+    }
+
+    switch cbType {
+        case "body":    ;requires param
+            storageHandle := param
+
+            CBF := CallbackCreate(
+                (dataPtr, size, sizeBytes, userdata) =>
+                    this._CBF_write(dataPtr, size, sizeBytes, userdata, storageHandle)
+            )
+            writeHandle := storageHandle.writeObj["writeTo"].%paramprop%
+            this.SetOpt("WRITEDATA", writeHandle, easy_handle)
+
+            cbLoc["CBF"] := CBF
+            this.SetOpt("WRITEFUNCTION", cbLoc["CBF"], easy_handle)
+
+        case "header":  ;requires param
+            storageHandle := param
+
+            CBF := CallbackCreate(
+                (dataPtr, size, sizeBytes, userdata) =>
+                    this._CBF_header(dataPtr, size, sizeBytes, userdata, storageHandle)
+            )
+            writeHandle := storageHandle.writeObj["writeTo"].%paramprop%
+            this.SetOpt("HEADERDATA", writeHandle, easy_handle)
+
+            cbLoc["CBF"] := CBF
+            this.SetOpt("HEADERFUNCTION", cbLoc["CBF"], easy_handle)
+
+        case "read":
+            CBF := CallbackCreate(
+                (buf, size, nitems, userdata) =>
+                    ; this._readCallbackFunction(buf, size, nitems, userdata)
+                    this._CBF_read(buf, size, nitems, userdata)
+            )
+            this.SetOpt("READDATA", easy_handle, easy_handle)
+            this.SetOpt("READFUNCTION", CBF, easy_handle)
+
+        case "progress":
+            this.SetOpt("NOPROGRESS", 0, easy_handle)   ;enables progress meter on this handle
+
+            CBF := CallbackCreate(
+                (easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded) =>
+                    this._progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded,
+                        expectedBytesUploaded, currentBytesUploaded)
+            )
+
+            this.SetOpt("XFERINFODATA", easy_handle, easy_handle)
+            this.SetOpt("XFERINFOFUNCTION", CBF, easy_handle)
+
+        case "debug":
+            this.SetOpt("VERBOSE", 1, easy_handle)    ;enables debug on this handle
+
+            CBF := CallbackCreate(
+                (easy_handle, infotype, data, size, clientp) =>
+                    this._debugCallbackFunction(easy_handle, infotype, data, size, clientp)
+            )
+
+            this.SetOpt("DEBUGDATA", easy_handle, easy_handle)
+            this.SetOpt("DEBUGFUNCTION", CBF, easy_handle)
+    }
+
+    ;assign tracking
+    cbLoc["CBF"] := CBF
+    this.writeRefs[CBF] := {
+        easy_handle: easy_handle,
+        cbType: cbType
+    }
+}
 ; Callbacks
 ; =========
 _writeCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     dataSize := size * sizeBytes
     return this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"].RawWrite(dataPtr, dataSize)
+}
+
+_CBF_write(dataPtr, size, sizeBytes, userdata, storageHandle) {
+    dataSize := size * sizeBytes
+    return storageHandle.RawWrite(dataPtr, dataSize)
 }
 
 ;Note: websocket mode disabled until I find a good test server
@@ -202,12 +282,16 @@ _WebsocketWriteCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle)
 ; _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle, writeObject) {
 _headerCallbackFunction(dataPtr, size, sizeBytes, userdata, easy_handle) {
     dataSize := size * sizeBytes
-    Return this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
+    return this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"].RawWrite(dataPtr, dataSize)
     ; return writeObject.RawWrite(dataPtr, dataSize)
     ; Return this.writeTo[easy_handle].RawWrite(dataPtr, dataSize)
 }
-
-_progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded, currentBytesUploaded) {
+_CBF_header(dataPtr, size, sizeBytes, userdata, storageHandle) {
+    dataSize := size * sizeBytes
+    return storageHandle.RawWrite(dataPtr, dataSize)
+}
+_progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDownloaded, expectedBytesUploaded,
+    currentBytesUploaded) {
     progressMap := this.easyHandleMap[easy_handle]["callbacks"]["progress"]
     progressMap["expectedBytesDownloaded"] := expectedBytesDownloaded
     progressMap["currentBytesDownloaded"] := currentBytesDownloaded
@@ -216,10 +300,24 @@ _progressCallbackFunction(easy_handle, expectedBytesDownloaded, currentBytesDown
     return 0
 }
 
-_readCallbackFunction(toBuf, size, nitems, easy_handle) {
+; _readCallbackFunction(toBuf, size, nitems, easy_handle) {
+;     bytes := size * nitems
+;     fromBuf := Buffer(bytes)
+;     bytesRead := this.easyHandleMap[easy_handle]["postFile"].RawRead(fromBuf, bytes)
+;     fromBuf.Size := bytesRead   ;auto-truncates the buffer if needed
+
+;     DllCall("RtlMoveMemory"
+;         , "Ptr", toBuf    ;destination
+;         , "Ptr", fromBuf  ;source
+;         , "UPtr", bytesRead)  ;length
+
+;     return bytesRead
+; }
+
+_CBF_read(toBuf, size, nitems, easy_handle) {
     bytes := size * nitems
     fromBuf := Buffer(bytes)
-    bytesRead := this.easyHandleMap[easy_handle]["postFile"].RawRead(fromBuf, bytes)
+    bytesRead := this.easyHandleMap[easy_handle]["readFrom"].RawRead(fromBuf, bytes)
     fromBuf.Size := bytesRead   ;auto-truncates the buffer if needed
 
     DllCall("RtlMoveMemory"
@@ -243,7 +341,8 @@ _debugCallbackFunction(easy_handle, infotype, data, size, clientp) {
     return 0
 }
 
-_SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac, shmac_len, sdata, sdata_le, valid_until, ietf_tls_id, alpn, earlydata_max) {
+_SSLExportCallbackFunction(easy_handle, retArrPtr, session_key, shmac, shmac_len, sdata, sdata_le, valid_until,
+    ietf_tls_id, alpn, earlydata_max) {
     ;get the array from the main function
     retArr := ObjFromPtrAddRef(retArrPtr)
 
@@ -333,28 +432,27 @@ _ArrayToSList(strArray) {
     ptrSList := 0
     ptrTemp := 0
 
-    Loop strArray.Length {
+    loop strArray.Length {
         ptrTemp := this._curl_slist_append(ptrSList, strArray[A_Index])  ;no error class
 
-        If (ptrTemp == 0) {
+        if (ptrTemp == 0) {
             this._FreeSList(ptrSList)
-            Return 0
+            return 0
         }
         ptrSList := ptrTemp
     }
 
-    Return ptrSList
+    return ptrSList
 }
-
 
 ; Converts linked-list to an array of strings.
 _SListToArray(ptrSList) {
     result := []
     ptrNext := ptrSList
 
-    Loop {
-        If (ptrNext == 0)
-            Break
+    loop {
+        if (ptrNext == 0)
+            break
 
         ptrData := NumGet(ptrNext, 0, "Ptr")
         ptrNext := NumGet(ptrNext, A_PtrSize, "Ptr")
@@ -362,13 +460,12 @@ _SListToArray(ptrSList) {
         result.Push(StrGet(ptrData, "CP0"))
     }
 
-    Return result
+    return result
 }
 
-
 _FreeSList(ptrSList?) {
-    If (!IsSet(ptrSList) || (ptrSList == 0))
-        Return
+    if (!IsSet(ptrSList) || (ptrSList == 0))
+        return
     this._curl_slist_free_all(ptrSList) ;no error class
 }
 
@@ -397,7 +494,8 @@ _DeepClone(obj) {    ;https://github.com/thqby/ahk2_lib/blob/master/deepclone.ah
     }
 }
 
-_ErrorHandler(callingMethod, curlErrorCodeFamily, invokedCurlFunction, incomingValue := 0, errorBuffer?, relevant_handle?) {
+_ErrorHandler(callingMethod, curlErrorCodeFamily, invokedCurlFunction, incomingValue := 0, errorBuffer?,
+    relevant_handle?) {
     ;captures a snapshot when the libcurl DLL reports an error
     ;use _ErrorHierarchy to trace LibQurl method calls
 
@@ -457,8 +555,7 @@ _ErrorHierarchy(callingMethod, curlErrorCodeFamily, relevant_handle?) {
 }
 
 ; Returns a Buffer object containing the string.
-_StrBuf(str, encoding := "cp0")
-{
+_StrBuf(str, encoding := "cp0") {
     ; Calculate required size and allocate a buffer.
     buf := Buffer(StrPut(str, encoding))
     ; Copy or convert the string.
@@ -466,10 +563,9 @@ _StrBuf(str, encoding := "cp0")
     return buf
 }
 
-
 _HasVal(inObj, needle) {  ;return the first key with a matching input value
     for k, v in (Type(inObj) != "Object" ? inObj : inObj.OwnProps()) { ;itemize Objects if required
-        If (v = needle)
+        if (v = needle)
             return k
     }
     return unset
@@ -533,7 +629,7 @@ _performCleanup(easy_handle) {
 ;     return NumGet(liPerformanceCount, 0, "Int64")
 ; }
 _findDLLfromAris() { ;dynamically finds the dll from a versioned Aris installation
-    If DirExist(A_ScriptDir "\lib\Aris\Qriist") ;"top level" install
+    if DirExist(A_ScriptDir "\lib\Aris\Qriist") ;"top level" install
         packageDir := A_ScriptDir "\lib\Aris\Qriist"
     else if DirExist(A_ScriptDir "\..\lib\Aris\Qriist") ;script one level down
         packageDir := A_ScriptDir "\..\lib\Aris\Qriist"
@@ -579,7 +675,6 @@ _configureSSL(requestedSSLprovider := "WolfSSL") {
         return
     }
 
-
     ;currently known SSLs in the curl source
     ;the user's requested string is the first provider, even if it already exists
     listOfSSLs := [requestedSSLprovider
@@ -594,7 +689,8 @@ _configureSSL(requestedSSLprovider := "WolfSSL") {
 
     for k, v in listOfSSLs {
         ret := this._curl_global_sslset(id := 0, v, &avail)   ;no error class
-    } until (ret = 0)
+    }
+    until (ret = 0)
 
     sslHaystack := this.GetVersionInfo()["ssl_version"]
     pos := RegExMatch(sslHaystack, "(?:^| )([A-Za-z\/0-9\\.]+)", &captured)
@@ -602,7 +698,7 @@ _configureSSL(requestedSSLprovider := "WolfSSL") {
 }
 _globalCleanup() {   ;this should be called when shutting down LibQurl
     ;delete any flushed magic-files
-    If DirExist(A_Temp "\LibQurl") {
+    if DirExist(A_Temp "\LibQurl") {
         ;per easy_handle to avoid stepping on other instances of the class
         for k, v in this.easyHandleMap[0]
             FileDelete(A_Temp "\LibQurl\*." v)
@@ -642,7 +738,7 @@ _register(dllPath?, requestedSSLprovider?, initMemMap?) {
     this._configureSSL(requestedSSLprovider?)
 
     ;use the default init options unless user provides callbacks
-    If !IsSet(initMemMap)
+    if !IsSet(initMemMap)
         this._curl_global_init()    ;no error class
     else {
         this._curl_global_init_mem(initMemMap["flags"], initMemMap["curl_malloc_callback"]   ;no error class
@@ -673,13 +769,13 @@ _autoUpdateCertFile() {
     this.SetOpt("CAINFO", crt)
 
     ; don't try to update for at least 90 days
-    If (DateDiff(A_Now, FileGetTime(crt), "Days") < 90)
+    if (DateDiff(A_Now, FileGetTime(crt), "Days") < 90)
         return
 
     etagf := dlldir "\curl-ca-bundle.etag"
-    If FileExist(etagf) {
+    if FileExist(etagf) {
         ;don't try to update within 1 day of last attempt
-        If (DateDiff(A_Now, FileGetTime(etagf), "Days") < 1)
+        if (DateDiff(A_Now, FileGetTime(etagf), "Days") < 1)
             return
 
         etagv := FileOpen(etagf, "r").Read()
@@ -711,7 +807,8 @@ _autoUpdateCertFile() {
     }
 }
 _GetFilePathFromFileObject(FileObject) {
-    static GetFinalPathNameByHandleW := DllCall("Kernel32\GetProcAddress", "Ptr", DllCall("Kernel32\GetModuleHandle", "Str", "Kernel32", "Ptr"), "AStr", "GetFinalPathNameByHandleW", "Ptr")
+    static GetFinalPathNameByHandleW := DllCall("Kernel32\GetProcAddress", "Ptr", DllCall("Kernel32\GetModuleHandle",
+        "Str", "Kernel32", "Ptr"), "AStr", "GetFinalPathNameByHandleW", "Ptr")
 
     ; if !FileObject
     ; throw Error("Invalid file handle")
@@ -757,7 +854,7 @@ _formatHeaders(headersObject) {
     return headersArray
 }
 _Enum(inObj) {   ;simplify rolling over objects
-    If (Type(inObj) = "Object")
+    if (Type(inObj) = "Object")
         return inObj.OwnProps()
     return inobj
 }
