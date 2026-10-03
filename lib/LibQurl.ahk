@@ -322,7 +322,7 @@ class LibQurl {
         ;execute
         loop {
             check := 0
-            check += curl.Async(multi_handle)
+            check += this.Async(multi_handle)
         } until !check
 
         ;grab the CURLCode
