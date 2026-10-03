@@ -908,3 +908,37 @@ _easyWriteShims(easy_handle, targetObj) {
             this._setEasyCallback(easy_handle, cbType, storageHandle, "ptr")
     }
 }
+_traceAssocMimeParts(assocMap, diagMap) {
+    retObj := []
+    for k, v in assocMap {
+        mime_part := v
+        partMap := this.mimePartMap[mime_part]
+        parseMap := Map()
+
+        mime_part := v
+        switch partMap.has("content") {
+            case 1:
+                content := partMap["content"]
+                parseMap["data_hash"] := hash(&content, "SHA512")
+                preview := StrGet(content, Min(100, content.size), "UTF-8")
+            Default:
+                content := FileOpen(partMap["content_filepath"], "r")
+                parseMap["data_hash"] := hash(&content, "SHA512")
+                preview := FileOpen(partMap["content_filepath"], "r").Read(100)
+        }
+
+        parseMap["name"] := partMap["name"]
+        parseMap["type"] := partMap["type"]
+        if partMap["associated_mime_parts"].length
+            parseMap["subparts"] := this._traceAssocMimeParts(partMap["associated_mime_parts"], diagMap)
+
+        retObj.Push(parseMap)
+
+        ;diagnostic data to exclude from the overall hash
+        parsePtr := ObjPtrAddRef(parseMap)
+        diagMap[parsePtr] := Map(
+            "preview", preview
+        )
+    }
+    return retObj
+}
