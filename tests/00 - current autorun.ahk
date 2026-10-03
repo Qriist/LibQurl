@@ -7,7 +7,7 @@ loop files A_ScriptDir "\*.ahk"
     if InStr(A_LoopFileName " - ", current)
         found := A_LoopFileFullPath
 
-clean := ["txt", "html", "json", "zst"]
+clean := ["txt", "html", "json", "zst", "bin"]
 for k, v in clean
     FileDelete(A_ScriptDir "\*." v)
 
