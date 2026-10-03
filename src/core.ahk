@@ -198,61 +198,59 @@ class LibQurl {
 
     HeaderToMem(maxCapacity := 0, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        passedHandleMap := this.easyHandleMap
-        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["header"] ;callback location
-
-        inBuf := Buffer(0)
-        cbLoc["storageHandle"] := LibQurl.Storage.MemBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "header")
-
-        storageHandle := cbLoc["storageHandle"]
-        this._setEasyCallback(easy_handle, "header", storageHandle)
+        targetObj := {
+            cbType: "header",
+            maxCapacity: maxCapacity,
+            storageInterface: "Mem"
+        }
+        this._easyWriteShims(easy_handle, targetObj)
     }
     WriteToMem(maxCapacity := 0, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        passedHandleMap := this.easyHandleMap
-        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
-
-        inBuf := Buffer(0)
-        cbLoc["storageHandle"] := LibQurl.Storage.MemBuffer(easy_handle, inBuf, maxCapacity, &passedHandleMap, "body")
-
-        storageHandle := cbLoc["storageHandle"]
-        this._setEasyCallback(easy_handle, "body", storageHandle)
+        targetObj := {
+            cbType: "body",
+            maxCapacity: maxCapacity,
+            storageInterface: "Mem"
+        }
+        this._easyWriteShims(easy_handle, targetObj)
     }
-
     HeaderToFile(filename, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        passedHandleMap := this.easyHandleMap
-        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["header"] ;callback location
-
-        cbLoc["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "header", "w", easy_handle)
-
-        storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["header"]["storageHandle"]
-        this._setEasyCallback(easy_handle, "header", storageHandle, "handle")
+        targetObj := {
+            cbType: "header",
+            filename: filename,
+            storageInterface: "File"
+        }
+        this._easyWriteShims(easy_handle, targetObj)
     }
-
     WriteToFile(filename, easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        passedHandleMap := this.easyHandleMap
-        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
-
-        cbLoc["storageHandle"] := LibQurl.Storage.File(filename, &passedHandleMap, "body", "w", easy_handle)
-
-        storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
-        this._setEasyCallback(easy_handle, "body", storageHandle, "handle")
+        targetObj := {
+            cbType: "body",
+            filename: filename,
+            storageInterface: "File"
+        }
+        this._easyWriteShims(easy_handle, targetObj)
+    }
+    HeaderToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
+        easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
+        targetObj := {
+            cbType: "header",
+            flushThreshold: flushThreshold,
+            storageInterface: "Magic"
+        }
+        this._easyWriteShims(easy_handle, targetObj)
     }
     WriteToMagic(flushThreshold := (1024 ** 2 * 50), easy_handle?) {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
-        passedHandleMap := this.easyHandleMap
-        cbLoc := this.easyHandleMap[easy_handle]["callbacks"]["body"] ;callback location
-
-        ;predetermine the file to dump to if flushThreshold is reached
-        flushFilename := A_Temp "\LibQurl\" A_NowUTC "." easy_handle
-
-        cbLoc["storageHandle"] := LibQurl.Storage.Magic(easy_handle, flushFilename, flushThreshold, &passedHandleMap, "body")
-
-        storageHandle := this.easyHandleMap[easy_handle]["callbacks"]["body"]["storageHandle"]
-        this._setEasyCallback(easy_handle, "body", storageHandle, "ptr")
+        targetObj := {
+            cbType: "body",
+            flushThreshold: flushThreshold,
+            storageInterface: "Magic"
+        }
+        this._easyWriteShims(easy_handle, targetObj)
     }
+
     ReadyAsync(inEasyHandles?, multi_handle?) {    ;Add any number of easy_handles to the multi pool. Accepts integers or object.
         inEasyHandles ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle

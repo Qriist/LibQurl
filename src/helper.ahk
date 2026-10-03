@@ -858,3 +858,45 @@ _Enum(inObj) {   ;simplify rolling over objects
         return inObj.OwnProps()
     return inobj
 }
+_easyWriteShims(easy_handle, targetObj) {
+    ; storageInterface = Mem/File/Magic
+    ; cbType = body/header
+
+    passedHandleMap := this.easyHandleMap
+    cbType := targetObj.cbType
+    cbLoc := this.easyHandleMap[easy_handle]["callbacks"][cbType] ;callback location
+
+    switch targetObj.storageInterface {
+        case "Mem":
+            inBuf := Buffer(0)
+            cbLoc["storageHandle"] := LibQurl.Storage.MemBuffer(easy_handle
+                , inBuf
+                , targetObj.maxCapacity
+                , &passedHandleMap
+                , cbType)
+
+            storageHandle := cbLoc["storageHandle"]
+            this._setEasyCallback(easy_handle, cbType, storageHandle, "ptr")
+        case "File":
+            cbLoc["storageHandle"] := LibQurl.Storage.File(targetObj.filename
+                , &passedHandleMap
+                , cbType
+                , "w"
+                , easy_handle)
+
+            storageHandle := cbLoc["storageHandle"]
+            this._setEasyCallback(easy_handle, cbType, storageHandle, "handle")
+        case "Magic":
+            ; ;predetermine the file to dump to if flushThreshold is reached
+            flushFilename := A_Temp "\LibQurl\" A_NowUTC "." easy_handle
+
+            cbLoc["storageHandle"] := LibQurl.Storage.Magic(easy_handle
+                , flushFilename
+                , targetObj.flushThreshold
+                , &passedHandleMap
+                , cbType)
+
+            storageHandle := cbLoc["storageHandle"]
+            this._setEasyCallback(easy_handle, cbType, storageHandle, "ptr")
+    }
+}
