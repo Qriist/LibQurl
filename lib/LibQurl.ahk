@@ -1213,12 +1213,7 @@ class LibQurl {
         }
         return retObj
     }
-    TracedMimeInit(easy_handle?) {  ;creates a mime_handle in tracing mode
-        easy_handle ??= this.easyHandleMap[0][1]    ;defaults to the first created easy_handle
-        mime_handle := this.MimeInit(easy_handle)
-        this.mimeHandleMap[mime_handle]["trace_enabled"] := 1
-        return mime_handle
-    }
+
     MimeAddPart(mime_handle?) {
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
 
