@@ -1153,6 +1153,65 @@ class LibQurl {
     TraceMime(mime_handle?) {
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
 
+        mimeMap := this.mimeHandleMap[mime_handle]
+
+        ;recursively search for root mime_handle
+        if mimeMap["nest_parent"]
+            return this.TraceMime(mimeMap["nest_parent"])
+
+        ; retObj := this._traceMimeMap(mimeMap)
+        assocMap := mimeMap["associated_mime_parts"]
+        diagMap := Map()
+        retObj := this._traceAssocMimeParts(assocMap, diagMap)
+        jsonStr := json.Dump(retObj)
+        traceHash := hash(&jsonStr, "SHA512")
+        retObj.traceHash := traceHash
+        ; MsgBox JSON.dump(diagmap)
+        for k, v in diagMap {
+
+            ptr := k
+            attachMap := v
+            parseMap := ObjFromPtrAddRef(ptr)
+            for k, v in attachMap {
+                parseMap[k] := v
+            }
+        }
+
+        return retObj
+    }
+    _traceAssocMimeParts(assocMap, diagMap) {
+        retObj := []
+        for k, v in assocMap {
+            mime_part := v
+            partMap := this.mimePartMap[mime_part]
+            parseMap := Map()
+
+            mime_part := v
+            switch partMap.has("content") {
+                case 1:
+                    content := partMap["content"]
+                    parseMap["data_hash"] := hash(&content, "SHA512")
+                    preview := StrGet(content, Min(100, content.size), "UTF-8")
+                Default:
+                    content := FileOpen(partMap["content_filepath"], "r")
+                    parseMap["data_hash"] := hash(&content, "SHA512")
+                    preview := FileOpen(partMap["content_filepath"], "r").Read(100)
+            }
+
+            parseMap["name"] := partMap["name"]
+            parseMap["type"] := partMap["type"]
+            if partMap["associated_mime_parts"].length
+                parseMap["subparts"] := this._traceAssocMimeParts(partMap["associated_mime_parts"], diagMap)
+
+            retObj.Push(parseMap)
+
+            ;diagnostic data to exclude from the overall hash
+            parsePtr := ObjPtrAddRef(parseMap)
+            diagMap[parsePtr] := Map(
+                "preview", preview
+            )
+        }
+        return retObj
     }
     TracedMimeInit(easy_handle?) {  ;creates a mime_handle in tracing mode
         easy_handle ??= this.easyHandleMap[0][1]    ;defaults to the first created easy_handle
@@ -1168,6 +1227,7 @@ class LibQurl {
 
         partMap["associated_mime_handle"] := mime_handle
         partMap["associated_easy_handle"] := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
+        partMap["associated_mime_parts"] := []
 
         this.mimeHandleMap[mime_handle]["associated_mime_parts"].push(mime_part)
 
@@ -4106,4 +4166,62 @@ class LibQurl {
     }
 
 
+}
+hash(&item := "", hashType := "", c_size := "", cb := "") { ; default hashType = SHA256 /// default enc = UTF-16
+    static _hLib := DllCall("LoadLibrary", "Str", "bcrypt.dll", "UPtr"), LType := "SHA256", LItem := "", LBuf := "", LSize := "", d_LSize :=
+    1024000
+    static n := { hAlg: 0, hHash: 0, size: 0, obj: "" }
+    , o := { md2: n.Clone(), md4: n.Clone(), md5: n.Clone(), sha1: n.Clone(), sha256: n.Clone(), sha384: n.Clone(), sha512: n.Clone() }
+    _file := "", LType := (hashType ? StrUpper(hashType) : LType), LItem := (item ? item : LItem), ((!o.%LType%.hAlg) ? make_obj() : "")
+
+    if (!item && !hashType) { ; Free buffers/memory and release objects.
+        return !graceful_exit()
+    } else if (Type(LItem) = "File") { ; Determine buffer type.
+        _file := LItem, LBuf := true, LSize := (c_size ? c_size : d_LSize)
+    } else if (Type(item) = "String") || (Type(item) = "Integer") {
+        LBuf := Buffer(StrPut(item, "UTF-8") - 1, 0), LItem := "", LSize := d_LSize
+        temp_buf := Buffer(LBuf.size + 1, 0), StrPut(item, temp_buf, "UTF-8"), copy_str()
+    } else if (Type(item) = "Buffer")
+        LBuf := item, LItem := "", LSize := d_LSize
+
+    if (LBuf && !(outVal := "")) {
+        hDigest := Buffer(o.%LType%.size) ; Create new digest obj
+        loop t := (!_file ? 1 : (_file.Length // LSize) + 1)
+            (_file ? _file.RawRead(LBuf := Buffer(((_len := _file.Length - _file.Pos) < LSize) ? _len : LSize, 0)) : "")
+                , r7 := DllCall("bcrypt\BCryptHashData", "UPtr", o.%LType%.obj.ptr, "UPtr", LBuf.ptr, "UInt", LBuf.size, "UInt", 0)
+                , ((Type(cb) = "Func") ? cb(A_index / t) : "")
+        r8 := DllCall("bcrypt\BCryptFinishHash", "UPtr", o.%LType%.obj.ptr, "UPtr", hDigest.ptr, "UInt", hDigest.size, "UInt", 0)
+        loop hDigest.size ; convert hDigest to hex string
+            outVal .= Format("{:02X}", NumGet(hDigest, A_Index - 1, "UChar"))
+    }
+
+    _file ? (_file.Close(), LBuf := "") : ""
+    return outVal
+
+    make_obj() { ; create hash object
+        r1 := DllCall("bcrypt\BCryptOpenAlgorithmProvider", "UPtr*", &hAlg := 0, "Str", LType, "UPtr", 0, "UInt", 0x20) ; BCRYPT_HASH_REUSABLE_FLAG = 0x20
+
+        r3 := DllCall("bcrypt\BCryptGetProperty", "UPtr", hAlg, "Str", "ObjectLength"
+            , "UInt*", &objSize := 0, "UInt", 4, "UInt*", &_size := 0, "UInt", 0) ; Just use UInt* for bSize, and ignore _size.
+
+        r4 := DllCall("bcrypt\BCryptGetProperty", "UPtr", hAlg, "Str", "HashDigestLength"
+            , "UInt*", &hashSize := 0, "UInt", 4, "UInt*", &_size := 0, "UInt", 0), obj := Buffer(objSize)
+
+        r5 := DllCall("bcrypt\BCryptCreateHash", "UPtr", hAlg, "UPtr*", &hHash := 0       ; Setup fast reusage of hash obj...
+            , "UPtr", obj.ptr, "UInt", obj.size, "UPtr", 0, "UInt", 0, "UInt", 0x20) ; ... with 0x20 flag.
+
+        o.%LType% := { obj: obj, hHash: hHash, hAlg: hAlg, size: hashSize }
+    }
+
+    graceful_exit(r1 := 0, r2 := 0) {
+        for name, obj in o.OwnProps() {
+            if o.%name%.hHash && (r1 := DllCall("bcrypt\BCryptDestroyHash", "UPtr", o.%name%.hHash)
+            || r2 := DllCall("bcrypt\BCryptCloseAlgorithmProvider", "UPtr", o.%name%.hAlg, "UInt", 0))
+                throw Error("Unable to destroy hash object.")
+            o.%name%.hHash := o.%name%.hAlg := o.%name%.size := 0, o.%name%.obj := ""
+        }
+        LBuf := "", LItem := "", LSize := c_size
+    }
+
+    copy_str() => DllCall("NtDll\RtlCopyMemory", "UPtr", LBuf.ptr, "UPtr", temp_buf.ptr, "UPtr", LBuf.size)
 }
