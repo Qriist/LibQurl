@@ -10,6 +10,7 @@
 #include "*i <Aris\Qriist\Null>" ; github:Qriist/Null@v1.0.0 --main Null.ahk
 #include "*i <Aris\Chunjee\adash>"
 #include "*i <Aris\Cebolla\Timer>" ; Cebolla/Timer@96d8cfe
+#include "*i <Aris\GroggyOtter\PeepAHK>" ; github:Qriist/PeepAHK@v1.3.0 --main script\Peep.v2.ahk
 
 class LibQurl {
     ;core functionality
@@ -450,7 +451,7 @@ class LibQurl {
 
         loop iterations {
             if ret := this._curl_ws_send(easy_handle, buf.ptr + offset, min(buf.size - offset, maxframesize), &sent :=
-            0, fragsize, flags)
+                0, fragsize, flags)
                 this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_ws_send", ret, this.easyHandleMap[easy_handle][
                     "error buffer"], easy_handle)
             fragsize := 0
@@ -515,8 +516,8 @@ class LibQurl {
         lastHeaders := this.easyHandleMap[easy_handle]["lastHeaders"]
 
         if ((returnAsEncoding = "Object") && IsObject(lastHeaders))
-        || ((returnAsEncoding = "File") && (Type(lastHeaders) = "File"))
-        || ((returnAsEncoding = "Buffer") && (Type(lastHeaders) = "Buffer"))
+            || ((returnAsEncoding = "File") && (Type(lastHeaders) = "File"))
+            || ((returnAsEncoding = "Buffer") && (Type(lastHeaders) = "Buffer"))
             return lastHeaders
 
         RegexMatch(returnAsEncoding, "i)(?:Object|File|Buffer|(\S+))", &f) ;filter object types
@@ -530,8 +531,8 @@ class LibQurl {
         lastBody := this.easyHandleMap[easy_handle]["lastBody"]
 
         if ((returnAsEncoding = "Object") && IsObject(lastBody))
-        || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
-        || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
+            || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
+            || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
             return lastBody
 
         RegexMatch(returnAsEncoding, "i)(?:Object|File|Buffer|(\S+))", &f) ;filter object types
@@ -743,7 +744,7 @@ class LibQurl {
                 if (startByte + numBytes) > sourceData.size
                     numBytes := sourceData.size - startByte
                 if (startByte != 0)
-                || (sourceData.size - numBytes != 0) {
+                    || (sourceData.size - numBytes != 0) {
                     chunkBuf := Buffer(numBytes)
                     DllCall("ntdll\memcpy"
                         , "Ptr", chunkBuf    ;destination
@@ -1088,7 +1089,7 @@ class LibQurl {
 
         if ret := this.SetOpt("SHARE", share_handle, easy_handle)
             this._ErrorHierarchy(A_ThisFunc, "CURLSHcode", share_handle)
-            , this._ErrorHierarchy(A_ThisFunc, "CURLcode", easy_handle)
+                , this._ErrorHierarchy(A_ThisFunc, "CURLcode", easy_handle)
         this.easyHandleMap[easy_handle]["associated_share_handle"] := share_handle
         this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
         return ret
@@ -1581,7 +1582,7 @@ class LibQurl {
         ; https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
         static GetSystemTimePreciseAsFileTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str",
             "kernel32", "Ptr")
-        , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")
+            , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")
 
         ;formatting arrays
         static days := ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -1615,7 +1616,7 @@ class LibQurl {
         ; SystemTimeFromFileTime is available via Kernel32
         static FileTimeToSystemTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str",
             "kernel32", "Ptr")
-        , "AStr", "FileTimeToSystemTime", "Ptr")
+            , "AStr", "FileTimeToSystemTime", "Ptr")
 
         st := Buffer(16)  ; SYSTEMTIME is 16 WORDs = 16 * 2 = 32 bytes
         DllCall(FileTimeToSystemTime, "Ptr", ft, "Ptr", st)
@@ -1746,9 +1747,9 @@ class LibQurl {
 }
 hash(&item := "", hashType := "", c_size := "", cb := "") { ; default hashType = SHA256 /// default enc = UTF-16
     static _hLib := DllCall("LoadLibrary", "Str", "bcrypt.dll", "UPtr"), LType := "SHA256", LItem := "", LBuf := "", LSize := "", d_LSize :=
-    1024000
+        1024000
     static n := { hAlg: 0, hHash: 0, size: 0, obj: "" }
-    , o := { md2: n.Clone(), md4: n.Clone(), md5: n.Clone(), sha1: n.Clone(), sha256: n.Clone(), sha384: n.Clone(), sha512: n.Clone() }
+        , o := { md2: n.Clone(), md4: n.Clone(), md5: n.Clone(), sha1: n.Clone(), sha256: n.Clone(), sha384: n.Clone(), sha512: n.Clone() }
     _file := "", LType := (hashType ? StrUpper(hashType) : LType), LItem := (item ? item : LItem), ((!o.%LType%.hAlg) ? make_obj() : "")
 
     if (!item && !hashType) { ; Free buffers/memory and release objects.
@@ -1793,7 +1794,7 @@ hash(&item := "", hashType := "", c_size := "", cb := "") { ; default hashType =
     graceful_exit(r1 := 0, r2 := 0) {
         for name, obj in o.OwnProps() {
             if o.%name%.hHash && (r1 := DllCall("bcrypt\BCryptDestroyHash", "UPtr", o.%name%.hHash)
-            || r2 := DllCall("bcrypt\BCryptCloseAlgorithmProvider", "UPtr", o.%name%.hAlg, "UInt", 0))
+                || r2 := DllCall("bcrypt\BCryptCloseAlgorithmProvider", "UPtr", o.%name%.hAlg, "UInt", 0))
                 throw Error("Unable to destroy hash object.")
             o.%name%.hHash := o.%name%.hAlg := o.%name%.size := 0, o.%name%.obj := ""
         }
