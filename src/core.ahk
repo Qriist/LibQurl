@@ -1143,15 +1143,22 @@ class LibQurl {
         mime_handle := this._curl_mime_init(easy_handle)    ;no error class
 
         this.mimeHandleMap[0].push(mime_handle)
-        this.mimeHandleMap[mime_handle] := Map()
-        this.mimeHandleMap[mime_handle]["associated_easy_handle"] := easy_handle
-        this.mimeHandleMap[mime_handle]["associated_mime_parts"] := Map()
+        mimeMap := this.mimeHandleMap[mime_handle] := Map()
+        mimeMap["associated_easy_handle"] := easy_handle
+        mimeMap["associated_mime_parts"] := Map()
 
-        this.easyHandleMap[easy_handle]["active_mime_handle"] := mime_handle
-        this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := 1
-        this.mimeHandleMap[mime_handle]["nested"] := 0
+        mimeMap["active_mime_handle"] := mime_handle
+        mimeMap["associated_mime_handles"][mime_handle] := 1
+        mimeMap["nested"] := 0
+        mimeMap["trace_enabled"] := 0
         this.SetOpt("MIMEPOST", mime_handle, easy_handle)
 
+        return mime_handle
+    }
+    TracedMimeInit(easy_handle?) {  ;creates a mime_handle in tracing mode
+        easy_handle ??= this.easyHandleMap[0][1]    ;defaults to the first created easy_handle
+        mime_handle := this.MimeInit(easy_handle)
+        this.mimeHandleMap[mime_handle]["trace_enabled"] := 1
         return mime_handle
     }
     MimeAddPart(mime_handle?) {
@@ -1225,8 +1232,8 @@ class LibQurl {
         ;hand off everything to libcurl
         if ret := this._curl_mime_data_cb(mime_part, buf.size, rCBF, sCBF, fCBF, mime_part) {
             easy_handle := partMap["associated_easy_handle"]
-            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_data_cb", ret, this.easyHandleMap[easy_handle][
-                "error buffer"], easy_handle)
+            errBuf := this.easyHandleMap[easy_handle]["error buffer"]
+            this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_data_cb", ret, errBuf, easy_handle)
         }
 
         return ret
