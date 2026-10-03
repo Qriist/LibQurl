@@ -1138,17 +1138,21 @@ class LibQurl {
         mime_handle := this._curl_mime_init(easy_handle)    ;no error class
 
         this.mimeHandleMap[0].push(mime_handle)
-        mimeMap := this.mimeHandleMap[mime_handle] := Map()
-        mimeMap["associated_easy_handle"] := easy_handle
-        mimeMap["associated_mime_parts"] := Map()
+        this.mimeHandleMap[mime_handle] := Map()
+        this.mimeHandleMap[mime_handle]["associated_easy_handle"] := easy_handle
+        this.mimeHandleMap[mime_handle]["associated_mime_parts"] := []
 
-        mimeMap["active_mime_handle"] := mime_handle
-        mimeMap["associated_mime_handles"][mime_handle] := 1
-        mimeMap["nested"] := 0
-        mimeMap["trace_enabled"] := 0
+        this.easyHandleMap[easy_handle]["active_mime_handle"] := mime_handle
+        this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := 1
+        this.mimeHandleMap[mime_handle]["nest_parent"] := 0
+        this.mimeHandleMap[mime_handle]["nest_children"] := []
         this.SetOpt("MIMEPOST", mime_handle, easy_handle)
 
         return mime_handle
+    }
+    TraceMime(mime_handle?) {
+        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
+
     }
     TracedMimeInit(easy_handle?) {  ;creates a mime_handle in tracing mode
         easy_handle ??= this.easyHandleMap[0][1]    ;defaults to the first created easy_handle
@@ -1165,7 +1169,7 @@ class LibQurl {
         partMap["associated_mime_handle"] := mime_handle
         partMap["associated_easy_handle"] := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
 
-        this.mimeHandleMap[mime_handle]["associated_mime_parts"][mime_part] := 1
+        this.mimeHandleMap[mime_handle]["associated_mime_parts"].push(mime_part)
 
         return mime_part
     }
@@ -1195,9 +1199,10 @@ class LibQurl {
                 filePath := this._GetFilePathFromFileObject(partContent)
                 if ret := this._curl_mime_filedata(mime_part, filePath) {
                     easy_handle := partMap["associated_easy_handle"]
-                    this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_data_cb", ret, this.easyHandleMap[
-                        easy_handle]["error buffer"], easy_handle)
+                    errBuf := this.easyHandleMap[easy_handle]["error buffer"]
+                    this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_mime_filedata", ret, errBuf, easy_handle)
                 }
+                partMap["content_filepath"] := filePath
                 return ret  ;early return because there's no need to store anything
             case "Buffer":
                 buf := partContent
@@ -1281,7 +1286,7 @@ class LibQurl {
         mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
 
         ;prevent cleaning up nested mime_handles
-        if this.mimeHandleMap[mime_handle]["nested"]
+        if this.mimeHandleMap[mime_handle]["nest_parent"]
             return
 
         ;break easy_handle association
@@ -1294,17 +1299,16 @@ class LibQurl {
         ;cull tracked mime_part info
         for k, v in this.mimeHandleMap[mime_handle]["associated_mime_parts"] {
             ; this.mimePartMap.Delete(k)
-            this._mimePartCleanup(k)
+            this._mimePartCleanup(v)
         }
+
+        ; stop tracking nested mime_handles
+        this._MimeCleanupNestedChildren(mime_handle)
 
         ;stop tracking the mime_handle
         this.mimeHandleMap.Delete(mime_handle)
-        for k, v in this.mimeHandleMap[0] {
-            if (v = mime_handle) {
-                this.mimeHandleMap[0].RemoveAt(k)
-                break
-            }
-        }
+        mimeLoc := this.HasVal(this.mimeHandleMap[0], mime_handle)
+        this.mimeHandleMap[0].RemoveAt(mimeLoc)
 
         ;delete the mime_handle
         this._curl_mime_free(mime_handle)   ;no error class
@@ -1313,6 +1317,7 @@ class LibQurl {
         loop this.mimePartCBFcleanupArr.Length
             CallbackFree(this.mimePartCBFcleanupArr.Pop())
     }
+
     MimePartEncoder(mime_part, encoding := "") {
         ;I honestly have no idea how to use this.
         easy_handle := this.mimePartMap[mime_part]["associated_easy_handle"]
@@ -1350,10 +1355,10 @@ class LibQurl {
                 "error buffer"], easy_handle)
 
         ;tag the tracked mime_handle as nested
-        this.mimeHandleMap[mime_to_embed]["nested"] := mime_handle
-        this.mimePartMap[mime_part]["associated_mime_parts"] := this.mimeHandleMap[mime_to_embed][
-            "associated_mime_parts"]
+        this.mimeHandleMap[mime_to_embed]["nest_parent"] := mime_handle
+        this.mimePartMap[mime_part]["associated_mime_parts"] := this.mimeHandleMap[mime_to_embed]["associated_mime_parts"]
 
+        this.mimeHandleMap[mime_handle]["nest_children"].push(mime_to_embed)
         return mime_part
     }
     SetMimePartHeaders(mime_part, headersObject) {    ;Sets custom HTTP headers for request.
@@ -1683,6 +1688,19 @@ class LibQurl {
                     easy_handle]["error buffer"], easy_handle)
         }
     }
+    HasVal(inObj, needle) {  ;return the first key with a matching input value
+        t := Type(inObj)
+        switch t {
+            case "Array", "Map", "Object":
+                for k, v in (t != "Object" ? inObj : inObj.OwnProps()) { ;itemize Objects if required
+                    if (v = needle)
+                        return k    ;found
+                }
+                return 0    ;nothing found
+            default:    ;non-object types
+                return 0    ;nothing found
+        }
+    }
     ; */
 
     ; WriteToNone() {
@@ -1747,7 +1765,7 @@ class LibQurl {
         ;discover and clean nested parts
         if partMap.has("associated_mime_parts")
             for k, v in partMap["associated_mime_parts"]
-                this._mimePartCleanup(k)
+                this._mimePartCleanup(v)
     
         ;stage the callbacks to be freed
         for k, v in partMap["callbacks"]
@@ -1755,7 +1773,15 @@ class LibQurl {
     
         this.mimePartMap.Delete(mime_part)
     }
-    
+    _MimeCleanupNestedChildren(mime_handle) {
+        for k, v in this.mimeHandleMap[mime_handle]["nest_children"] {
+            nested_handle := v
+            this._MimeCleanupNestedChildren(nested_handle)
+            this.mimeHandleMap.Delete(nested_handle)
+            nestLoc := this.HasVal(this.mimeHandleMap[0], nested_handle)
+            this.mimeHandleMap[0].RemoveAt(nestLoc)
+        }
+    }
     _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
         if IsSet(body) {
             CBF := this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"]
@@ -4078,5 +4104,6 @@ class LibQurl {
             , "Int64", frame_len
             , "Cdecl Int")
     }
+
 
 }

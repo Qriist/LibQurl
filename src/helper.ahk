@@ -55,7 +55,7 @@ _mimePartCleanup(mime_part) {
     ;discover and clean nested parts
     if partMap.has("associated_mime_parts")
         for k, v in partMap["associated_mime_parts"]
-            this._mimePartCleanup(k)
+            this._mimePartCleanup(v)
 
     ;stage the callbacks to be freed
     for k, v in partMap["callbacks"]
@@ -63,7 +63,15 @@ _mimePartCleanup(mime_part) {
 
     this.mimePartMap.Delete(mime_part)
 }
-
+_MimeCleanupNestedChildren(mime_handle) {
+    for k, v in this.mimeHandleMap[mime_handle]["nest_children"] {
+        nested_handle := v
+        this._MimeCleanupNestedChildren(nested_handle)
+        this.mimeHandleMap.Delete(nested_handle)
+        nestLoc := this.HasVal(this.mimeHandleMap[0], nested_handle)
+        this.mimeHandleMap[0].RemoveAt(nestLoc)
+    }
+}
 _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
     if IsSet(body) {
         CBF := this.easyHandleMap[easy_handle]["callbacks"]["body"]["CBF"]
