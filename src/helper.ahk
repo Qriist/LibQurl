@@ -16,7 +16,7 @@ _buildOptMap() {    ;creates a reference matrix of all known SETCURLOPTs
 
     loop {
         optPtr := this._curl_easy_option_next(optPtr)   ;no error class
-        if (optPtr = 0)
+        if(optPtr = 0)
             break
         o := this.struct.curl_easyoption(optPtr)
         /*
@@ -401,7 +401,7 @@ _mimeDataSeekCallbackFunction(mime_part, offset, origin) {
     partMap := this.mimePartMap[mime_part]
 
     ;validate the offset
-    if (partMap["offset"] < 0
+    if(partMap["offset"] < 0
         || partMap["offset"] > partMap["content"].size)
         return 2    ;CURL_SEEKFUNC_CANTSEEK
 
@@ -443,7 +443,7 @@ _ArrayToSList(strArray) {
     loop strArray.Length {
         ptrTemp := this._curl_slist_append(ptrSList, strArray[A_Index])  ;no error class
 
-        if (ptrTemp == 0) {
+        if(ptrTemp == 0) {
             this._FreeSList(ptrSList)
             return 0
         }
@@ -459,7 +459,7 @@ _SListToArray(ptrSList) {
     ptrNext := ptrSList
 
     loop {
-        if (ptrNext == 0)
+        if(ptrNext == 0)
             break
 
         ptrData := NumGet(ptrNext, 0, "Ptr")
@@ -472,7 +472,7 @@ _SListToArray(ptrSList) {
 }
 
 _FreeSList(ptrSList?) {
-    if (!IsSet(ptrSList) || (ptrSList == 0))
+    if(!IsSet(ptrSList) || (ptrSList == 0))
         return
     this._curl_slist_free_all(ptrSList) ;no error class
 }
@@ -573,7 +573,7 @@ _StrBuf(str, encoding := "cp0") {
 
 _HasVal(inObj, needle) {  ;return the first key with a matching input value
     for k, v in (Type(inObj) != "Object" ? inObj : inObj.OwnProps()) { ;itemize Objects if required
-        if (v = needle)
+        if(v = needle)
             return k
     }
     return unset
@@ -627,7 +627,7 @@ _performCleanup(easy_handle) {
     ;record http status code
     this.easyHandleMap[easy_handle]["statusCode"] := this.GetInfo("RESPONSE_CODE", easy_handle)
 
-    if (this.autoResetToGET = 1)
+    if(this.autoResetToGET = 1)
         this.ClearPost(easy_handle)
 }
 ; _QueryPerformanceCounter(){
@@ -678,7 +678,7 @@ _configureSSL(requestedSSLprovider := "WolfSSL") {
     ret := this._curl_global_sslset(id := 0, name := "", &avail)  ;no error class
     this.availableSSLproviders := this.struct.curl_ssl_backend(avail)
 
-    if (ret = 3) {
+    if(ret = 3) {
         this.selectedSSLprovider := "This version of libcurl was not built with SSL capabilities."
         return
     }
@@ -777,13 +777,13 @@ _autoUpdateCertFile() {
     this.SetOpt("CAINFO", crt)
 
     ; don't try to update for at least 90 days
-    if (DateDiff(A_Now, FileGetTime(crt), "Days") < 90)
+    if(DateDiff(A_Now, FileGetTime(crt), "Days") < 90)
         return
 
     etagf := dlldir "\curl-ca-bundle.etag"
     if FileExist(etagf) {
         ;don't try to update within 1 day of last attempt
-        if (DateDiff(A_Now, FileGetTime(etagf), "Days") < 1)
+        if(DateDiff(A_Now, FileGetTime(etagf), "Days") < 1)
             return
 
         etagv := FileOpen(etagf, "r").Read()
@@ -833,7 +833,7 @@ _GetFilePathFromFileObject(FileObject) {
         , "UInt", 0          ; Flags (0 for default behavior)
         , "UInt")            ; Return length of the file path
 
-    if (len == 0 || len > bufSize)
+    if(len == 0 || len > bufSize)
         throw Error("Failed to retrieve file path or insufficient buffer size", A_LastError)
 
     ; Return the result as a string
@@ -862,7 +862,7 @@ _formatHeaders(headersObject) {
     return headersArray
 }
 _Enum(inObj) {   ;simplify rolling over objects
-    if (Type(inObj) = "Object")
+    if(Type(inObj) = "Object")
         return inObj.OwnProps()
     return inobj
 }
@@ -919,11 +919,11 @@ _traceAssocMimeParts(assocMap, diagMap) {
         switch partMap.has("content") {
             case 1:
                 content := partMap["content"]
-                parseMap["data_hash"] := hash(&content, "SHA512")
+                parseMap["data_hash"] := this.hash(&content, "SHA512")
                 preview := StrGet(content, Min(100, content.size), "UTF-8")
             Default:
                 content := FileOpen(partMap["content_filepath"], "r")
-                parseMap["data_hash"] := hash(&content, "SHA512")
+                parseMap["data_hash"] := this.hash(&content, "SHA512")
                 preview := FileOpen(partMap["content_filepath"], "r").Read(100)
         }
 

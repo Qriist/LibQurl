@@ -6,7 +6,10 @@
 #include "*i <Aris\Chunjee\adash>"
 #include "*i <Aris\Cebolla\Timer>" ; Cebolla/Timer@96d8cfe
 #include "*i <Aris\GroggyOtter\PeepAHK>" ; github:Qriist/PeepAHK@v1.3.0 --main script\Peep.v2.ahk
-
+; #include "*i <Aris\Qriist\hashObj>" ; github:Qriist/hashObj@a5cc877 --main Lib\hashObj.ahk
+; #include "*i <Aris\Qriist\GetFilePathFromFileObject>" ; github:Qriist/GetFilePathFromFileObject@f2169b9 --main Lib\GetFilePathFromFileObject.ahk
+; #include "*i <Aris\Qriist\hash>" ; github:Qriist/hash@18302f1 --main hash.ahk
+; #Import hashObj {*}
 class LibQurl {
     ;core functionality
     __New(dllPath?, requestedSSLprovider?) {
@@ -169,7 +172,7 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         ret := "These are the options that have been set for this easy_handle:`n"
         for k, v in this.easyHandleMap[easy_handle]["options"] {
-            if (v != "")
+            if(v != "")
                 ret .= k ": " (!IsObject(v) ? v : "<OBJECT>") "`n"
             else
                 ret .= k ": " "<NULL>" "`n"
@@ -251,7 +254,7 @@ class LibQurl {
         inEasyHandles ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
 
-        if (Type(inEasyHandles) = "Integer")
+        if(Type(inEasyHandles) = "Integer")
             inEasyHandles := [inEasyHandles]
         for k, v in (Type(inEasyHandles) != "Object" ? inEasyHandles : inEasyHandles.OwnProps()) { ;itemize Objects if required
             this._fallbackWrite(v)
@@ -374,7 +377,7 @@ class LibQurl {
                     offsetPtr := retBuffer.ptr + got
 
                     ;append data to buffer if any was received
-                    if (retBuffer.size + got > retBuffer.size) {
+                    if(retBuffer.size + got > retBuffer.size) {
                         ;resize buffer to accomodate new data
                         retBuffer.Size += got
 
@@ -389,7 +392,7 @@ class LibQurl {
                     }
                 case 81:
                     ;normal traffic so only capture with debug enabled
-                    if (this.easyHandleMap[easy_handle]["debug"] = 1)
+                    if(this.easyHandleMap[easy_handle]["debug"] = 1)
                         this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_easy_recv", ret,
                             this.easyHandleMap[easy_handle]["error buffer"], easy_handle)
 
@@ -409,7 +412,7 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
 
         ;push a lone flag string into a a flagArr
-        if (Type(flagArr) = "String")
+        if(Type(flagArr) = "String")
             flagArr := [flags]
 
         ;parse the flags
@@ -446,7 +449,7 @@ class LibQurl {
 
         loop iterations {
             if ret := this._curl_ws_send(easy_handle, buf.ptr + offset, min(buf.size - offset, maxframesize), &sent :=
-                0, fragsize, flags)
+            0, fragsize, flags)
                 this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_ws_send", ret, this.easyHandleMap[easy_handle][
                     "error buffer"], easy_handle)
             fragsize := 0
@@ -471,7 +474,7 @@ class LibQurl {
                         break
                 case 81:    ;waiting for ready state
                     ;normal traffic so only capture with debug enabled
-                    if (this.easyHandleMap[easy_handle]["debug"] = 1)
+                    if(this.easyHandleMap[easy_handle]["debug"] = 1)
                         this._ErrorHandler(A_ThisFunc, "CURLcode", "curl_ws_recv", ret, this.easyHandleMap[
                             easy_handle]["error buffer"], easy_handle)
 
@@ -510,9 +513,9 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         lastHeaders := this.easyHandleMap[easy_handle]["lastHeaders"]
 
-        if ((returnAsEncoding = "Object") && IsObject(lastHeaders))
-            || ((returnAsEncoding = "File") && (Type(lastHeaders) = "File"))
-            || ((returnAsEncoding = "Buffer") && (Type(lastHeaders) = "Buffer"))
+        if((returnAsEncoding = "Object") && IsObject(lastHeaders))
+        || ((returnAsEncoding = "File") && (Type(lastHeaders) = "File"))
+        || ((returnAsEncoding = "Buffer") && (Type(lastHeaders) = "Buffer"))
             return lastHeaders
 
         RegexMatch(returnAsEncoding, "i)(?:Object|File|Buffer|(\S+))", &f) ;filter object types
@@ -525,9 +528,9 @@ class LibQurl {
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         lastBody := this.easyHandleMap[easy_handle]["lastBody"]
 
-        if ((returnAsEncoding = "Object") && IsObject(lastBody))
-            || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
-            || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
+        if((returnAsEncoding = "Object") && IsObject(lastBody))
+        || ((returnAsEncoding = "File") && (Type(lastBody) = "File"))
+        || ((returnAsEncoding = "Buffer") && (Type(lastBody) = "Buffer"))
             return lastBody
 
         RegexMatch(returnAsEncoding, "i)(?:Object|File|Buffer|(\S+))", &f) ;filter object types
@@ -553,14 +556,14 @@ class LibQurl {
 
         this.easyHandleMap.Delete(easy_handle)
         for k, v in this.easyHandleMap[0] {
-            if (v = easy_handle) {
+            if(v = easy_handle) {
                 this.easyHandleMap[0].RemoveAt(k)
                 break
             }
         }
 
         this._curl_easy_cleanup(easy_handle)    ;no error code return
-        if (this.easyHandleMap[0].length = 0)   ;ensures there's always a usable easy_handle
+        if(this.easyHandleMap[0].length = 0)   ;ensures there's always a usable easy_handle
             this.EasyInit()
     }
     EasyCleanup(easy_handle?) {   ;alias for Cleanup
@@ -580,7 +583,7 @@ class LibQurl {
         if ret := this._curl_multi_cleanup(multi_handle)
             this._ErrorHandler(A_ThisFunc, "CURLMcode", "curl_multi_cleanup", ret, this.multiHandleMap[multi_handle
                 ]["error buffer"], multi_handle)
-        if (this.multiHandleMap[0].length = 0)   ;ensures there's always a usable multi_handle
+        if(this.multiHandleMap[0].length = 0)   ;ensures there's always a usable multi_handle
             this.MultiInit()
         return ret
     }
@@ -719,7 +722,7 @@ class LibQurl {
                     startByte := sourceData.Length
                 else if startByte < 0
                     startByte := 0
-                if (startByte + numBytes) > sourceData.Length
+                if(startByte + numBytes) > sourceData.Length
                     numBytes := sourceData.Length - startByte
 
                 sourceData.Seek(startByte)
@@ -736,10 +739,10 @@ class LibQurl {
                     startByte := sourceData.size
                 else if startByte < 0
                     startByte := 0
-                if (startByte + numBytes) > sourceData.size
+                if(startByte + numBytes) > sourceData.size
                     numBytes := sourceData.size - startByte
-                if (startByte != 0)
-                    || (sourceData.size - numBytes != 0) {
+                if(startByte != 0)
+                || (sourceData.size - numBytes != 0) {
                     chunkBuf := Buffer(numBytes)
                     DllCall("ntdll\memcpy"
                         , "Ptr", chunkBuf    ;destination
@@ -797,12 +800,12 @@ class LibQurl {
         this._curl_url_cleanup(url_handle)  ;no error class
         this.urlHandleMap.Delete(url_handle)
         for k, v in this.urlHandleMap[0] {
-            if (v = url_handle) {
+            if(v = url_handle) {
                 this.urlHandleMap[0].RemoveAt(k)
                 break
             }
         }
-        if (this.urlHandleMap[0].length = 0)    ;ensures there's always a handle available
+        if(this.urlHandleMap[0].length = 0)    ;ensures there's always a handle available
             this.UrlInit()
     }
     DupeUrl(url_handle?) {
@@ -862,7 +865,7 @@ class LibQurl {
     MultiInfoRead(multi_handle?) {
         multi_handle ??= this.multiHandleMap[0][1] ;defaults to the first created multi_handle
         retObj := []
-        while (retCode := this._curl_multi_info_read(multi_handle, &msgsInQueue)) {  ;no error class
+        while(retCode := this._curl_multi_info_read(multi_handle, &msgsInQueue)) {  ;no error class
             retObj.push(this.struct.curl_CURLMsg(retCode))
         }
 
@@ -1054,7 +1057,7 @@ class LibQurl {
         out := []
         loop {
             ptr := NumGet(ret, (a_index - 1) * A_PtrSize, "Ptr")
-            if (ptr = 0)    ;no more
+            if(ptr = 0)    ;no more
                 break
             out.Push(ptr)
         }
@@ -1084,7 +1087,7 @@ class LibQurl {
 
         if ret := this.SetOpt("SHARE", share_handle, easy_handle)
             this._ErrorHierarchy(A_ThisFunc, "CURLSHcode", share_handle)
-                , this._ErrorHierarchy(A_ThisFunc, "CURLcode", easy_handle)
+            , this._ErrorHierarchy(A_ThisFunc, "CURLcode", easy_handle)
         this.easyHandleMap[easy_handle]["associated_share_handle"] := share_handle
         this.shareHandleMap[share_handle]["associatedEasyHandles"][easy_handle] := A_NowUTC
         return ret
@@ -1164,10 +1167,10 @@ class LibQurl {
         assocMap := mimeMap["associated_mime_parts"]
         diagMap := Map()
         retObj := this._traceAssocMimeParts(assocMap, diagMap)
-        jsonStr := json.Dump(retObj)
-        traceHash := hash(&jsonStr, "SHA512")
+        ; jsonStr := json.Dump(retObj)
+        traceHash := this.hashObj(retObj)
         retObj.traceHash := traceHash
-        ; MsgBox JSON.dump(diagmap)
+        ; MsgBox this.hashObj(retObj, 1)
         for k, v in diagMap {
 
             ptr := k
@@ -1313,7 +1316,7 @@ class LibQurl {
 
         ;break easy_handle association
         easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
-        if (this.easyHandleMap[easy_handle]["active_mime_handle"] = mime_handle) {
+        if(this.easyHandleMap[easy_handle]["active_mime_handle"] = mime_handle) {
             this.easyHandleMap[easy_handle]["active_mime_handle"] := 0  ;don't want to auto-revert for the user
         }
         this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := unset
@@ -1367,7 +1370,7 @@ class LibQurl {
         easy_handle := this.mimeHandleMap[mime_handle]["associated_easy_handle"]
 
         ;prevent attempting to nest the mime_handle within itself
-        if (mime_to_embed = mime_handle)
+        if(mime_to_embed = mime_handle)
             return
 
         mime_part := this.AttachMimePart(partName, "", mime_handle)
@@ -1469,7 +1472,7 @@ class LibQurl {
 
             ;append to valid length
             pad := Mod(StrLen(str), 4)
-            if (pad)
+            if(pad)
                 str .= SubStr("====", 1, 4 - pad)
         }
 
@@ -1521,14 +1524,14 @@ class LibQurl {
     DownloadPercent(easy_handle?) {  ;convenience method for parsing GetProgress
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         ret := this.GetProgress(easy_handle)
-        if (ret["expectedBytesDownloaded"] = 0)
+        if(ret["expectedBytesDownloaded"] = 0)
             return 0
         return Round((ret["currentBytesDownloaded"] / ret["expectedBytesDownloaded"]) * 100, 2)
     }
     UploadPercent(easy_handle?) {    ;convenience method for parsing GetProgress
         easy_handle ??= this.easyHandleMap[0][1] ;defaults to the first created easy_handle
         ret := this.GetProgress(easy_handle)
-        if (ret["expectedBytesUploaded"] = 0)
+        if(ret["expectedBytesUploaded"] = 0)
             return 0
         return Round((ret["currentBytesUploaded"] / ret["expectedBytesUploaded"]) * 100, 2)
     }
@@ -1577,7 +1580,7 @@ class LibQurl {
         ; https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
         static GetSystemTimePreciseAsFileTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str",
             "kernel32", "Ptr")
-            , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")
+        , "AStr", "GetSystemTimePreciseAsFileTime", "Ptr")
 
         ;formatting arrays
         static days := ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -1611,7 +1614,7 @@ class LibQurl {
         ; SystemTimeFromFileTime is available via Kernel32
         static FileTimeToSystemTime := DllCall("GetProcAddress", "Ptr", DllCall("GetModuleHandle", "Str",
             "kernel32", "Ptr")
-            , "AStr", "FileTimeToSystemTime", "Ptr")
+        , "AStr", "FileTimeToSystemTime", "Ptr")
 
         st := Buffer(16)  ; SYSTEMTIME is 16 WORDs = 16 * 2 = 32 bytes
         DllCall(FileTimeToSystemTime, "Ptr", ft, "Ptr", st)
@@ -1715,7 +1718,7 @@ class LibQurl {
         switch t {
             case "Array", "Map", "Object":
                 for k, v in (t != "Object" ? inObj : inObj.OwnProps()) { ;itemize Objects if required
-                    if (v = needle)
+                    if(v = needle)
                         return k    ;found
                 }
                 return 0    ;nothing found
@@ -1748,7 +1751,7 @@ class LibQurl {
     
         loop {
             optPtr := this._curl_easy_option_next(optPtr)   ;no error class
-            if (optPtr = 0)
+            if(optPtr = 0)
                 break
             o := this.struct.curl_easyoption(optPtr)
             /*
@@ -2133,7 +2136,7 @@ class LibQurl {
         partMap := this.mimePartMap[mime_part]
     
         ;validate the offset
-        if (partMap["offset"] < 0
+        if(partMap["offset"] < 0
             || partMap["offset"] > partMap["content"].size)
             return 2    ;CURL_SEEKFUNC_CANTSEEK
     
@@ -2175,7 +2178,7 @@ class LibQurl {
         loop strArray.Length {
             ptrTemp := this._curl_slist_append(ptrSList, strArray[A_Index])  ;no error class
     
-            if (ptrTemp == 0) {
+            if(ptrTemp == 0) {
                 this._FreeSList(ptrSList)
                 return 0
             }
@@ -2191,7 +2194,7 @@ class LibQurl {
         ptrNext := ptrSList
     
         loop {
-            if (ptrNext == 0)
+            if(ptrNext == 0)
                 break
     
             ptrData := NumGet(ptrNext, 0, "Ptr")
@@ -2204,7 +2207,7 @@ class LibQurl {
     }
     
     _FreeSList(ptrSList?) {
-        if (!IsSet(ptrSList) || (ptrSList == 0))
+        if(!IsSet(ptrSList) || (ptrSList == 0))
             return
         this._curl_slist_free_all(ptrSList) ;no error class
     }
@@ -2305,7 +2308,7 @@ class LibQurl {
     
     _HasVal(inObj, needle) {  ;return the first key with a matching input value
         for k, v in (Type(inObj) != "Object" ? inObj : inObj.OwnProps()) { ;itemize Objects if required
-            if (v = needle)
+            if(v = needle)
                 return k
         }
         return unset
@@ -2359,7 +2362,7 @@ class LibQurl {
         ;record http status code
         this.easyHandleMap[easy_handle]["statusCode"] := this.GetInfo("RESPONSE_CODE", easy_handle)
     
-        if (this.autoResetToGET = 1)
+        if(this.autoResetToGET = 1)
             this.ClearPost(easy_handle)
     }
     ; _QueryPerformanceCounter(){
@@ -2410,7 +2413,7 @@ class LibQurl {
         ret := this._curl_global_sslset(id := 0, name := "", &avail)  ;no error class
         this.availableSSLproviders := this.struct.curl_ssl_backend(avail)
     
-        if (ret = 3) {
+        if(ret = 3) {
             this.selectedSSLprovider := "This version of libcurl was not built with SSL capabilities."
             return
         }
@@ -2509,13 +2512,13 @@ class LibQurl {
         this.SetOpt("CAINFO", crt)
     
         ; don't try to update for at least 90 days
-        if (DateDiff(A_Now, FileGetTime(crt), "Days") < 90)
+        if(DateDiff(A_Now, FileGetTime(crt), "Days") < 90)
             return
     
         etagf := dlldir "\curl-ca-bundle.etag"
         if FileExist(etagf) {
             ;don't try to update within 1 day of last attempt
-            if (DateDiff(A_Now, FileGetTime(etagf), "Days") < 1)
+            if(DateDiff(A_Now, FileGetTime(etagf), "Days") < 1)
                 return
     
             etagv := FileOpen(etagf, "r").Read()
@@ -2565,7 +2568,7 @@ class LibQurl {
             , "UInt", 0          ; Flags (0 for default behavior)
             , "UInt")            ; Return length of the file path
     
-        if (len == 0 || len > bufSize)
+        if(len == 0 || len > bufSize)
             throw Error("Failed to retrieve file path or insufficient buffer size", A_LastError)
     
         ; Return the result as a string
@@ -2594,7 +2597,7 @@ class LibQurl {
         return headersArray
     }
     _Enum(inObj) {   ;simplify rolling over objects
-        if (Type(inObj) = "Object")
+        if(Type(inObj) = "Object")
             return inObj.OwnProps()
         return inobj
     }
@@ -2651,11 +2654,11 @@ class LibQurl {
             switch partMap.has("content") {
                 case 1:
                     content := partMap["content"]
-                    parseMap["data_hash"] := hash(&content, "SHA512")
+                    parseMap["data_hash"] := this.hash(&content, "SHA512")
                     preview := StrGet(content, Min(100, content.size), "UTF-8")
                 Default:
                     content := FileOpen(partMap["content_filepath"], "r")
-                    parseMap["data_hash"] := hash(&content, "SHA512")
+                    parseMap["data_hash"] := this.hash(&content, "SHA512")
                     preview := FileOpen(partMap["content_filepath"], "r").Read(100)
             }
     
@@ -3505,6 +3508,168 @@ class LibQurl {
     
     }
 
+        hash(&item := "", hashType := "", c_size := "", cb := "") { ; default hashType = SHA256 /// default enc = UTF-16
+        static _hLib := DllCall("LoadLibrary", "Str", "bcrypt.dll", "UPtr"), LType := "SHA256", LItem := "", LBuf := "", LSize := "", d_LSize :=
+        1024000
+        static n := { hAlg: 0, hHash: 0, size: 0, obj: "" }
+        , o := { md2: n.Clone(), md4: n.Clone(), md5: n.Clone(), sha1: n.Clone(), sha256: n.Clone(), sha384: n.Clone(), sha512: n.Clone() }
+        _file := "", LType := (hashType ? StrUpper(hashType) : LType), LItem := (item ? item : LItem), ((!o.%LType%.hAlg) ? make_obj() : "")
+    
+        if(!item && !hashType) { ; Free buffers/memory and release objects.
+            return !graceful_exit()
+        } else if(Type(LItem) = "File") { ; Determine buffer type.
+            _file := LItem, LBuf := true, LSize := (c_size ? c_size : d_LSize)
+        } else if(Type(item) = "String") || (Type(item) = "Integer") {
+            LBuf := Buffer(StrPut(item, "UTF-8") - 1, 0), LItem := "", LSize := d_LSize
+            temp_buf := Buffer(LBuf.size + 1, 0), StrPut(item, temp_buf, "UTF-8"), copy_str()
+        } else if(Type(item) = "Buffer")
+            LBuf := item, LItem := "", LSize := d_LSize
+    
+        if(LBuf && !(outVal := "")) {
+            hDigest := Buffer(o.%LType%.size) ; Create new digest obj
+            loop t := (!_file ? 1 : (_file.Length // LSize) + 1)
+                (_file ? _file.RawRead(LBuf := Buffer(((_len := _file.Length - _file.Pos) < LSize) ? _len : LSize, 0)) : "")
+                    , r7 := DllCall("bcrypt\BCryptHashData", "UPtr", o.%LType%.obj.ptr, "UPtr", LBuf.ptr, "UInt", LBuf.size, "UInt", 0)
+                    , ((Type(cb) = "Func") ? cb(A_index / t) : "")
+            r8 := DllCall("bcrypt\BCryptFinishHash", "UPtr", o.%LType%.obj.ptr, "UPtr", hDigest.ptr, "UInt", hDigest.size, "UInt", 0)
+            loop hDigest.size ; convert hDigest to hex string
+                outVal .= Format("{:02X}", NumGet(hDigest, A_Index - 1, "UChar"))
+        }
+    
+        _file ? (_file.Close(), LBuf := "") : ""
+        return outVal
+    
+        make_obj() { ; create hash object
+            r1 := DllCall("bcrypt\BCryptOpenAlgorithmProvider", "UPtr*", &hAlg := 0, "Str", LType, "UPtr", 0, "UInt", 0x20) ; BCRYPT_HASH_REUSABLE_FLAG = 0x20
+    
+            r3 := DllCall("bcrypt\BCryptGetProperty", "UPtr", hAlg, "Str", "ObjectLength"
+                , "UInt*", &objSize := 0, "UInt", 4, "UInt*", &_size := 0, "UInt", 0) ; Just use UInt* for bSize, and ignore _size.
+    
+            r4 := DllCall("bcrypt\BCryptGetProperty", "UPtr", hAlg, "Str", "HashDigestLength"
+                , "UInt*", &hashSize := 0, "UInt", 4, "UInt*", &_size := 0, "UInt", 0), obj := Buffer(objSize)
+    
+            r5 := DllCall("bcrypt\BCryptCreateHash", "UPtr", hAlg, "UPtr*", &hHash := 0       ; Setup fast reusage of hash obj...
+                , "UPtr", obj.ptr, "UInt", obj.size, "UPtr", 0, "UInt", 0, "UInt", 0x20) ; ... with 0x20 flag.
+    
+            o.%LType% := { obj: obj, hHash: hHash, hAlg: hAlg, size: hashSize }
+        }
+    
+        graceful_exit(r1 := 0, r2 := 0) {
+            for name, obj in o.OwnProps() {
+                if o.%name%.hHash && (r1 := DllCall("bcrypt\BCryptDestroyHash", "UPtr", o.%name%.hHash)
+                || r2 := DllCall("bcrypt\BCryptCloseAlgorithmProvider", "UPtr", o.%name%.hAlg, "UInt", 0))
+                    throw Error("Unable to destroy hash object.")
+                o.%name%.hHash := o.%name%.hAlg := o.%name%.size := 0, o.%name%.obj := ""
+            }
+            LBuf := "", LItem := "", LSize := c_size
+        }
+    
+        copy_str() => DllCall("NtDll\RtlCopyMemory", "UPtr", LBuf.ptr, "UPtr", temp_buf.ptr, "UPtr", LBuf.size)
+    }
+    
+    hashObj(inObj, nohash := 0, resultArr := [], ptrMap := Map(), top := 1) {
+    
+        static para := {
+            Object: { Start: "Object{", End: "}" },
+            Map: { Start: "Map(", End: ")" },
+            Array: { Start: "Array[", End: "]" },
+            Buffer: { Start: "Buffer|", End: "|" },
+            File: { Start: 'File"', End: '"' },
+            Null: { Start: "Null<", End: ">" }
+        }
+    
+        ; ;safe return
+        if !IsObject(inObj)
+            return this.hash(&inObj, "SHA512")
+    
+        ;catch circular references
+        ptr := ObjPtr(inObj)
+        if ptrMap.Has(ptr)
+            return resultArr.push("DEREF")
+        ptrMap[ptr] := 1
+    
+        ;define how objects get serialized
+        inType := Type(inObj)
+        parastart := (para.HasProp(inType) ? para.%inType%.Start : inType "*")
+        paraend := (para.HasProp(inType) ? para.%inType%.End : "*")
+    
+        switch inType {
+            case "Null":
+                resultArr.Push(parastart)  ;object open
+                resultArr.Push("+x00::NULL=")
+                resultArr.Push(paraend)    ;object close
+            Default:
+                resultArr.Push(parastart)  ;object open
+    
+                ; process .properties
+                for k, v in inObj.OwnProps() {
+                    if IsObject(v) {
+    
+                        resultArr.Push("." k ":")
+                        this.hashObj(v, nohash, resultArr, ptrMap, 0)
+                    } else {
+                        ; val := (!nohash ? hash(&v,) : v)
+                        val := (!nohash ? this.hash(&v, "SHA512") : nohash = 1 ? v : this.hash(&v, "SHA512"))
+                        switch Type(v) {
+                            case "Integer":
+                                resultArr.Push("." k ":!:" val "=")
+                            case "Float":
+                                resultArr.Push("." k ":@:" val "=")
+                            case "String":
+                                resultArr.Push("." k ":" StrPut(v) ":" val "=")
+                        }
+                    }
+                }
+    
+                ; process ["keys"]
+                if InObj.HasProp("__Item") {
+                    for k, v in inObj {
+                        if IsObject(v) {
+                            resultArr.Push("/" k ":")
+                            this.hashObj(v, nohash, resultArr, ptrMap, 0)
+                        } else
+                            val := (!nohash ? this.hash(&v, "SHA512") : nohash = 1 ? v : this.hash(&v, "SHA512"))
+                        switch Type(v) {
+                            case "Integer":
+                                resultArr.Push("/" k ":!:" val "=")
+                            case "Float":
+                                resultArr.Push("/" k ":@:" val "=")
+                            case "String":
+                                resultArr.Push("/" k ":" StrPut(v) ":" val "=")
+                        }
+                    }
+                }
+    
+                ;get the meat of Buffer and File objects
+                switch inType {
+                    case "Buffer":
+                        val := (!nohash ? this.hash(&inObj, "SHA512") : nohash = 1 ? "[BUFFER]" : this.hash(&inObj, "SHA512"))
+                        resultArr.Push("+" inobj.size ":|:" val "=")
+                    case "File":
+                        hashfile := this._GetFilePathFromFileObject(inObj)
+                        hashfile := FileOpen(hashfile, "r")
+                        val := (!nohash ? this.hash(&hashfile, "SHA512") : nohash = 1 ? "[FILE]" : this.hash(&inObj, "SHA512"))
+                        resultArr.Push("+" hashfile.Length ":-:" val "=")
+                }
+    
+                resultArr.Push(paraend)    ;object close
+        }
+    
+        ; prevent sub objects from finalizing
+        if !top
+            return ""
+    
+        ;export
+        concat := ""
+        VarSetStrCapacity(&concat, resultArr.Length * 256)
+        for k, v in resultArr
+            concat .= v
+    
+        if nohash
+            return concat
+        return this.hash(&concat, "SHA512")
+    }
+
         _curl_easy_cleanup(easy_handle) {    ;https://curl.se/libcurl/c/curl_easy_cleanup.html
         static curl_easy_cleanup := this._getDllAddress(this.curlDLLpath, "curl_easy_cleanup")
         ;no error class
@@ -4162,62 +4327,4 @@ class LibQurl {
     }
 
 
-}
-hash(&item := "", hashType := "", c_size := "", cb := "") { ; default hashType = SHA256 /// default enc = UTF-16
-    static _hLib := DllCall("LoadLibrary", "Str", "bcrypt.dll", "UPtr"), LType := "SHA256", LItem := "", LBuf := "", LSize := "", d_LSize :=
-        1024000
-    static n := { hAlg: 0, hHash: 0, size: 0, obj: "" }
-        , o := { md2: n.Clone(), md4: n.Clone(), md5: n.Clone(), sha1: n.Clone(), sha256: n.Clone(), sha384: n.Clone(), sha512: n.Clone() }
-    _file := "", LType := (hashType ? StrUpper(hashType) : LType), LItem := (item ? item : LItem), ((!o.%LType%.hAlg) ? make_obj() : "")
-
-    if (!item && !hashType) { ; Free buffers/memory and release objects.
-        return !graceful_exit()
-    } else if (Type(LItem) = "File") { ; Determine buffer type.
-        _file := LItem, LBuf := true, LSize := (c_size ? c_size : d_LSize)
-    } else if (Type(item) = "String") || (Type(item) = "Integer") {
-        LBuf := Buffer(StrPut(item, "UTF-8") - 1, 0), LItem := "", LSize := d_LSize
-        temp_buf := Buffer(LBuf.size + 1, 0), StrPut(item, temp_buf, "UTF-8"), copy_str()
-    } else if (Type(item) = "Buffer")
-        LBuf := item, LItem := "", LSize := d_LSize
-
-    if (LBuf && !(outVal := "")) {
-        hDigest := Buffer(o.%LType%.size) ; Create new digest obj
-        loop t := (!_file ? 1 : (_file.Length // LSize) + 1)
-            (_file ? _file.RawRead(LBuf := Buffer(((_len := _file.Length - _file.Pos) < LSize) ? _len : LSize, 0)) : "")
-                , r7 := DllCall("bcrypt\BCryptHashData", "UPtr", o.%LType%.obj.ptr, "UPtr", LBuf.ptr, "UInt", LBuf.size, "UInt", 0)
-                , ((Type(cb) = "Func") ? cb(A_index / t) : "")
-        r8 := DllCall("bcrypt\BCryptFinishHash", "UPtr", o.%LType%.obj.ptr, "UPtr", hDigest.ptr, "UInt", hDigest.size, "UInt", 0)
-        loop hDigest.size ; convert hDigest to hex string
-            outVal .= Format("{:02X}", NumGet(hDigest, A_Index - 1, "UChar"))
-    }
-
-    _file ? (_file.Close(), LBuf := "") : ""
-    return outVal
-
-    make_obj() { ; create hash object
-        r1 := DllCall("bcrypt\BCryptOpenAlgorithmProvider", "UPtr*", &hAlg := 0, "Str", LType, "UPtr", 0, "UInt", 0x20) ; BCRYPT_HASH_REUSABLE_FLAG = 0x20
-
-        r3 := DllCall("bcrypt\BCryptGetProperty", "UPtr", hAlg, "Str", "ObjectLength"
-            , "UInt*", &objSize := 0, "UInt", 4, "UInt*", &_size := 0, "UInt", 0) ; Just use UInt* for bSize, and ignore _size.
-
-        r4 := DllCall("bcrypt\BCryptGetProperty", "UPtr", hAlg, "Str", "HashDigestLength"
-            , "UInt*", &hashSize := 0, "UInt", 4, "UInt*", &_size := 0, "UInt", 0), obj := Buffer(objSize)
-
-        r5 := DllCall("bcrypt\BCryptCreateHash", "UPtr", hAlg, "UPtr*", &hHash := 0       ; Setup fast reusage of hash obj...
-            , "UPtr", obj.ptr, "UInt", obj.size, "UPtr", 0, "UInt", 0, "UInt", 0x20) ; ... with 0x20 flag.
-
-        o.%LType% := { obj: obj, hHash: hHash, hAlg: hAlg, size: hashSize }
-    }
-
-    graceful_exit(r1 := 0, r2 := 0) {
-        for name, obj in o.OwnProps() {
-            if o.%name%.hHash && (r1 := DllCall("bcrypt\BCryptDestroyHash", "UPtr", o.%name%.hHash)
-                || r2 := DllCall("bcrypt\BCryptCloseAlgorithmProvider", "UPtr", o.%name%.hAlg, "UInt", 0))
-                throw Error("Unable to destroy hash object.")
-            o.%name%.hHash := o.%name%.hAlg := o.%name%.size := 0, o.%name%.obj := ""
-        }
-        LBuf := "", LItem := "", LSize := c_size
-    }
-
-    copy_str() => DllCall("NtDll\RtlCopyMemory", "UPtr", LBuf.ptr, "UPtr", temp_buf.ptr, "UPtr", LBuf.size)
 }
