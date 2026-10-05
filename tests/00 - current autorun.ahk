@@ -1,6 +1,9 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := 00
+current := 01
+
+if !current ;catch self-launching
+    current := 01
 
 current := Format("{:02}", current)
 loop files A_ScriptDir "\*.ahk"
