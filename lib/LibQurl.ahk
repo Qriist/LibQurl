@@ -3552,6 +3552,7 @@ class LibQurl {
                 , "UPtr", obj.ptr, "UInt", obj.size, "UPtr", 0, "UInt", 0, "UInt", 0x20) ; ... with 0x20 flag.
     
             o.%LType% := { obj: obj, hHash: hHash, hAlg: hAlg, size: hashSize }
+            return ""   ;required to prevent unset
         }
     
         graceful_exit(r1 := 0, r2 := 0) {

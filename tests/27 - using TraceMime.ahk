@@ -21,7 +21,7 @@ loop 3 {
 ; The method returns a browsable object plus a deterministic hash
 viewMime := curl.TraceMime(m1)
 msgbox curl.PrintObj(viewMime) "`n`n`n.traceHash=" viewMime.traceHash
-
+; ExitApp
 ;identically built mimes hash the same
 msgbox curl.TraceMime(m1).traceHash "`n`n`n"
 . curl.TraceMime(m2).traceHash "`n`n`n"

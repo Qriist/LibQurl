@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 
-current := 01
+current := 27
 
 if !current ;catch self-launching
     current := 01
