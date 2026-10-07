@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+﻿#Requires AutoHotKey v2.1-
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
@@ -30,7 +30,7 @@ dateArr.push("20040911 +0200")
 dateArr.Push(FormatTime(A_NowUTC, "yyyyMMdd hh:mm:ss"))
 
 out := ""
-for k,v in dateArr
+for k, v in dateArr
     out .= k ": " curl.GetDate(v) "`n"
 
-FileOpen(A_ScriptDir "\16.results.txt","w").Write(out)
+FileOpen(A_ScriptDir "\16.results.txt", "w").Write(out)

@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+﻿#Requires AutoHotKey v2.1-
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
@@ -11,24 +11,21 @@ easyB := curl.Init()
 cookieUrl := "https://httpbin.org/cookies"
 setCookie := cookieUrl "/set?" ;append key=value
 
-
 ;prepare the share_handle
 ;must be done before getting the cookie
 share_handle := curl.ShareInit()
-curl.ShareSetOpt("SHARE","COOKIE")
+curl.ShareSetOpt("SHARE", "COOKIE")
 curl.AddEasyToShare(easyA)
 curl.AddEasyToShare(easyB)
 
-
 ;get a cookie on one handle
 ;COOKIEFILE must be set *after* ShareSetOpt("SHARE","COOKIE")
-curl.SetOpt("COOKIEFILE","",easyA)
-curl.SetOpt("URL",setCookie "tidbit=is%20a%20cookie",easyA)
+curl.SetOpt("COOKIEFILE", "", easyA)
+curl.SetOpt("URL", setCookie "tidbit=is%20a%20cookie", easyA)
 curl.Sync(easyA)
 
-
 ;see the cookie on the other
-curl.SetOpt("COOKIEFILE","",easyB)
-curl.SetOpt("URL",cookieUrl,easyB)
+curl.SetOpt("COOKIEFILE", "", easyB)
+curl.SetOpt("URL", cookieUrl, easyB)
 curl.Sync(easyB)
-FileOpen(A_ScriptDir "\17.results.txt","w").Write(curl.GetLastBody(,easyB))
+FileOpen(A_ScriptDir "\17.results.txt", "w").Write(curl.GetLastBody(, easyB))

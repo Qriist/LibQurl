@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.1-
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
@@ -9,10 +9,10 @@ outMap["Opts"] := curl.opt
 outMap["OptById"] := curl.optById
 outMap["VersionInfo"] := curl.VersionInfo
 outMap["easyHandleMap"] := curl.easyHandleMap
-for k,v in outMap["easyHandleMap"] {    ;callbacks map doesn't enumerate
-    if (k = 0)
+for k, v in outMap["easyHandleMap"] {    ;callbacks map doesn't enumerate
+    if(k = 0)
         continue
     outMap["easyHandleMap"][k].Delete("callbacks")
 }
 outMap["GetEnv"] := curl.GetEnv("USERPROFILE")
-FileOpen(A_ScriptDir "\01.json","w").Write(json.dump(outMap))
+FileOpen(A_ScriptDir "\01.json", "w").Write(json.dump(outMap))

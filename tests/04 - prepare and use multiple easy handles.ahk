@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+﻿#Requires AutoHotKey v2.1-
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
@@ -10,11 +10,11 @@ beta := curl.Init()
 alphaUrl := "https://www.titsandasses.org"
 betaUrl := "https://www.google.com"
 
-curl.SetOpt("URL",alphaUrl,alpha)
-curl.SetOpt("URL",betaUrl,beta)
+curl.SetOpt("URL", alphaUrl, alpha)
+curl.SetOpt("URL", betaUrl, beta)
 
-curl.WriteToFile(A_ScriptDir "\04.alpha.html",alpha)
-curl.WriteToFile(A_ScriptDir "\04.beta.html",beta)
+curl.WriteToFile(A_ScriptDir "\04.alpha.html", alpha)
+curl.WriteToFile(A_ScriptDir "\04.beta.html", beta)
 
 curl.Sync(alpha)
 curl.Sync(beta)
@@ -26,5 +26,4 @@ curl.EasyCleanup(beta)
 
 handles .= "Handles open after cleanup:`n" curl.ListHandles() "`n`n`n"
 
-FileOpen(A_ScriptDir "\04.handles.txt","w").Write(handles)
-
+FileOpen(A_ScriptDir "\04.handles.txt", "w").Write(handles)

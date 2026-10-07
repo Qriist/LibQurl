@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+﻿#Requires AutoHotKey v2.1-
 #Include "%A_ScriptDir%"
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
@@ -7,9 +7,9 @@ curl := LibQurl(A_WorkingDir "\bin\libcurl.dll")
 
 curl.WriteToMem()    ;don't care about the body content
 
-;using httpbin to force a redirect so we have multiple header indices 
+;using httpbin to force a redirect so we have multiple header indices
 url := "https://httpbin.org/redirect-to?url=https%3A%2F%2Farchive.today"
-curl.SetOpt("URL",url)
+curl.SetOpt("URL", url)
 curl.Sync()
 
 redirectCount := curl.GetInfo("REDIRECT_COUNT")
@@ -19,7 +19,7 @@ out .= "Total numer of resulting header groups: " redirectCount + 1 "`n`n"
 
 desiredHeader := "date"
 ;to get the first entry, use curl.InspectHeader(desiredHeader,,,0)
-out .= "The initial connection was established at:  " curl.InspectHeader(desiredHeader,,,0) "`n"
+out .= "The initial connection was established at:  " curl.InspectHeader(desiredHeader, , , 0) "`n"
 
 ;To get the final entry, use curl.InspectHeader(desiredHeader)
 ;(This is usually what you want.)
@@ -29,4 +29,4 @@ out .= "The final connection was established at:    " curl.InspectHeader(desired
 allHeaders := curl.GetAllHeaders()
 out .= "The following is a complete dump of all received headers:`n" curl.PrintObj(allHeaders)
 
-FileOpen(A_ScriptDir "\10.headers.txt","w").Write(out)
+FileOpen(A_ScriptDir "\10.headers.txt", "w").Write(out)

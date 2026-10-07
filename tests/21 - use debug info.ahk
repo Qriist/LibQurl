@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+#Requires AutoHotKey v2.1-
 #Include %a_scriptdir%\..\lib\LibQurl.ahk
 #Include %a_scriptdir%\..\lib\Aris\packages.ahk
 SetWorkingDir(A_ScriptDir "\..")
@@ -9,8 +9,8 @@ easy_handle := curl.EasyInit()
 curl.EnableDebug(easy_handle)
 url := "https://collectionapi.metmuseum.org/"
 ; url := "https://google.com"
-curl.SetOpt("URL",url,easy_handle)
+curl.SetOpt("URL", url, easy_handle)
 try curl.Sync(easy_handle)
 out := curl.PollDebug(easy_handle)
 
-FileOpen(A_ScriptDir "\21 - use debug info.txt","w").write(out)
+FileOpen(A_ScriptDir "\21 - use debug info.txt", "w").write(out)
