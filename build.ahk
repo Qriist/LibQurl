@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.1-
 #include "*i <Aris\SKAN\RunCMD>" ; SKAN/RunCMD@9a8392d
 #include <Aris/Chunjee/adash>
 #include <Aris/G33kDude/cJson>
@@ -14,13 +14,12 @@ oldVerMap := vcpkgPortVersions(libArr, portsDir)
 ; msgbox k
 ;update vcpkg
 RunCMD("git pull", "C:\dev\vcpkg")
-If (!RunCMD.ExitCode)    ;updates vcpkg only on a good git pull
+if(!RunCMD.ExitCode)    ;updates vcpkg only on a good git pull
     RunCMD("C:\dev\vcpkg\bootstrap-vcpkg.bat", "C:\dev\vcpkg")
 newVerMap := vcpkgPortVersions(libArr, portsDir, oldVerMap)
 ; msgbox oldVerMap.count "`n" newVerMap.count
 ;clean previous install
 try DirDelete(A_ScriptDir "\build\", 1)
-
 
 ;build wolfssl
 wolfsslFeatures := libraryFeatureFlags("wolfssl", 1)
@@ -35,9 +34,8 @@ vcpkgFlags := adash.join([
 vcpkgCmd := "vcpkg install " wolfssl " " vcpkgFlags
 buildlog.WriteLine(vcpkgCmd)
 
-If RunWait(vcpkgCmd, A_ScriptDir)
-    throw("building WolfSSL failed")
-
+if RunWait(vcpkgCmd, A_ScriptDir)
+    throw ("building WolfSSL failed")
 
 ;build libcurl
 curlFeatures := libraryFeatureFlags("libcurl", 1)
@@ -53,10 +51,9 @@ vcpkgFlags := adash.join([
 vcpkgCmd := "vcpkg install " libcurl " " vcpkgFlags
 buildlog.WriteLine(vcpkgCmd)
 
-If RunWait(vcpkgCmd, A_ScriptDir)
-    throw("building libcurl failed")
+if RunWait(vcpkgCmd, A_ScriptDir)
+    throw ("building libcurl failed")
 buildlog.WriteLine(vcpkgCmd)
-
 
 ;build libmagic
 libmagicFeatures := libraryFeatureFlags("libmagic", 1)
@@ -70,8 +67,8 @@ vcpkgFlags := adash.join([
 
 vcpkgCmd := "vcpkg install " libmagic " " vcpkgFlags
 
-If RunWait(vcpkgCmd, A_ScriptDir)
-    throw("building libmagic failed")
+if RunWait(vcpkgCmd, A_ScriptDir)
+    throw ("building libmagic failed")
 
 buildlog.WriteLine(vcpkgCmd)
 
@@ -86,7 +83,6 @@ FileMove(A_ScriptDir "\build\x64-windows\tools\curl\curl.exe", A_ScriptDir "\bin
 FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\share\misc\*.mgc", A_ScriptDir "\bin", 1)
 FileMove(A_ScriptDir "\build\x64-windows\tools\libmagic\bin\*.dll", A_ScriptDir "\bin", 1)
 buildlog.Close()
-
 
 libraryFeatureFlags(requestedLibrary, join?) {
     switch requestedLibrary {
@@ -180,23 +176,23 @@ vcpkgPortVersions(libArr, portsDir, oldVerMap?) {
                 continue
             }
 
-            If portMap.has("port-version") {
+            if portMap.has("port-version") {
                 verMap[port] .= "#" portMap["port-version"]
             }
 
         }
     }
     ;return the freshly made map
-    If !IsSet(oldVerMap?)
+    if !IsSet(oldVerMap?)
         return verMap
 
     ;return only updated elements
     newVerMap := Map()
     for k, v in verMap {
-        if (oldVerMap.has(k))   ;regular bumped version
-            && (oldVerMap[k] != v)
+        if(oldVerMap.has(k))   ;regular bumped version
+        && (oldVerMap[k] != v)
             newVerMap[k] := v
-        else if (!oldVerMap.has(k)) ;additional new library
+        else if(!oldVerMap.has(k)) ;additional new library
             newVerMap[k] := v
     }
     return newVerMap

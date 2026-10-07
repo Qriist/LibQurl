@@ -1,6 +1,6 @@
-﻿#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.1-
 
-current := 27
+current := 09
 
 if !current ;catch self-launching
     current := 01
@@ -11,6 +11,7 @@ loop files A_ScriptDir "\*.ahk"
         found := A_LoopFileFullPath
 
 clean := ["txt", "html", "json", "zst", "bin"]
+clean := [] ;dummy while testing.
 for k, v in clean
     FileDelete(A_ScriptDir "\*." v)
 
