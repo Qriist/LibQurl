@@ -709,7 +709,8 @@ _globalCleanup() {   ;this should be called when shutting down LibQurl
     if DirExist(A_Temp "\LibQurl") {
         ;per easy_handle to avoid stepping on other instances of the class
         for k, v in this.easyHandleMap[0]
-            FileDelete(A_Temp "\LibQurl\*." v)
+            ; silently fail if the file is still in use
+            try FileDelete(A_Temp "\LibQurl\*." v)
 
         ;attempt to clean the temp folder itself, but silently fail if temp files remain
         try DirDelete(A_Temp "\LibQurl")
