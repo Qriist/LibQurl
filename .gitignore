@@ -45,5 +45,5 @@ bin/x64-windows
 curl source
 bin/bin.7z
 build
-
+tests\00 - current autorun.ahk
 release.ahk
