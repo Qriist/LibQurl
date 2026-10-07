@@ -191,7 +191,7 @@ _setCallbacks(easy_handle, body?, header?, read?, progress?, debug?) {
     ; Curl._CB_Progress := CallbackCreate(Curl._ProgressCallback)
     ; Curl._CB_Debug    := CallbackCreate(Curl._DebugCallback)
 }
-_setEasyCallback(easy_handle, cbType, param?, paramprop := "ptr") {
+_setEasyCallback(easy_handle, cbType, param?, paramprop?) {
 
     cbLoc := this.easyHandleMap[easy_handle]["callbacks"][cbType]
     CBF := cbLoc["CBF"]
