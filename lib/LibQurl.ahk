@@ -2856,7 +2856,7 @@ class LibQurl {
             }
     
             Open() {
-                if (this.writeObj["accessMode"] == "w") {
+                if(this.writeObj["accessMode"] == "w") {
                     SplitPath(this.writeObj["filename"], , &fileDirPath)
                     if fileDirPath
                         DirCreate fileDirPath
@@ -2933,7 +2933,7 @@ class LibQurl {
             RawRead(dstDataPtr, dstDataSize) {
                 sourceBuf := this.readObj["readFrom"]
                 dataLeft := sourceBuf.Size - sourceBuf.offset
-                if (dataLeft <= 0)
+                if(dataLeft <= 0)
                     return 0  ; EOF
     
                 bytesToRead := dstDataSize < dataLeft ? dstDataSize : dataLeft
@@ -3006,7 +3006,7 @@ class LibQurl {
     
                 ; MsgBox strget(dataPtr, "UTF-8")
     
-                if (dataPtr != 0) {
+                if(dataPtr != 0) {
                     this._dataMax := maxCapacity
                     this._dataSize := dataSize
                     this._dataPtr := dataPtr
@@ -3036,10 +3036,10 @@ class LibQurl {
     
             RawRead(dstDataPtr, dstDataSize) {
                 dataLeft := this._dataSize - this._dataPos
-                if (dataLeft <= 0)
+                if(dataLeft <= 0)
                     return 0  ; EOF
-                msgbox curl.printobj(this.writeObj)
-                MsgBox StrGet(this.writeObj["readFrom"], "UTF-8")
+                ; msgbox this.printobj(this.writeObj)
+                ; MsgBox StrGet(this.writeObj["readFrom"], "UTF-8")
                 bytesToRead := dstDataSize < dataLeft ? dstDataSize : dataLeft
     
                 DllCall("ntdll\memcpy"
@@ -3150,8 +3150,8 @@ class LibQurl {
                 destBin := destObj["writeTo"]
     
                 ;initial buffer conditions
-                if (destObj["writeType"] = "magic-memory") {
-                    if (this.flushThreshold > (destBin.offset + srcDataSize)) {
+                if(destObj["writeType"] = "magic-memory") {
+                    if(this.flushThreshold > (destBin.offset + srcDataSize)) {
                         ;allocation check
                         requiredSize := destBin.offset + srcDataSize
                         if requiredSize > destBin.size {
@@ -3197,7 +3197,7 @@ class LibQurl {
                 return this._dataSize
             }
             Close() {
-                if (this.writeObj["writeType"] = "magic-memory")
+                if(this.writeObj["writeType"] = "magic-memory")
                     this.writeObj["writeTo"].Size := this.writeObj["writeTo"].offset ;truncates the buffer to the final output size
                 else ;magic-file
                     this.writeObj["writeTo"].Close()
@@ -3234,7 +3234,7 @@ class LibQurl {
             }
     
             Close() {
-                if (this.writeObj["writeType"] = "magic-memory")
+                if(this.writeObj["writeType"] = "magic-memory")
                     this.writeObj["writeTo"].Size := this._dataSize ;truncates the buffer to the final output size
                 else ;magic-file
                     this.writeObj["writeTo"].Close()
@@ -3242,8 +3242,8 @@ class LibQurl {
     
             RawWrite(srcDataPtr, srcDataSize) {
                 ;initial buffer conditions
-                if (this.writeObj["writeType"] = "magic-memory") {
-                    if (this.writeObj["flushThreshold"] > (this._dataSize + srcDataSize)) {
+                if(this.writeObj["writeType"] = "magic-memory") {
+                    if(this.writeObj["flushThreshold"] > (this._dataSize + srcDataSize)) {
                         Offset := this.writeObj["writeTo"].size ;use previous size to determine current offset
                         this.writeObj["writeTo"].size += srcDataSize    ;expand to accomodate incoming data
                         DllCall("ntdll\memcpy"
