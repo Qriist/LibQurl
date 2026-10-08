@@ -29,6 +29,7 @@ class LibQurl {
         this.mimePartMap := Map()
         this.mimePartMap[0] := []
         this.mimePartCBFcleanupArr := []
+        this.traceMimeVersion := 1
 
         this.unassociatedEasyHandles := Map()
         static curlDLLhandle := ""
@@ -1150,6 +1151,7 @@ class LibQurl {
         this.easyHandleMap[easy_handle]["associated_mime_handles"][mime_handle] := 1
         this.mimeHandleMap[mime_handle]["nest_parent"] := 0
         this.mimeHandleMap[mime_handle]["nest_children"] := []
+        this.mimeHandleMap[mime_handle]["useTraceVersion"] := this.traceMimeVersion
         this.SetOpt("MIMEPOST", mime_handle, easy_handle)
 
         return mime_handle
@@ -1163,6 +1165,7 @@ class LibQurl {
         if mimeMap["nest_parent"]
             return this.TraceMime(mimeMap["nest_parent"])
 
+        traceVersion := this.mimeHandleMap[mime_handle]["useTraceVersion"]
         ; retObj := this._traceMimeMap(mimeMap)
         assocMap := mimeMap["associated_mime_parts"]
         diagMap := Map()
@@ -1170,6 +1173,7 @@ class LibQurl {
         ; jsonStr := json.Dump(retObj)
         traceHash := this.hashObj(retObj)
         retObj.traceHash := traceHash
+        retObj.traceVersion := traceVersion
         ; MsgBox this.hashObj(retObj, 1)
         for k, v in diagMap {
 
@@ -1182,6 +1186,22 @@ class LibQurl {
         }
 
         return retObj
+    }
+    SetTraceMimeVersion(traceMimeVersion?, mime_handle?) {
+        mime_handle ??= this.mimeHandleMap[0][1]   ;defaults to the first created mime_handle
+        traceMimeVersion ??= this.traceMimeVersion  ;defaults to the latest known version
+
+        switch {
+            case !IsInteger(traceMimeVersion):   ;not a valid number
+                return 0
+            case traceMimeVersion < 1:    ;too small
+                return 0
+            case traceMimeVersion > this.traceMimeVersion: ;too big
+                return 0
+            Default:
+                this.mimeHandleMap[mime_handle]["useTraceVersion"] := traceMimeVersion
+                return this.mimeHandleMap[mime_handle]["useTraceVersion"]
+        }
     }
 
     MimeAddPart(mime_handle?) {
