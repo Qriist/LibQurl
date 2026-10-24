@@ -108,7 +108,7 @@ libraryFeatureFlags(requestedLibrary, join?) {
                 "idn2",
                 "ldap",
                 "mbedtls",
-                "non-http",
+                ; "non-http",
                 "openssl",  ;uses libressl overlay
                 "psl",
                 ; "rtmp",   ;removed
@@ -152,6 +152,7 @@ vcpkgPortVersions(libArr, portsDir, oldVerMap?) {
         libcmd := lib "[" features "]"
 
         ;query current version numbers for curl/wolfssl/libmagic + each flag port
+        ; msgbox A_Clipboard := "vcpkg depend-info " libcmd ":x64-windows"
         ports := StrSplit(RunCMD("vcpkg depend-info " libcmd ":x64-windows"), "`n", "`r")
         ; msgbox ports[ports.length]
         ports := StrSplit(ports[ports.length], ":", " ")[2]
